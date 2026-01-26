@@ -1,10 +1,30 @@
+import { ErrorState } from "@/shared/ui/error-state";
+import { RestrictedState } from "@/shared/ui/restricted-state";
 import type { SlotSummary } from "@/entities/slot/model/types";
 
 type SlotSummaryProps = {
   summary: SlotSummary | null;
+  isError?: boolean;
+  isRestricted?: boolean;
 };
 
-export default function SlotSummary({ summary }: SlotSummaryProps) {
+export default function SlotSummary({ summary, isError, isRestricted }: SlotSummaryProps) {
+  if (isRestricted) {
+    return (
+      <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
+        <RestrictedState title="슬롯 제한" description="현재 슬롯 정보를 볼 수 없습니다." />
+      </section>
+    );
+  }
+
+  if (isError) {
+    return (
+      <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
+        <ErrorState title="슬롯 오류" description="잠시 후 다시 시도해주세요." />
+      </section>
+    );
+  }
+
   const freeTotal = summary?.freeLimit ?? 0;
   const freeUsed = summary?.freeUsedCount ?? 0;
   const adTotal = summary?.adLimit ?? 0;

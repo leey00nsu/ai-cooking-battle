@@ -2,19 +2,22 @@ import type { Theme } from "@/entities/theme/model/types";
 
 type ThemeHeroProps = {
   theme: Theme | null;
+  isRestricted?: boolean;
+  isError?: boolean;
 };
 
-export default function ThemeHero({ theme }: ThemeHeroProps) {
+export default function ThemeHero({ theme, isRestricted, isError }: ThemeHeroProps) {
   const title = theme?.themeText ?? "오늘의 주제";
   const dayKey = theme?.dayKey ?? "----";
   const backgroundUrl = theme?.themeImageUrl ?? "";
+  const overlayClass = isRestricted ? "bg-amber-500/20" : isError ? "bg-rose-500/20" : "bg-gradient-to-t from-black/80 via-black/30 to-black/10";
 
   return (
     <section
       className="relative flex min-h-[320px] flex-col justify-end overflow-hidden rounded-3xl border border-white/10 bg-neutral-900 bg-cover bg-center p-6"
       style={backgroundUrl ? { backgroundImage: `url(${backgroundUrl})` } : undefined}
     >
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
+      <div className={`absolute inset-0 ${overlayClass}`} />
       {!backgroundUrl ? (
         <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-neutral-900 to-neutral-950" />
       ) : null}

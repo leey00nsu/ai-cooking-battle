@@ -14,6 +14,11 @@ type HomeScreenProps = {
   snapshotTop: SnapshotTop | null;
   matchFeed: MatchFeed | null;
   userStatus: "GUEST" | "AUTH" | "ELIGIBLE" | "LIMITED";
+  isRestricted?: boolean;
+  isThemeError?: boolean;
+  isSlotError?: boolean;
+  isSnapshotError?: boolean;
+  isMatchError?: boolean;
 };
 
 export default function HomeScreen({
@@ -22,21 +27,34 @@ export default function HomeScreen({
   snapshotTop,
   matchFeed,
   userStatus,
+  isRestricted,
+  isThemeError,
+  isSlotError,
+  isSnapshotError,
+  isMatchError,
 }: HomeScreenProps) {
   return (
     <main className="flex min-h-screen flex-col gap-10 bg-neutral-950 px-4 py-10 text-white">
       <section className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-        <ThemeHero theme={theme} />
+        <ThemeHero theme={theme} isRestricted={isRestricted} isError={isThemeError} />
         <div className="flex flex-col gap-4">
           <StatusPanel status={userStatus} />
-          <SlotSummaryPanel summary={slotSummary} />
+          <SlotSummaryPanel
+            summary={slotSummary}
+            isRestricted={isRestricted}
+            isError={isSlotError}
+          />
         </div>
       </section>
       <section className="flex flex-col gap-4">
-        <Highlights snapshotTop={snapshotTop} />
+        <Highlights
+          snapshotTop={snapshotTop}
+          isRestricted={isRestricted}
+          isError={isSnapshotError}
+        />
       </section>
       <section className="flex flex-col gap-4">
-        <MatchGrid matchFeed={matchFeed} />
+        <MatchGrid matchFeed={matchFeed} isRestricted={isRestricted} isError={isMatchError} />
       </section>
     </main>
   );

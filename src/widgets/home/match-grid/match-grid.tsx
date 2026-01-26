@@ -1,8 +1,12 @@
 import type { MatchFeed, MatchSummary } from "@/entities/match/model/types";
 import { EmptyState } from "@/shared/ui/empty-state";
+import { ErrorState } from "@/shared/ui/error-state";
+import { RestrictedState } from "@/shared/ui/restricted-state";
 
 type MatchGridProps = {
   matchFeed: MatchFeed | null;
+  isError?: boolean;
+  isRestricted?: boolean;
 };
 
 function formatScore(value: number) {
@@ -69,7 +73,29 @@ function MatchCard({ match }: { match: MatchSummary }) {
   );
 }
 
-export default function MatchGrid({ matchFeed }: MatchGridProps) {
+export default function MatchGrid({ matchFeed, isError, isRestricted }: MatchGridProps) {
+  if (isRestricted) {
+    return (
+      <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
+        <h2 className="text-lg font-semibold text-white">Fresh Out the Oven</h2>
+        <div className="mt-4">
+          <RestrictedState title="매치 제한" description="현재 매치를 볼 수 없습니다." />
+        </div>
+      </section>
+    );
+  }
+
+  if (isError) {
+    return (
+      <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
+        <h2 className="text-lg font-semibold text-white">Fresh Out the Oven</h2>
+        <div className="mt-4">
+          <ErrorState title="매치 오류" description="잠시 후 다시 시도해주세요." />
+        </div>
+      </section>
+    );
+  }
+
   if (!matchFeed || matchFeed.items.length === 0) {
     return (
       <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">

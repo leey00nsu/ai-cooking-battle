@@ -1,8 +1,12 @@
 import type { SnapshotEntry, SnapshotTop } from "@/entities/snapshot/model/types";
 import { EmptyState } from "@/shared/ui/empty-state";
+import { ErrorState } from "@/shared/ui/error-state";
+import { RestrictedState } from "@/shared/ui/restricted-state";
 
 type HighlightsProps = {
   snapshotTop: SnapshotTop | null;
+  isError?: boolean;
+  isRestricted?: boolean;
 };
 
 function formatScore(value: number) {
@@ -61,7 +65,29 @@ function HighlightCard({ entry, dayKey }: { entry: SnapshotEntry; dayKey: string
   );
 }
 
-export default function Highlights({ snapshotTop }: HighlightsProps) {
+export default function Highlights({ snapshotTop, isError, isRestricted }: HighlightsProps) {
+  if (isRestricted) {
+    return (
+      <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
+        <h2 className="text-lg font-semibold text-white">Battle Highlights</h2>
+        <div className="mt-4">
+          <RestrictedState title="하이라이트 제한" description="현재 하이라이트를 볼 수 없습니다." />
+        </div>
+      </section>
+    );
+  }
+
+  if (isError) {
+    return (
+      <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
+        <h2 className="text-lg font-semibold text-white">Battle Highlights</h2>
+        <div className="mt-4">
+          <ErrorState title="하이라이트 오류" description="잠시 후 다시 시도해주세요." />
+        </div>
+      </section>
+    );
+  }
+
   if (!snapshotTop || snapshotTop.items.length === 0) {
     return (
       <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
