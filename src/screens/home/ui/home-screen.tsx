@@ -1,31 +1,43 @@
-import type { ReactNode } from "react";
+import type { MatchFeed } from "@/entities/match/model/types";
+import type { SnapshotTop } from "@/entities/snapshot/model/types";
+import type { SlotSummary } from "@/entities/slot/model/types";
+import type { Theme } from "@/entities/theme/model/types";
+import Highlights from "@/widgets/home/highlights/highlights";
+import MatchGrid from "@/widgets/home/match-grid/match-grid";
+import SlotSummaryPanel from "@/widgets/home/slot-summary/slot-summary";
+import StatusPanel from "@/widgets/home/status-panel/status-panel";
+import ThemeHero from "@/widgets/home/theme-hero/theme-hero";
 
 type HomeScreenProps = {
-  themeHero: ReactNode;
-  statusPanel: ReactNode;
-  slotSummary: ReactNode;
-  highlights: ReactNode;
-  matchGrid: ReactNode;
+  theme: Theme | null;
+  slotSummary: SlotSummary | null;
+  snapshotTop: SnapshotTop | null;
+  matchFeed: MatchFeed | null;
+  userStatus: "GUEST" | "AUTH" | "ELIGIBLE" | "LIMITED";
 };
 
 export default function HomeScreen({
-  themeHero,
-  statusPanel,
+  theme,
   slotSummary,
-  highlights,
-  matchGrid,
+  snapshotTop,
+  matchFeed,
+  userStatus,
 }: HomeScreenProps) {
   return (
     <main className="flex min-h-screen flex-col gap-10 bg-neutral-950 px-4 py-10 text-white">
       <section className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-        {themeHero}
+        <ThemeHero theme={theme} />
         <div className="flex flex-col gap-4">
-          {statusPanel}
-          {slotSummary}
+          <StatusPanel status={userStatus} />
+          <SlotSummaryPanel summary={slotSummary} />
         </div>
       </section>
-      <section className="flex flex-col gap-4">{highlights}</section>
-      <section className="flex flex-col gap-4">{matchGrid}</section>
+      <section className="flex flex-col gap-4">
+        <Highlights snapshotTop={snapshotTop} />
+      </section>
+      <section className="flex flex-col gap-4">
+        <MatchGrid matchFeed={matchFeed} />
+      </section>
     </main>
   );
 }
