@@ -1,4 +1,8 @@
+"use client";
+
 import type { MatchFeed, MatchSummary } from "@/entities/match/model/types";
+import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
+import { trackEvent } from "@/shared/analytics/track-event";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { RestrictedState } from "@/shared/ui/restricted-state";
@@ -21,6 +25,14 @@ function MatchCard({ match }: { match: MatchSummary }) {
     <a
       className="group rounded-3xl border border-white/10 bg-neutral-950/60 p-4 transition hover:border-amber-400/40"
       href={`/matches/${match.id}`}
+      onClick={() =>
+        trackEvent(ANALYTICS_EVENTS.MATCH_VIEW, {
+          screen: "home",
+          matchId: match.id,
+          dayKey: match.dayKey,
+          isPractice: match.isPractice,
+        })
+      }
     >
       <div className="relative grid h-40 grid-cols-2 gap-1 overflow-hidden rounded-2xl">
         <div className="h-full w-full bg-neutral-800">

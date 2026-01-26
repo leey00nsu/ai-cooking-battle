@@ -1,4 +1,8 @@
+"use client";
+
 import type { SnapshotEntry, SnapshotTop } from "@/entities/snapshot/model/types";
+import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
+import { trackEvent } from "@/shared/analytics/track-event";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { RestrictedState } from "@/shared/ui/restricted-state";
@@ -16,11 +20,20 @@ function formatScore(value: number) {
   return value.toFixed(1);
 }
 
-function HighlightCard({ entry, dayKey }: { entry: SnapshotEntry; dayKey: string }) {
+function HighlightCard({
+  entry,
+  dayKey,
+  onClick,
+}: {
+  entry: SnapshotEntry;
+  dayKey: string;
+  onClick?: () => void;
+}) {
   return (
     <a
       className="group rounded-3xl border border-white/10 bg-neutral-950/60 p-4 transition hover:border-amber-400/40"
       href={`/snapshot/${dayKey}`}
+      onClick={onClick}
     >
       <div className="relative grid h-40 grid-cols-2 gap-1 overflow-hidden rounded-2xl">
         <div className="h-full w-full bg-neutral-800">
@@ -117,9 +130,24 @@ export default function Highlights({ snapshotTop, isError, isRestricted }: Highl
         </a>
       </div>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
-        {snapshotTop.items.map((entry) => (
-          <HighlightCard key={`${snapshotTop.dayKey}-${entry.rank}`} entry={entry} dayKey={snapshotTop.dayKey} />
-        ))}
+        {snapshotTop.items.map((entry) => {
+          const handleClick = () => {
+            trackEvent(ANALYTICS_EVENTS.MATCH_VIEW, {
+              screen: "home",
+              dayKey: snapshotTop.dayKey,
+              rank: entry.rank,
+            });
+          };
+
+          return (
+            <HighlightCard
+              key={`${snapshotTop.dayKey}-${entry.rank}`}
+              entry={entry}
+              dayKey={snapshotTop.dayKey}
+              onClick={handleClick}
+            />
+          );
+        })}
       </div>
     </section>
   );

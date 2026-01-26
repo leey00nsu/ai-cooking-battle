@@ -1,3 +1,5 @@
+"use client";
+
 import { ErrorState } from "@/shared/ui/error-state";
 import { RestrictedState } from "@/shared/ui/restricted-state";
 import type { SlotSummary } from "@/entities/slot/model/types";

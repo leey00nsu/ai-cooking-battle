@@ -1,12 +1,14 @@
+import type { ReactNode } from "react";
 import type { Theme } from "@/entities/theme/model/types";
 
 type ThemeHeroProps = {
   theme: Theme | null;
   isRestricted?: boolean;
   isError?: boolean;
+  cta?: ReactNode;
 };
 
-export default function ThemeHero({ theme, isRestricted, isError }: ThemeHeroProps) {
+export default function ThemeHero({ theme, isRestricted, isError, cta }: ThemeHeroProps) {
   const title = theme?.themeText ?? "오늘의 주제";
   const dayKey = theme?.dayKey ?? "----";
   const backgroundUrl = theme?.themeImageUrl ?? "";
@@ -27,6 +29,7 @@ export default function ThemeHero({ theme, isRestricted, isError }: ThemeHeroPro
         </span>
         <h1 className="text-3xl font-semibold text-white sm:text-4xl">{title}</h1>
         <p className="text-sm text-neutral-300">{dayKey}</p>
+        {cta ? <div className="mt-4">{cta}</div> : null}
       </div>
     </section>
   );
