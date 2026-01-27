@@ -28,8 +28,8 @@ describe("Highlights", () => {
   it("renders snapshot cards", () => {
     render(<Highlights snapshotTop={snapshotTop} />);
 
-    expect(screen.getByText("Battle Highlights")).toBeInTheDocument();
-    expect(screen.getByText(/Snapshot Top10 2개/)).toBeInTheDocument();
+    expect(screen.getByText(/Battle Highlights \/\/ Top Rated/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View Ladder" })).toBeInTheDocument();
 
     const links = screen.getAllByRole("link");
     expect(links.some((link) => link.getAttribute("href") === "/snapshot/2026-01-26")).toBe(

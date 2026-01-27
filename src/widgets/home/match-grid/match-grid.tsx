@@ -6,6 +6,7 @@ import { trackEvent } from "@/shared/analytics/track-event";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { RestrictedState } from "@/shared/ui/restricted-state";
+import { ArrowRight, Grid3x3, Star } from "lucide-react";
 
 type MatchGridProps = {
   matchFeed: MatchFeed | null;
@@ -20,10 +21,39 @@ function formatScore(value: number) {
   return value.toFixed(1);
 }
 
+function MatchGridHeader({ count }: { count?: number }) {
+  return (
+    <div className="flex items-center justify-between px-2">
+      <div className="flex items-center gap-3">
+        <div className="rounded-full bg-white/5 p-2 text-amber-300">
+          <Grid3x3 aria-hidden className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold leading-tight text-white">Fresh Out the Oven</h2>
+          {typeof count === "number" ? (
+            <p className="text-sm text-white/60">최신 매치 {count}개</p>
+          ) : null}
+        </div>
+      </div>
+      <a
+        className="flex items-center gap-1 text-sm font-medium text-white/60 transition hover:text-amber-300"
+        href="/feed"
+      >
+        View Feed
+        <ArrowRight aria-hidden className="h-4 w-4" />
+      </a>
+    </div>
+  );
+}
+
 function MatchCard({ match }: { match: MatchSummary }) {
+  const backgroundUrl = match.leftDishImageUrl || match.rightDishImageUrl;
+  const rating = Math.max(match.leftScore, match.rightScore);
+  const scoreLabel = `${formatScore(match.leftScore)} vs ${formatScore(match.rightScore)}`;
+
   return (
     <a
-      className="group rounded-3xl border border-white/10 bg-neutral-950/60 p-4 transition hover:border-amber-400/40"
+      className="group relative aspect-square overflow-hidden rounded-2xl border border-white/5 bg-neutral-900"
       href={`/matches/${match.id}`}
       onClick={() =>
         trackEvent(ANALYTICS_EVENTS.MATCH_VIEW, {
@@ -34,52 +64,26 @@ function MatchCard({ match }: { match: MatchSummary }) {
         })
       }
     >
-      <div className="relative grid h-40 grid-cols-2 gap-1 overflow-hidden rounded-2xl">
-        <div className="h-full w-full bg-neutral-800">
-          {match.leftDishImageUrl ? (
-            <img
-              alt={`Match left ${match.id}`}
-              className="h-full w-full object-cover"
-              src={match.leftDishImageUrl}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-800 via-neutral-900 to-black text-xs text-neutral-500">
-              No Image
-            </div>
-          )}
-        </div>
-        <div className="h-full w-full bg-neutral-800">
-          {match.rightDishImageUrl ? (
-            <img
-              alt={`Match right ${match.id}`}
-              className="h-full w-full object-cover"
-              src={match.rightDishImageUrl}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-800 via-neutral-900 to-black text-xs text-neutral-500">
-              No Image
-            </div>
-          )}
-        </div>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="rounded-full border border-white/10 bg-black/70 px-4 py-1 text-sm font-semibold text-white shadow">
-            <span className="text-amber-300">{formatScore(match.leftScore)}</span>
-            <span className="px-2 text-xs text-neutral-400">vs</span>
-            <span>{formatScore(match.rightScore)}</span>
-          </div>
-        </div>
-      </div>
-      <div className="mt-3 flex items-center justify-between text-sm text-neutral-300">
-        <span className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-          {match.dayKey}
+      <div
+        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+        style={backgroundUrl ? { backgroundImage: `url(${backgroundUrl})` } : undefined}
+      />
+      {!backgroundUrl ? (
+        <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 via-neutral-900 to-black" />
+      ) : null}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 transition group-hover:opacity-100" />
+      {match.isPractice ? (
+        <span className="absolute left-3 top-3 rounded-full border border-amber-300/30 bg-black/60 px-3 py-1 text-xs font-semibold text-amber-200">
+          연습전
         </span>
-        {match.isPractice ? (
-          <span className="rounded-full bg-amber-400/20 px-3 py-1 text-xs font-semibold text-amber-200">
-            연습전
-          </span>
-        ) : (
-          <span className="text-xs text-neutral-400">매치</span>
-        )}
+      ) : null}
+      <div className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 transition group-hover:opacity-100">
+        <div className="flex items-center gap-1 text-xs font-semibold text-amber-300">
+          <Star aria-hidden className="h-3.5 w-3.5" />
+          {formatScore(rating)}
+        </div>
+        <p className="mt-1 text-sm font-semibold text-white">{scoreLabel}</p>
+        <p className="text-xs text-white/60">{match.dayKey}</p>
       </div>
     </a>
   );
@@ -88,8 +92,8 @@ function MatchCard({ match }: { match: MatchSummary }) {
 export default function MatchGrid({ matchFeed, isError, isRestricted }: MatchGridProps) {
   if (isRestricted) {
     return (
-      <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
-        <h2 className="text-lg font-semibold text-white">Fresh Out the Oven</h2>
+      <section className="flex flex-col gap-6">
+        <MatchGridHeader />
         <div className="mt-4">
           <RestrictedState title="매치 제한" description="현재 매치를 볼 수 없습니다." />
         </div>
@@ -99,8 +103,8 @@ export default function MatchGrid({ matchFeed, isError, isRestricted }: MatchGri
 
   if (isError) {
     return (
-      <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
-        <h2 className="text-lg font-semibold text-white">Fresh Out the Oven</h2>
+      <section className="flex flex-col gap-6">
+        <MatchGridHeader />
         <div className="mt-4">
           <ErrorState title="매치 오류" description="잠시 후 다시 시도해주세요." />
         </div>
@@ -110,8 +114,8 @@ export default function MatchGrid({ matchFeed, isError, isRestricted }: MatchGri
 
   if (!matchFeed || matchFeed.items.length === 0) {
     return (
-      <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
-        <h2 className="text-lg font-semibold text-white">Fresh Out the Oven</h2>
+      <section className="flex flex-col gap-6">
+        <MatchGridHeader />
         <div className="mt-4">
           <EmptyState title="매치가 없습니다" description="오늘의 매치가 아직 없습니다." />
         </div>
@@ -120,17 +124,9 @@ export default function MatchGrid({ matchFeed, isError, isRestricted }: MatchGri
   }
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-white">Fresh Out the Oven</h2>
-          <p className="mt-2 text-sm text-neutral-400">최신 매치 {matchFeed.items.length}개</p>
-        </div>
-        <a className="text-sm font-semibold text-amber-300 transition hover:text-amber-200" href="/feed">
-          View Feed
-        </a>
-      </div>
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+    <section className="flex flex-col gap-6">
+      <MatchGridHeader count={matchFeed.items.length} />
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         {matchFeed.items.map((match) => (
           <MatchCard key={match.id} match={match} />
         ))}
