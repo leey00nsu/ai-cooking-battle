@@ -17,6 +17,16 @@ export function formatDayKey(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+export function formatDayKeyForTZ(timeZone: string, date = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(date);
+}
+
 function dishImage(seed: string) {
   return `https://picsum.photos/seed/${seed}/800/800`;
 }
@@ -71,4 +81,3 @@ export function getMockSnapshotTop(dayKey = formatDayKey(), count = 4): Snapshot
   const items = Array.from({ length: count }, (_, index) => makeSnapshotEntry(dayKey, index + 1));
   return { dayKey, items };
 }
-

@@ -71,6 +71,8 @@ export default function HomeNavigation({ userType, active = "home" }: HomeNaviga
             intent="outline"
             size="icon"
             type="button"
+            aria-label="모바일 메뉴 열기"
+            disabled
           >
             <span className="text-xs font-semibold">Menu</span>
           </Button>

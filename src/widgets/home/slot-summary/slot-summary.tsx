@@ -12,7 +12,11 @@ type SlotSummaryProps = {
   isRestricted?: boolean;
 };
 
-export default function SlotSummary({ summary, isError, isRestricted }: SlotSummaryProps) {
+export default function SlotSummaryPanel({
+  summary,
+  isError,
+  isRestricted,
+}: SlotSummaryProps) {
   if (isRestricted) {
     return (
       <Card className="p-6">

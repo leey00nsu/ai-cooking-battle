@@ -30,7 +30,7 @@ function HighlightsHeader() {
           <Trophy aria-hidden className="h-5 w-5" />
         </Badge>
         <h2 className="text-2xl font-bold leading-tight text-white">
-          Battle Highlights // Top Rated
+          Battle Highlights — Top Rated
         </h2>
       </div>
       <a

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
 
@@ -11,7 +11,13 @@ type HomeAnalyticsProps = {
 };
 
 export default function HomeAnalytics({ dayKey, isEligible, userType }: HomeAnalyticsProps) {
+  const sentAnalyticsRef = useRef(false);
+
   useEffect(() => {
+    if (sentAnalyticsRef.current) {
+      return;
+    }
+
     trackEvent(ANALYTICS_EVENTS.VIEW_HOME, {
       dayKey: dayKey ?? undefined,
       isEligible,
@@ -26,6 +32,7 @@ export default function HomeAnalytics({ dayKey, isEligible, userType }: HomeAnal
         screen: "home",
       });
     }
+    sentAnalyticsRef.current = true;
   }, [dayKey, isEligible, userType]);
 
   return null;
