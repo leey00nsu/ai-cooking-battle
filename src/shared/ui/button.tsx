@@ -8,9 +8,9 @@ const buttonIntentVariants = cva(
   {
     variants: {
       intent: {
-        primary: "",
-        cta: "shadow-[var(--shadow-glow-md)] hover:bg-primary/90",
-        nav: "shadow-[var(--shadow-glow-sm)] hover:bg-primary/90",
+        primary: "bg-primary text-primary-foreground hover:bg-primary/90",
+        cta: "bg-primary text-primary-foreground shadow-[var(--shadow-glow-md)] hover:bg-primary/90",
+        nav: "bg-primary text-primary-foreground shadow-[var(--shadow-glow-sm)] hover:bg-primary/90",
         outline: "border border-white/10 bg-transparent text-white hover:bg-white/10",
         ghost: "bg-transparent text-white hover:bg-white/10",
       },

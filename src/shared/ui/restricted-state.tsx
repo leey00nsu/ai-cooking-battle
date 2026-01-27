@@ -14,9 +14,9 @@ export function RestrictedState({
   action,
 }: RestrictedStateProps) {
   return (
-    <div className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-amber-400/40 bg-amber-500/10 p-6 text-center text-amber-100">
+    <div className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/10 p-6 text-center text-primary">
       <strong className="text-base font-semibold text-white">{title}</strong>
-      <p className="text-sm text-amber-100/80">{description}</p>
+      <p className="text-sm text-primary/80">{description}</p>
       {action ? <div className="pt-2">{action}</div> : null}
     </div>
   );
