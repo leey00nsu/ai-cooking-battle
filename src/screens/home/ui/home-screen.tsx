@@ -40,6 +40,20 @@ export default function HomeScreen({
   const isEligible = userStatus === "ELIGIBLE";
   const ctaHref =
     userStatus === "LIMITED" ? "/restricted" : userType === "guest" ? "/start" : "/create";
+  const startCreateCta = (
+    <StartCreateButton
+      href={ctaHref}
+      userType={userType}
+      isEligible={isEligible}
+      dayKey={theme?.dayKey}
+      className="group relative flex h-16 w-full items-center justify-between overflow-hidden rounded-full bg-amber-400 pl-8 pr-3 text-neutral-900 shadow-[0_0_25px_rgba(251,191,36,0.35)] transition hover:bg-amber-300"
+    >
+      <span className="text-lg font-bold tracking-tight">Start Creating</span>
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 transition group-hover:scale-105">
+        <span className="text-xl font-bold">{"->"}</span>
+      </span>
+    </StartCreateButton>
+  );
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
@@ -47,22 +61,12 @@ export default function HomeScreen({
       <main className="flex flex-col items-center px-4 pb-10 pt-24 md:px-8">
         <HomeAnalytics dayKey={theme?.dayKey} isEligible={isEligible} userType={userType} />
         <div className="flex w-full max-w-[1200px] flex-col gap-12">
-          <section className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-            <ThemeHero
-              theme={theme}
-              isRestricted={isRestricted}
-              isError={isThemeError}
-              cta={
-                <StartCreateButton
-                  href={ctaHref}
-                  userType={userType}
-                  isEligible={isEligible}
-                  dayKey={theme?.dayKey}
-                />
-              }
-            />
-            <div className="flex flex-col gap-4">
-              <StatusPanel status={userStatus} />
+          <section className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-12 lg:gap-8">
+            <div className="lg:col-span-7">
+              <ThemeHero theme={theme} isRestricted={isRestricted} isError={isThemeError} />
+            </div>
+            <div className="flex flex-col gap-6 lg:col-span-5">
+              <StatusPanel status={userStatus} cta={startCreateCta} />
               <SlotSummaryPanel
                 summary={slotSummary}
                 isRestricted={isRestricted}

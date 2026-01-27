@@ -37,44 +37,40 @@ export default function SlotSummary({ summary, isError, isRestricted }: SlotSumm
   const adPercent = adTotal > 0 ? Math.min((adRemaining / adTotal) * 100, 100) : 0;
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-400">
-          Slots
-        </p>
-        <span className="text-xs text-neutral-500">00:00(KST) 리셋</span>
+    <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="flex flex-col gap-3 rounded-[2rem] bg-neutral-900/80 p-6">
+        <div className="flex items-center gap-2 text-white/60">
+          <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">
+            Free
+          </span>
+          <span className="text-xs font-bold uppercase tracking-[0.2em]">Free Slots</span>
+        </div>
+        <div className="flex items-end gap-2">
+          <span className="text-3xl font-bold leading-none text-white">{freeRemaining}</span>
+          <span className="mb-0.5 text-lg font-medium text-white/40">/ {freeTotal}</span>
+        </div>
+        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-black/30">
+          <div className="h-full rounded-full bg-white" style={{ width: `${freePercent}%` }} />
+        </div>
+        <p className="text-xs text-white/50">00:00(KST) 리셋</p>
       </div>
 
-      <div className="mt-4 space-y-4">
-        <div>
-          <div className="flex items-center justify-between text-sm text-neutral-300">
-            <span>무료 슬롯</span>
-            <span>
-              {freeRemaining} / {freeTotal}
-            </span>
-          </div>
-          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full rounded-full bg-emerald-400"
-              style={{ width: `${freePercent}%` }}
-            />
-          </div>
+      <div className="relative flex flex-col gap-3 overflow-hidden rounded-[2rem] border border-amber-400/20 bg-neutral-900/80 p-6">
+        <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-amber-400/20 blur-2xl" />
+        <div className="flex items-center gap-2 text-amber-300">
+          <span className="rounded-full bg-amber-400/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200">
+            Ad
+          </span>
+          <span className="text-xs font-bold uppercase tracking-[0.2em]">Ad Bonus</span>
         </div>
-
-        <div>
-          <div className="flex items-center justify-between text-sm text-neutral-300">
-            <span>광고 슬롯</span>
-            <span>
-              {adRemaining} / {adTotal}
-            </span>
-          </div>
-          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full rounded-full bg-amber-400"
-              style={{ width: `${adPercent}%` }}
-            />
-          </div>
+        <div className="flex items-end gap-2">
+          <span className="text-3xl font-bold leading-none text-white">{adRemaining}</span>
+          <span className="mb-0.5 text-lg font-medium text-white/40">/ {adTotal}</span>
         </div>
+        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-black/30">
+          <div className="h-full rounded-full bg-amber-400" style={{ width: `${adPercent}%` }} />
+        </div>
+        <p className="text-xs text-white/50">보상 후 사용 가능</p>
       </div>
     </section>
   );
