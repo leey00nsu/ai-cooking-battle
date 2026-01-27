@@ -59,7 +59,8 @@ function makeMatch(dayKey: string, index: number): MatchSummary {
 }
 
 export function getMockMatchFeed(dayKey = formatDayKey(), limit = 8): MatchFeed {
-  const items = Array.from({ length: limit }, (_, index) => makeMatch(dayKey, index));
+  const safeLimit = Math.max(0, Math.floor(Number(limit)));
+  const items = Array.from({ length: safeLimit }, (_, index) => makeMatch(dayKey, index));
   return { items };
 }
 
@@ -78,6 +79,9 @@ function makeSnapshotEntry(dayKey: string, rank: number): SnapshotEntry {
 }
 
 export function getMockSnapshotTop(dayKey = formatDayKey(), count = 4): SnapshotTop {
-  const items = Array.from({ length: count }, (_, index) => makeSnapshotEntry(dayKey, index + 1));
+  const safeCount = Math.max(0, Math.floor(Number(count)));
+  const items = Array.from({ length: safeCount }, (_, index) =>
+    makeSnapshotEntry(dayKey, index + 1),
+  );
   return { dayKey, items };
 }
