@@ -25,16 +25,16 @@ const NAV_ITEMS: NavItem[] = [
 
 function getNavLinkClass(isActive: boolean) {
   return isActive
-    ? "text-amber-300 text-sm font-bold"
+    ? "text-primary text-sm font-bold"
     : "text-white/70 text-sm font-medium transition-colors hover:text-white";
 }
 
 export default function HomeNavigation({ userType, active = "home" }: HomeNavigationProps) {
   return (
     <div className="fixed left-0 right-0 top-0 z-50 flex justify-center px-4 py-4">
-      <nav className="flex w-full max-w-[1200px] items-center justify-between gap-4 rounded-full border border-white/10 bg-neutral-900/90 px-6 py-3 shadow-lg backdrop-blur">
+      <nav className="flex w-full max-w-[1200px] items-center justify-between gap-4 rounded-full border border-white/10 bg-card/90 px-6 py-3 shadow-lg backdrop-blur">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-400/20 text-amber-300">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-primary">
             <span className="text-lg font-black">ACB</span>
           </div>
           <span className="hidden text-lg font-bold tracking-tight text-white sm:block">
@@ -61,7 +61,7 @@ export default function HomeNavigation({ userType, active = "home" }: HomeNaviga
               <Link href="/start">Log In</Link>
             </Button>
           ) : null}
-          <Avatar className="size-9 border border-white/10 bg-neutral-700">
+          <Avatar className="size-9 border border-white/10 bg-card">
             <AvatarFallback className="text-[10px] font-bold tracking-wide text-white/80">
               ME
             </AvatarFallback>

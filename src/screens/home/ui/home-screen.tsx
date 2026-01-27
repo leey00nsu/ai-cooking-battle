@@ -56,7 +56,7 @@ export default function HomeScreen({
   );
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white">
+    <div className="min-h-screen bg-background text-white">
       <HomeNavigation userType={userType} active="home" />
       <main className="flex flex-col items-center px-4 pb-10 pt-24 md:px-8">
         <HomeAnalytics dayKey={theme?.dayKey} isEligible={isEligible} userType={userType} />

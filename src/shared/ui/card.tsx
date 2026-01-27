@@ -14,10 +14,10 @@ import {
 const cardVariants = cva("rounded-[var(--radius-4xl)] border text-white", {
   variants: {
     tone: {
-      default: "border-white/10 bg-neutral-900/80",
-      solid: "border-white/5 bg-neutral-900",
-      accent: "border-amber-400/20 bg-neutral-900/80",
-      ghost: "border-transparent bg-neutral-900/80",
+      default: "border-white/10 bg-card/90",
+      solid: "border-white/5 bg-card",
+      accent: "border-primary/30 bg-card/90",
+      ghost: "border-transparent bg-card/90",
     },
   },
   defaultVariants: {

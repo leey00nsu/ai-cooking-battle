@@ -34,7 +34,7 @@ function HighlightsHeader() {
         </h2>
       </div>
       <a
-        className="flex items-center gap-1 text-sm font-medium text-white/60 transition hover:text-amber-300"
+        className="flex items-center gap-1 text-sm font-medium text-white/60 transition hover:text-primary"
         href="/ladder"
       >
         View Ladder
@@ -60,12 +60,12 @@ function HighlightCard({
 
   return (
     <a
-      className="group rounded-[2rem] border border-white/5 bg-neutral-950/80 p-4 shadow-lg transition hover:border-amber-400/40 hover:shadow-xl"
+      className="group rounded-[2rem] border border-white/5 bg-card/90 p-4 shadow-lg transition hover:border-primary/40 hover:shadow-xl"
       href={`/snapshot/${dayKey}`}
       onClick={onClick}
     >
       <div className="relative grid h-48 grid-cols-2 gap-1 overflow-hidden rounded-[1.5rem]">
-        <div className="h-full w-full bg-neutral-800">
+        <div className="h-full w-full bg-card">
           {entry.leftImageUrl ? (
             <img
               alt={`Snapshot left ${entry.rank}`}
@@ -73,12 +73,12 @@ function HighlightCard({
               src={entry.leftImageUrl}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-800 via-neutral-900 to-black text-xs text-neutral-500">
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-card via-background to-black text-xs text-white/40">
               No Image
             </div>
           )}
         </div>
-        <div className="h-full w-full bg-neutral-800">
+        <div className="h-full w-full bg-card">
           {entry.rightImageUrl ? (
             <img
               alt={`Snapshot right ${entry.rank}`}
@@ -86,14 +86,14 @@ function HighlightCard({
               src={entry.rightImageUrl}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-800 via-neutral-900 to-black text-xs text-neutral-500">
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-card via-background to-black text-xs text-white/40">
               No Image
             </div>
           )}
         </div>
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="-skew-x-12 rounded-full border border-white/10 bg-black/80 px-4 py-1 text-xl font-black italic text-white shadow-lg">
-            <span className="not-italic text-amber-300">{formatScore(entry.leftScore)}</span>
+            <span className="not-italic text-primary">{formatScore(entry.leftScore)}</span>
             <span className="px-2 text-sm font-normal not-italic text-white/50">vs</span>
             <span className="not-italic">{formatScore(entry.rightScore)}</span>
           </div>
@@ -103,14 +103,14 @@ function HighlightCard({
         <div className="flex flex-col gap-1">
           <h3 className="text-lg font-bold leading-tight text-white">{title}</h3>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
               Winner: {winnerLabel}
             </span>
             <span className="text-xs text-white/30">•</span>
             <span className="text-xs text-white/60">{chefHandle}</span>
           </div>
         </div>
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-white transition group-hover:bg-amber-400 group-hover:text-black">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-white transition group-hover:bg-primary group-hover:text-black">
           <Eye aria-hidden className="h-4 w-4" />
         </span>
       </div>

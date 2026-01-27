@@ -62,8 +62,8 @@ export default function SlotSummaryPanel({
       </Card>
 
       <Card className="relative flex flex-col gap-3 overflow-hidden p-6" tone="accent">
-        <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-amber-400/20 blur-2xl" />
-        <div className="flex items-center gap-2 text-amber-300">
+        <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-primary/20 blur-2xl" />
+        <div className="flex items-center gap-2 text-primary">
           <Pill size="xs" tone="amber">
             Ad
           </Pill>
@@ -74,7 +74,7 @@ export default function SlotSummaryPanel({
           <span className="mb-0.5 text-lg font-medium text-white/40">/ {adTotal}</span>
         </div>
         <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-black/30">
-          <div className="h-full rounded-full bg-amber-400" style={{ width: `${adPercent}%` }} />
+          <div className="h-full rounded-full bg-primary" style={{ width: `${adPercent}%` }} />
         </div>
         <p className="text-xs text-white/50">보상 후 사용 가능</p>
       </Card>

@@ -30,11 +30,11 @@ const pillVariants = cva(
     compoundVariants: [
       { style: "soft", tone: "neutral", className: "bg-white/10 text-white/90" },
       { style: "soft", tone: "primary", className: "bg-primary/20 text-primary" },
-      { style: "soft", tone: "amber", className: "bg-amber-400/20 text-amber-200" },
+      { style: "soft", tone: "amber", className: "bg-primary/20 text-primary" },
       { style: "soft", tone: "success", className: "bg-emerald-500/20 text-emerald-200" },
       { style: "soft", tone: "danger", className: "bg-rose-500/20 text-rose-200" },
       { style: "outline", tone: "neutral", className: "text-white/80" },
-      { style: "outline", tone: "amber", className: "border-amber-400/40 text-amber-300" },
+      { style: "outline", tone: "amber", className: "border-primary/30 text-primary" },
     ],
     defaultVariants: {
       tone: "neutral",

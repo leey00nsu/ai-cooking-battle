@@ -38,7 +38,7 @@ function MatchGridHeader({ count }: { count?: number }) {
         </div>
       </div>
       <a
-        className="flex items-center gap-1 text-sm font-medium text-white/60 transition hover:text-amber-300"
+        className="flex items-center gap-1 text-sm font-medium text-white/60 transition hover:text-primary"
         href="/feed"
       >
         View Feed
@@ -55,7 +55,7 @@ function MatchCard({ match }: { match: MatchSummary }) {
 
   return (
     <a
-      className="group relative aspect-square overflow-hidden rounded-2xl border border-white/5 bg-neutral-900"
+      className="group relative aspect-square overflow-hidden rounded-2xl border border-white/5 bg-card"
       href={`/matches/${match.id}`}
       onClick={() =>
         trackEvent(ANALYTICS_EVENTS.MATCH_VIEW, {
@@ -71,7 +71,7 @@ function MatchCard({ match }: { match: MatchSummary }) {
         style={backgroundUrl ? { backgroundImage: `url(${backgroundUrl})` } : undefined}
       />
       {!backgroundUrl ? (
-        <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 via-neutral-900 to-black" />
+        <div className="absolute inset-0 bg-gradient-to-br from-card via-background to-black" />
       ) : null}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 transition group-hover:opacity-100" />
       {match.isPractice ? (
@@ -80,7 +80,7 @@ function MatchCard({ match }: { match: MatchSummary }) {
         </Pill>
       ) : null}
       <div className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 transition group-hover:opacity-100">
-        <div className="flex items-center gap-1 text-xs font-semibold text-amber-300">
+        <div className="flex items-center gap-1 text-xs font-semibold text-primary">
           <Star aria-hidden className="h-3.5 w-3.5" />
           {formatScore(rating)}
         </div>
