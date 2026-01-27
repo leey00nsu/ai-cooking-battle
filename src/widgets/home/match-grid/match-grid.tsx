@@ -3,8 +3,10 @@
 import type { MatchFeed, MatchSummary } from "@/entities/match/model/types";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
+import { Badge } from "@/shared/ui/badge";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
+import { Pill } from "@/shared/ui/pill";
 import { RestrictedState } from "@/shared/ui/restricted-state";
 import { ArrowRight, Grid3x3, Star } from "lucide-react";
 
@@ -25,9 +27,9 @@ function MatchGridHeader({ count }: { count?: number }) {
   return (
     <div className="flex items-center justify-between px-2">
       <div className="flex items-center gap-3">
-        <div className="rounded-full bg-white/5 p-2 text-amber-300">
+        <Badge variant="icon">
           <Grid3x3 aria-hidden className="h-5 w-5" />
-        </div>
+        </Badge>
         <div>
           <h2 className="text-2xl font-bold leading-tight text-white">Fresh Out the Oven</h2>
           {typeof count === "number" ? (
@@ -73,9 +75,9 @@ function MatchCard({ match }: { match: MatchSummary }) {
       ) : null}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 transition group-hover:opacity-100" />
       {match.isPractice ? (
-        <span className="absolute left-3 top-3 rounded-full border border-amber-300/30 bg-black/60 px-3 py-1 text-xs font-semibold text-amber-200">
+        <Pill className="absolute left-3 top-3" size="sm" style="outline" tone="amber">
           연습전
-        </span>
+        </Pill>
       ) : null}
       <div className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 transition group-hover:opacity-100">
         <div className="flex items-center gap-1 text-xs font-semibold text-amber-300">

@@ -3,6 +3,7 @@
 import type { SnapshotEntry, SnapshotTop } from "@/entities/snapshot/model/types";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
+import { Badge } from "@/shared/ui/badge";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { RestrictedState } from "@/shared/ui/restricted-state";
@@ -25,9 +26,9 @@ function HighlightsHeader() {
   return (
     <div className="flex items-center justify-between px-2">
       <div className="flex items-center gap-3">
-        <div className="rounded-full bg-white/5 p-2 text-amber-300">
+        <Badge variant="icon">
           <Trophy aria-hidden className="h-5 w-5" />
-        </div>
+        </Badge>
         <h2 className="text-2xl font-bold leading-tight text-white">
           Battle Highlights // Top Rated
         </h2>

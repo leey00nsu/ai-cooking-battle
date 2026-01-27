@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
+import { cn } from "@/shared/lib/utils";
+import { Button } from "@/shared/ui/button";
 import type { ReactNode } from "react";
 
 type StartCreateButtonProps = {
@@ -31,16 +33,13 @@ export default function StartCreateButton({
     });
   };
 
-  const baseClassName =
-    "inline-flex items-center justify-center rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-neutral-900 transition hover:bg-amber-300";
+  const baseClassName = "w-full justify-between";
 
   return (
-    <Link
-      className={`${baseClassName} ${className ?? ""}`.trim()}
-      href={href}
-      onClick={handleClick}
-    >
-      {children ?? "Start Creating"}
-    </Link>
+    <Button asChild className={cn(baseClassName, className)} intent="cta">
+      <Link href={href} onClick={handleClick}>
+        {children ?? "Start Creating"}
+      </Link>
+    </Button>
   );
 }

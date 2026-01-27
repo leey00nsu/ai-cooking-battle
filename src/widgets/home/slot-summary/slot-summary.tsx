@@ -1,8 +1,10 @@
 "use client";
 
-import { ErrorState } from "@/shared/ui/error-state";
-import { RestrictedState } from "@/shared/ui/restricted-state";
 import type { SlotSummary } from "@/entities/slot/model/types";
+import { Card } from "@/shared/ui/card";
+import { ErrorState } from "@/shared/ui/error-state";
+import { Pill } from "@/shared/ui/pill";
+import { RestrictedState } from "@/shared/ui/restricted-state";
 
 type SlotSummaryProps = {
   summary: SlotSummary | null;
@@ -13,17 +15,17 @@ type SlotSummaryProps = {
 export default function SlotSummary({ summary, isError, isRestricted }: SlotSummaryProps) {
   if (isRestricted) {
     return (
-      <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
+      <Card className="p-6">
         <RestrictedState title="슬롯 제한" description="현재 슬롯 정보를 볼 수 없습니다." />
-      </section>
+      </Card>
     );
   }
 
   if (isError) {
     return (
-      <section className="rounded-3xl border border-white/10 bg-neutral-900 p-6">
+      <Card className="p-6">
         <ErrorState title="슬롯 오류" description="잠시 후 다시 시도해주세요." />
-      </section>
+      </Card>
     );
   }
 
@@ -38,11 +40,11 @@ export default function SlotSummary({ summary, isError, isRestricted }: SlotSumm
 
   return (
     <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <div className="flex flex-col gap-3 rounded-[2rem] bg-neutral-900/80 p-6">
+      <Card className="flex flex-col gap-3 p-6" tone="ghost">
         <div className="flex items-center gap-2 text-white/60">
-          <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">
+          <Pill size="xs" tone="neutral">
             Free
-          </span>
+          </Pill>
           <span className="text-xs font-bold uppercase tracking-[0.2em]">Free Slots</span>
         </div>
         <div className="flex items-end gap-2">
@@ -53,14 +55,14 @@ export default function SlotSummary({ summary, isError, isRestricted }: SlotSumm
           <div className="h-full rounded-full bg-white" style={{ width: `${freePercent}%` }} />
         </div>
         <p className="text-xs text-white/50">00:00(KST) 리셋</p>
-      </div>
+      </Card>
 
-      <div className="relative flex flex-col gap-3 overflow-hidden rounded-[2rem] border border-amber-400/20 bg-neutral-900/80 p-6">
+      <Card className="relative flex flex-col gap-3 overflow-hidden p-6" tone="accent">
         <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-amber-400/20 blur-2xl" />
         <div className="flex items-center gap-2 text-amber-300">
-          <span className="rounded-full bg-amber-400/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200">
+          <Pill size="xs" tone="amber">
             Ad
-          </span>
+          </Pill>
           <span className="text-xs font-bold uppercase tracking-[0.2em]">Ad Bonus</span>
         </div>
         <div className="flex items-end gap-2">
@@ -71,7 +73,7 @@ export default function SlotSummary({ summary, isError, isRestricted }: SlotSumm
           <div className="h-full rounded-full bg-amber-400" style={{ width: `${adPercent}%` }} />
         </div>
         <p className="text-xs text-white/50">보상 후 사용 가능</p>
-      </div>
+      </Card>
     </section>
   );
 }

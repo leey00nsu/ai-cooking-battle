@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
+import { Button } from "@/shared/ui/button";
 
 type NavKey = "home" | "create" | "feed" | "ladder" | "my";
 
@@ -50,17 +52,28 @@ export default function HomeNavigation({ userType, active = "home" }: HomeNaviga
 
         <div className="flex items-center gap-3">
           {userType === "guest" ? (
-            <Link
-              className="hidden min-w-[84px] items-center justify-center rounded-full bg-amber-400 px-5 py-2 text-sm font-bold text-neutral-900 shadow-[0_0_15px_rgba(251,191,36,0.35)] transition hover:bg-amber-300 sm:inline-flex"
-              href="/start"
+            <Button
+              asChild
+              className="hidden min-w-[84px] sm:inline-flex"
+              intent="nav"
+              size="sm"
             >
-              Log In
-            </Link>
+              <Link href="/start">Log In</Link>
+            </Button>
           ) : null}
-          <div className="h-9 w-9 rounded-full border border-white/10 bg-neutral-700" />
-          <button className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-white md:hidden" type="button">
-            <span className="text-sm font-semibold">Menu</span>
-          </button>
+          <Avatar className="size-9 border border-white/10 bg-neutral-700">
+            <AvatarFallback className="text-[10px] font-bold tracking-wide text-white/80">
+              ME
+            </AvatarFallback>
+          </Avatar>
+          <Button
+            className="md:hidden"
+            intent="outline"
+            size="icon"
+            type="button"
+          >
+            <span className="text-xs font-semibold">Menu</span>
+          </Button>
         </div>
       </nav>
     </div>

@@ -46,7 +46,7 @@ export default function HomeScreen({
       userType={userType}
       isEligible={isEligible}
       dayKey={theme?.dayKey}
-      className="group relative flex h-16 w-full items-center justify-between overflow-hidden rounded-full bg-amber-400 pl-8 pr-3 text-neutral-900 shadow-[0_0_25px_rgba(251,191,36,0.35)] transition hover:bg-amber-300"
+      className="group relative flex h-16 w-full items-center justify-between overflow-hidden rounded-full pl-8 pr-3"
     >
       <span className="text-lg font-bold tracking-tight">Start Creating</span>
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 transition group-hover:scale-105">

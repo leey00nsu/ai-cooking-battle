@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Theme } from "@/entities/theme/model/types";
+import { Pill } from "@/shared/ui/pill";
 
 type ThemeHeroProps = {
   theme: Theme | null;
@@ -25,9 +26,9 @@ export default function ThemeHero({ theme, isRestricted, isError, cta }: ThemeHe
         <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-neutral-900 to-neutral-950" />
       ) : null}
       <div className="relative flex flex-col gap-3">
-        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-400/40 bg-black/40 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
+        <Pill className="w-fit" size="xs" style="outline" tone="amber">
           Today&apos;s Theme
-        </span>
+        </Pill>
         <h1 className="text-4xl font-black leading-tight tracking-[-0.03em] text-white drop-shadow-lg sm:text-5xl lg:text-6xl">
           {title}
         </h1>
