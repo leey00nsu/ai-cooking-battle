@@ -3,29 +3,26 @@
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/shared/lib/utils";
+import { GoogleIcon } from "@/shared/ui/brand-icons/google-icon";
+import { KakaoIcon } from "@/shared/ui/brand-icons/kakao-icon";
+import { NaverIcon } from "@/shared/ui/brand-icons/naver-icon";
 import { Button } from "@/shared/ui/button";
 
 const providers = [
   {
     id: "google",
-    label: "Continue with Google",
-    description: "Use your Google account.",
+    label: "Sign in With Google",
     className: "bg-white text-gray-900 hover:bg-white/90",
-    badge: "G",
   },
   {
     id: "naver",
-    label: "Sign in with Naver",
-    description: "Fast login with Naver ID.",
+    label: "Sign in With Naver",
     className: "bg-[#03C75A] text-white hover:bg-[#02b351]",
-    badge: "N",
   },
   {
     id: "kakao",
-    label: "Sign in with Kakao",
-    description: "Chat-first, battle-ready.",
+    label: "Sign in With Kakao",
     className: "bg-[#FEE500] text-[#3A1D1D] hover:bg-[#ebd300]",
-    badge: "K",
   },
 ] as const;
 
@@ -76,12 +73,13 @@ export default function SocialLoginButtons({
             onClick={() => handleSignIn(provider.id)}
           >
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/10 text-base font-semibold">
-                {provider.badge}
+              <span className="flex h-9 w-9 items-center justify-center">
+                {provider.id === "google" ? <GoogleIcon /> : null}
+                {provider.id === "naver" ? <NaverIcon /> : null}
+                {provider.id === "kakao" ? <KakaoIcon /> : null}
               </span>
               <div>
                 <p className="text-sm font-semibold">{provider.label}</p>
-                <p className="text-xs opacity-70">{provider.description}</p>
               </div>
             </div>
             <span className="text-sm opacity-60">
