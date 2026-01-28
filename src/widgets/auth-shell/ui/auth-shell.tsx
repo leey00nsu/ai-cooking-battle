@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
-type LoginLayoutProps = {
+type AuthShellProps = {
   children: ReactNode;
 };
 
-export default function LoginLayout({ children }: LoginLayoutProps) {
+export default function AuthShell({ children }: AuthShellProps) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-white">
       <div
