@@ -4,6 +4,11 @@
   "private": true,
   "packageManager": "pnpm@10.7.0",
   "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "predev": "pnpm db:generate",
+    "prestart": "pnpm db:migrate:deploy && pnpm db:generate",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
