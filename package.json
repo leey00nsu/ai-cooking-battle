@@ -19,7 +19,7 @@
     "test:run": "vitest run"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,json,css,md}": [
+    "*.{js,jsx,ts,tsx,json,css}": [
       "biome check --write --files-ignore-unknown=true"
     ]
   },
