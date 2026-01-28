@@ -1,9 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import LoginLayout from "@/screens/login/ui/login-layout";
+import { resolveReturnTo } from "@/shared/lib/return-to";
 import { cn } from "@/shared/lib/utils";
 
 const TERMS_VERSION = "2026-01-28";
@@ -14,6 +15,8 @@ type LoginTermsScreenProps = {
 
 export default function LoginTermsScreen({ userName }: LoginTermsScreenProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = resolveReturnTo(searchParams.get("returnTo")) ?? "/";
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,7 +42,7 @@ export default function LoginTermsScreen({ userName }: LoginTermsScreenProps) {
         termsAcceptedAt: new Date().toISOString(),
         termsAcceptedVersion: TERMS_VERSION,
       });
-      router.replace("/");
+      router.replace(returnTo);
     } catch (updateError) {
       console.error(updateError);
       setError("We couldn't save your consent. Please try again.");

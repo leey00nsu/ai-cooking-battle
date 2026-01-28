@@ -1,8 +1,10 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import LoginLayout from "@/screens/login/ui/login-layout";
+import { resolveReturnTo } from "@/shared/lib/return-to";
 import { cn } from "@/shared/lib/utils";
 
 const providers = [
@@ -32,6 +34,12 @@ const providers = [
 type ProviderId = (typeof providers)[number]["id"];
 
 export default function LoginScreen() {
+  const searchParams = useSearchParams();
+  const returnTo = resolveReturnTo(searchParams.get("returnTo"));
+  const callbackURL = returnTo ?? "/";
+  const newUserCallbackURL = returnTo
+    ? `/login/terms?returnTo=${encodeURIComponent(returnTo)}`
+    : "/login/terms";
   const [pendingProvider, setPendingProvider] = useState<ProviderId | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +49,8 @@ export default function LoginScreen() {
     try {
       await authClient.signIn.social({
         provider,
+        callbackURL,
+        newUserCallbackURL,
       });
     } catch (signInError) {
       console.error(signInError);

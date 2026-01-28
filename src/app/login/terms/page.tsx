@@ -1,16 +1,8 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth-guards";
 import LoginTermsScreen from "@/screens/login/ui/login-terms-screen";
 
 export default async function LoginTermsPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    redirect("/login");
-  }
+  const session = await requireAuth("/login/terms");
 
   const userName = session.user.name ?? null;
 
