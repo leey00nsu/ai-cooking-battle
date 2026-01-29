@@ -1,15 +1,20 @@
 import { getCookieCache, getSessionCookie } from "better-auth/cookies";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { decideProxyAction } from "@/proxy-decision";
 import {
   isAuthApiPath,
   isLoginPath,
   isPublicPath,
   isStaticAssetPath,
 } from "@/shared/lib/proxy-paths";
-import { resolveReturnTo } from "@/shared/lib/return-to";
 
 type SessionCache = Awaited<ReturnType<typeof getCookieCache>>;
+type SessionUser = NonNullable<SessionCache>["user"];
+type ConsentState = {
+  hasUser: boolean;
+  hasConsent: boolean;
+};
 
 async function getSessionCache(request: NextRequest) {
   let sessionCache: SessionCache = await getCookieCache(request, {
@@ -20,26 +25,55 @@ async function getSessionCache(request: NextRequest) {
   if (!sessionCache) {
     const sessionToken = getSessionCookie(request);
     if (sessionToken) {
-      const sessionUrl = request.nextUrl.clone();
-      sessionUrl.pathname = "/api/auth/get-session";
-      sessionUrl.search = "disableCookieCache=true";
-      const response = await fetch(sessionUrl, {
-        headers: {
-          cookie: request.headers.get("cookie") ?? "",
-        },
-        cache: "no-store",
-      });
-      if (response.ok) {
-        sessionCache = (await response.json()) as SessionCache;
-      }
+      sessionCache = await fetchSessionFromDb(request);
     }
   }
 
   return sessionCache;
 }
 
-function hasConsent(user: NonNullable<SessionCache>["user"]) {
+async function fetchSessionFromDb(request: NextRequest) {
+  const sessionUrl = request.nextUrl.clone();
+  sessionUrl.pathname = "/api/auth/get-session";
+  sessionUrl.search = "disableCookieCache=true";
+  const response = await fetch(sessionUrl, {
+    headers: {
+      cookie: request.headers.get("cookie") ?? "",
+    },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    return null;
+  }
+  return (await response.json()) as SessionCache;
+}
+
+function hasConsent(user: SessionUser) {
   return Boolean(user.termsAcceptedAt) && Boolean(user.termsAcceptedVersion);
+}
+
+function redirectTo(request: NextRequest, pathname: string, search = "") {
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.pathname = pathname;
+  redirectUrl.search = search;
+  return NextResponse.redirect(redirectUrl);
+}
+
+async function resolveConsentState(request: NextRequest): Promise<ConsentState> {
+  const sessionCache = await getSessionCache(request);
+  const cachedUser = sessionCache?.user ?? null;
+  if (!cachedUser) {
+    return { hasUser: false, hasConsent: false };
+  }
+  if (hasConsent(cachedUser)) {
+    return { hasUser: true, hasConsent: true };
+  }
+  const dbSession = await fetchSessionFromDb(request);
+  const dbUser = dbSession?.user ?? null;
+  if (dbUser && hasConsent(dbUser)) {
+    return { hasUser: true, hasConsent: true };
+  }
+  return { hasUser: true, hasConsent: false };
 }
 
 export async function proxy(request: NextRequest) {
@@ -48,39 +82,21 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!isLoginPath(pathname) && isPublicPath(pathname)) {
+  const consentState = await resolveConsentState(request);
+  const decision = decideProxyAction({
+    pathname,
+    search,
+    isPublicPath: isPublicPath(pathname),
+    isLoginPath: isLoginPath(pathname),
+    hasUser: consentState.hasUser,
+    hasConsent: consentState.hasConsent,
+  });
+
+  if (decision.type === "next") {
     return NextResponse.next();
   }
 
-  const sessionCache = await getSessionCache(request);
-  const user = sessionCache?.user;
-  if (isLoginPath(pathname)) {
-    if (!user) {
-      return NextResponse.next();
-    }
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = hasConsent(user) ? "/" : "/login/terms";
-    redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  if (isPublicPath(pathname)) {
-    return NextResponse.next();
-  }
-
-  if (!user) {
-    return NextResponse.next();
-  }
-
-  if (hasConsent(user)) {
-    return NextResponse.next();
-  }
-
-  const returnTo = resolveReturnTo(`${pathname}${search}`) ?? "/";
-  const redirectUrl = request.nextUrl.clone();
-  redirectUrl.pathname = "/login/terms";
-  redirectUrl.search = `returnTo=${encodeURIComponent(returnTo)}`;
-  return NextResponse.redirect(redirectUrl);
+  return redirectTo(request, decision.pathname, decision.search ?? "");
 }
 
 export const config = {
