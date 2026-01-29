@@ -23,3 +23,17 @@ export async function requireAuth(returnTo?: string | null) {
 
   return session;
 }
+
+export async function requireConsentedUser(returnTo?: string | null) {
+  const session = await requireAuth(returnTo);
+  const hasConsent =
+    Boolean(session.user.termsAcceptedAt) && Boolean(session.user.termsAcceptedVersion);
+
+  if (!hasConsent) {
+    const safeReturnTo = resolveReturnTo(returnTo) ?? "/";
+    const params = new URLSearchParams({ returnTo: safeReturnTo });
+    redirect(`/login/terms?${params.toString()}`);
+  }
+
+  return session;
+}
