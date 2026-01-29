@@ -11,7 +11,7 @@ datasource db {
 model User {
   id                   String    @id
   name                 String
-  email                String
+  email                String?   @unique
   emailVerified        Boolean   @default(false)
   image                String?
   createdAt            DateTime  @default(now())
@@ -21,7 +21,6 @@ model User {
   sessions             Session[]
   accounts             Account[]
 
-  @@unique([email])
   @@map("user")
 }
 
@@ -58,6 +57,7 @@ model Account {
   updatedAt             DateTime  @updatedAt
 
   @@index([userId])
+  @@unique([providerId, accountId])
   @@map("account")
 }
 

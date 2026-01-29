@@ -5,7 +5,15 @@ import SocialLoginButtons from "@/features/auth-login/ui/social-login-buttons";
 import { resolveReturnTo } from "@/shared/lib/return-to";
 import AuthShell from "@/widgets/auth-shell/ui/auth-shell";
 
-export default function LoginScreen() {
+type LoginScreenProps = {
+  enabledProviders: {
+    google: boolean;
+    naver: boolean;
+    kakao: boolean;
+  };
+};
+
+export default function LoginScreen({ enabledProviders }: LoginScreenProps) {
   const searchParams = useSearchParams();
   const returnTo = resolveReturnTo(searchParams.get("returnTo"));
   const callbackURL = returnTo ?? "/";
@@ -27,7 +35,11 @@ export default function LoginScreen() {
             </p>
           </div>
 
-          <SocialLoginButtons callbackURL={callbackURL} newUserCallbackURL={newUserCallbackURL} />
+          <SocialLoginButtons
+            callbackURL={callbackURL}
+            newUserCallbackURL={newUserCallbackURL}
+            enabledProviders={enabledProviders}
+          />
 
           <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/40">

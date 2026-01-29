@@ -16,9 +16,17 @@ type ConsentState = {
   hasConsent: boolean;
 };
 
+function getBetterAuthSecret() {
+  const secret = process.env.BETTER_AUTH_SECRET;
+  if (!secret) {
+    throw new Error("[proxy] Missing BETTER_AUTH_SECRET for session cache.");
+  }
+  return secret;
+}
+
 async function getSessionCache(request: NextRequest) {
   let sessionCache: SessionCache = await getCookieCache(request, {
-    secret: process.env.BETTER_AUTH_SECRET,
+    secret: getBetterAuthSecret(),
     strategy: "jwe",
   });
 
