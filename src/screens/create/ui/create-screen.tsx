@@ -2,6 +2,9 @@
 
 import { useForm } from "react-hook-form";
 import { useCreateFlow } from "@/features/create-flow/model/use-create-flow";
+import { Button } from "@/shared/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Textarea } from "@/shared/ui/textarea";
 import PreviewPanel from "@/widgets/create/preview-panel";
 import StatusPanel, { type StepItem } from "@/widgets/create/status-panel";
 
@@ -59,43 +62,45 @@ export default function CreateScreen() {
             </div>
 
             <form className="flex flex-col gap-6" onSubmit={handleSubmit(handleFormSubmit)}>
-              <div className="rounded-3xl border border-white/10 bg-card p-6">
-                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
-                  <span>Dish Prompt</span>
-                  <span>{promptLength} / 500</span>
-                </div>
-                <div className="mt-4">
-                  <textarea
+              <Card tone="solid">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                    Dish Prompt
+                  </CardTitle>
+                  <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                    {promptLength} / 500
+                  </span>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <Textarea
                     {...register("prompt", { maxLength: 500 })}
-                    rows={8}
                     maxLength={500}
                     placeholder="Describe a legendary dish..."
-                    className="min-h-[220px] w-full resize-none rounded-2xl border border-dashed border-white/10 bg-background/40 p-4 text-base text-white placeholder:text-white/30 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                    intent="panel"
                   />
-                </div>
-                <div className="mt-4 flex items-center justify-between text-xs text-white/60">
-                  <span>History</span>
-                  <span>Inspire Me</span>
-                </div>
-              </div>
+                  <div className="mt-4 flex items-center justify-between text-xs text-white/60">
+                    <span>History</span>
+                    <span>Inspire Me</span>
+                  </div>
+                </CardContent>
+              </Card>
 
-              <button
-                type="submit"
-                className="flex w-full items-center justify-center gap-3 rounded-full bg-primary px-8 py-4 text-base font-bold text-primary-foreground shadow-[var(--shadow-glow-md)]"
-              >
+              <Button intent="cta" type="submit" className="h-14 text-base">
                 Verify &amp; Generate
-              </button>
+              </Button>
             </form>
 
-            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-[#2a241e] to-[#1e1915] p-6">
-              <div className="relative z-10">
-                <h3 className="text-lg font-bold">Out of credits?</h3>
-                <p className="mt-2 text-sm text-white/60">
-                  Watch a short ad to refuel your kitchen with +1 Generation Slot.
-                </p>
-              </div>
-              <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
-            </div>
+            <Card className="relative overflow-hidden" tone="accent">
+              <CardContent className="py-6">
+                <div className="relative z-10">
+                  <h3 className="text-lg font-bold">Out of credits?</h3>
+                  <p className="mt-2 text-sm text-white/60">
+                    Watch a short ad to refuel your kitchen with +1 Generation Slot.
+                  </p>
+                </div>
+                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
+              </CardContent>
+            </Card>
           </section>
 
           <aside className="flex flex-col gap-6 lg:col-span-5">
