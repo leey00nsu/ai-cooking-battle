@@ -15,7 +15,7 @@
     "lint": "biome lint .",
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
-    "test": "vitest",
+    "test": "vitest run",
     "test:run": "vitest run"
   },
   "lint-staged": {
