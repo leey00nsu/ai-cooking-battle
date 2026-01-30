@@ -13,7 +13,7 @@ import {
 
 type StepStatus = "idle" | "active" | "done" | "error";
 
-type StepItem = {
+export type StepItem = {
   title: string;
   description: string;
   status: StepStatus;
