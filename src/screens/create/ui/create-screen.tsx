@@ -1,5 +1,11 @@
 "use client";
 
+import { useForm } from "react-hook-form";
+
+type CreateFormValues = {
+  prompt: string;
+};
+
 const steps = [
   {
     title: "Prompt Validation",
@@ -20,6 +26,18 @@ const steps = [
 ];
 
 export default function CreateScreen() {
+  const { register, handleSubmit, watch } = useForm<CreateFormValues>({
+    defaultValues: {
+      prompt: "",
+    },
+  });
+  const promptValue = watch("prompt") ?? "";
+  const promptLength = promptValue.length;
+
+  const handleFormSubmit = (data: CreateFormValues) => {
+    void data;
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-background/80 backdrop-blur">
@@ -56,24 +74,34 @@ export default function CreateScreen() {
               </span>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-card p-6">
-              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
-                <span>Dish Prompt</span>
-                <span>0 / 500</span>
+            <form className="flex flex-col gap-6" onSubmit={handleSubmit(handleFormSubmit)}>
+              <div className="rounded-3xl border border-white/10 bg-card p-6">
+                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                  <span>Dish Prompt</span>
+                  <span>{promptLength} / 500</span>
+                </div>
+                <div className="mt-4">
+                  <textarea
+                    {...register("prompt", { maxLength: 500 })}
+                    rows={8}
+                    maxLength={500}
+                    placeholder="Describe a legendary dish..."
+                    className="min-h-[220px] w-full resize-none rounded-2xl border border-dashed border-white/10 bg-background/40 p-4 text-base text-white placeholder:text-white/30 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="mt-4 flex items-center justify-between text-xs text-white/60">
+                  <span>History</span>
+                  <span>Inspire Me</span>
+                </div>
               </div>
-              <div className="mt-4 h-[220px] rounded-2xl border border-dashed border-white/10 bg-background/40" />
-              <div className="mt-4 flex items-center justify-between text-xs text-white/60">
-                <span>History</span>
-                <span>Inspire Me</span>
-              </div>
-            </div>
 
-            <button
-              type="button"
-              className="flex w-full items-center justify-center gap-3 rounded-full bg-primary px-8 py-4 text-base font-bold text-primary-foreground shadow-[var(--shadow-glow-md)]"
-            >
-              Verify &amp; Generate
-            </button>
+              <button
+                type="submit"
+                className="flex w-full items-center justify-center gap-3 rounded-full bg-primary px-8 py-4 text-base font-bold text-primary-foreground shadow-[var(--shadow-glow-md)]"
+              >
+                Verify &amp; Generate
+              </button>
+            </form>
 
             <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-[#2a241e] to-[#1e1915] p-6">
               <div className="relative z-10">
