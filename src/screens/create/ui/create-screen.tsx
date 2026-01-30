@@ -1,9 +1,9 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { useCreateFlow } from "@/screens/create/model/use-create-flow";
-import PreviewPanel from "@/screens/create/ui/preview-panel";
-import StatusPanel, { type StepItem } from "@/screens/create/ui/status-panel";
+import { useCreateFlow } from "@/features/create-flow/model/use-create-flow";
+import PreviewPanel from "@/widgets/create/preview-panel";
+import StatusPanel, { type StepItem } from "@/widgets/create/status-panel";
 
 type CreateFormValues = {
   prompt: string;

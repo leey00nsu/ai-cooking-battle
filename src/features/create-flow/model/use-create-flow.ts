@@ -6,7 +6,7 @@ import type {
   ReserveResponse,
   StatusResponse,
   ValidateResponse,
-} from "@/screens/create/model/types";
+} from "@/features/create-flow/model/types";
 
 const initialState: CreateFlowState = {
   step: "idle",
