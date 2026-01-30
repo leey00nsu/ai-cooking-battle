@@ -47,32 +47,8 @@ export default function CreateScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-background/80 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between px-4 py-4 md:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary">
-              <span className="text-lg font-bold">ACB</span>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
-                Create
-              </p>
-              <h1 className="text-lg font-bold tracking-tight">Create Your Dish</h1>
-            </div>
-          </div>
-          <div className="hidden items-center gap-3 md:flex">
-            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-card/60 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
-              Credits <span className="text-primary">3</span>
-            </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-card/60 text-sm font-semibold">
-              JD
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-8 px-4 pb-16 pt-8 md:px-8">
+    <div className="bg-background text-foreground">
+      <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-8 px-4 pb-16 pt-24 md:px-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           <section className="flex flex-col gap-6 lg:col-span-7">
             <div className="flex items-center justify-between">

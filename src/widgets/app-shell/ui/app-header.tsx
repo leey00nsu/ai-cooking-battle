@@ -1,10 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 
 type NavKey = "home" | "create" | "feed" | "ladder" | "my";
 
-type HomeNavigationProps = {
+type AppHeaderProps = {
   userType: "guest" | "auth";
   active?: NavKey;
 };
@@ -29,7 +32,10 @@ function getNavLinkClass(isActive: boolean) {
     : "text-white/70 text-sm font-medium transition-colors hover:text-white";
 }
 
-export default function HomeNavigation({ userType, active = "home" }: HomeNavigationProps) {
+export default function AppHeader({ userType, active }: AppHeaderProps) {
+  const pathname = usePathname();
+  const resolvedActive = active ?? resolveActiveFromPath(pathname);
+
   return (
     <div className="fixed left-0 right-0 top-0 z-50 flex justify-center px-4 py-4">
       <nav className="flex w-full max-w-[1200px] items-center justify-between gap-4 rounded-full border border-white/10 bg-card/90 px-6 py-3 shadow-lg backdrop-blur">
@@ -44,7 +50,11 @@ export default function HomeNavigation({ userType, active = "home" }: HomeNaviga
 
         <div className="hidden items-center gap-8 md:flex">
           {NAV_ITEMS.map((item) => (
-            <Link key={item.key} className={getNavLinkClass(item.key === active)} href={item.href}>
+            <Link
+              key={item.key}
+              className={getNavLinkClass(item.key === resolvedActive)}
+              href={item.href}
+            >
               {item.label}
             </Link>
           ))}
@@ -52,12 +62,7 @@ export default function HomeNavigation({ userType, active = "home" }: HomeNaviga
 
         <div className="flex items-center gap-3">
           {userType === "guest" ? (
-            <Button
-              asChild
-              className="hidden min-w-[84px] sm:inline-flex"
-              intent="nav"
-              size="sm"
-            >
+            <Button asChild className="hidden min-w-[84px] sm:inline-flex" intent="nav" size="sm">
               <Link href="/start">Log In</Link>
             </Button>
           ) : null}
@@ -80,4 +85,23 @@ export default function HomeNavigation({ userType, active = "home" }: HomeNaviga
       </nav>
     </div>
   );
+}
+
+function resolveActiveFromPath(pathname: string | null): NavKey {
+  if (!pathname || pathname === "/") {
+    return "home";
+  }
+  if (pathname.startsWith("/create")) {
+    return "create";
+  }
+  if (pathname.startsWith("/feed")) {
+    return "feed";
+  }
+  if (pathname.startsWith("/ladder")) {
+    return "ladder";
+  }
+  if (pathname.startsWith("/my")) {
+    return "my";
+  }
+  return "home";
 }
