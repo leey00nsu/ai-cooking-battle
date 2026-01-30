@@ -16,6 +16,7 @@ export type CreateStepItem = {
 export type CreateFlowState = {
   step: CreateStep;
   errorMessage?: string | null;
+  errorStep?: "validating" | "reserving" | "generating" | "safety" | null;
   requestId?: string | null;
   imageUrl?: string | null;
 };

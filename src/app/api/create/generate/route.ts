@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sleep } from "@/shared/lib/sleep";
 
 type GeneratePayload = {
   reservationId?: string;
@@ -6,6 +7,7 @@ type GeneratePayload = {
 };
 
 export async function POST(request: Request) {
+  await sleep(2000);
   const body = (await request.json().catch(() => ({}))) as GeneratePayload;
 
   if (!body.reservationId || !body.prompt) {

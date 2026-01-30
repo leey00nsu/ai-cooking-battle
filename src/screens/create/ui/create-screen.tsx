@@ -2,6 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { useCreateFlow } from "@/features/create-flow/model/use-create-flow";
+import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Textarea } from "@/shared/ui/textarea";
@@ -37,13 +38,20 @@ const fallbackSteps: StepItem[] = [
 
 export default function CreateScreen() {
   const { state, steps, start } = useCreateFlow();
-  const { register, handleSubmit, watch } = useForm<CreateFormValues>({
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<CreateFormValues>({
     defaultValues: {
       prompt: "",
     },
   });
   const promptValue = watch("prompt") ?? "";
   const promptLength = promptValue.length;
+  const promptError = errors.prompt?.message;
+  const isProcessing = ["validating", "reserving", "generating", "safety"].includes(state.step);
 
   const handleFormSubmit = (data: CreateFormValues) => {
     void start(data.prompt);
@@ -73,11 +81,24 @@ export default function CreateScreen() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <Textarea
-                    {...register("prompt", { maxLength: 500 })}
+                    {...register("prompt", {
+                      required: "프롬프트를 입력해주세요.",
+                      maxLength: {
+                        value: 500,
+                        message: "프롬프트는 500자 이내로 작성해주세요.",
+                      },
+                    })}
                     maxLength={500}
                     placeholder="Describe a legendary dish..."
                     intent="panel"
+                    aria-invalid={!!promptError}
+                    className={cn(
+                      promptError
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500/40"
+                        : "",
+                    )}
                   />
+                  {promptError ? <p className="mt-2 text-xs text-red-400">{promptError}</p> : null}
                   <div className="mt-4 flex items-center justify-between text-xs text-white/60">
                     <span>History</span>
                     <span>Inspire Me</span>
@@ -85,7 +106,13 @@ export default function CreateScreen() {
                 </CardContent>
               </Card>
 
-              <Button intent="cta" type="submit" className="h-14 text-base">
+              <Button
+                intent="cta"
+                type="submit"
+                className="h-14 text-base"
+                disabled={isProcessing}
+                aria-busy={isProcessing}
+              >
                 Verify &amp; Generate
               </Button>
             </form>

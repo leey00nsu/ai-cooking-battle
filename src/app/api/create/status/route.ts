@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { sleep } from "@/shared/lib/sleep";
 
 export async function GET(request: NextRequest) {
+  await sleep(2000);
   const requestId = request.nextUrl.searchParams.get("requestId");
 
   if (!requestId) {
@@ -14,9 +16,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({
-    ok: true,
-    status: "PROCESSING",
-    imageUrl: null,
-  });
+  return NextResponse.json(
+    {
+      ok: false,
+      code: "SAFETY_CHECK_FAILED",
+      message: "Safety check failed.",
+    },
+    { status: 422 },
+  );
 }
