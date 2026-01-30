@@ -1,6 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
+import { useCreateFlow } from "@/screens/create/model/use-create-flow";
 import PreviewPanel from "@/screens/create/ui/preview-panel";
 import StatusPanel, { type StepItem } from "@/screens/create/ui/status-panel";
 
@@ -8,11 +9,11 @@ type CreateFormValues = {
   prompt: string;
 };
 
-const steps: StepItem[] = [
+const fallbackSteps: StepItem[] = [
   {
     title: "Prompt Validation",
     description: "Waiting for prompt",
-    status: "error",
+    status: "idle",
   },
   {
     title: "Slot Reservation",
@@ -32,6 +33,7 @@ const steps: StepItem[] = [
 ];
 
 export default function CreateScreen() {
+  const { state, steps, start } = useCreateFlow();
   const { register, handleSubmit, watch } = useForm<CreateFormValues>({
     defaultValues: {
       prompt: "",
@@ -41,7 +43,7 @@ export default function CreateScreen() {
   const promptLength = promptValue.length;
 
   const handleFormSubmit = (data: CreateFormValues) => {
-    void data;
+    void start(data.prompt);
   };
 
   return (
@@ -121,8 +123,11 @@ export default function CreateScreen() {
           </section>
 
           <aside className="flex flex-col gap-6 lg:col-span-5">
-            <StatusPanel errorMessage="Recipe rejected: example error message." steps={steps} />
-            <PreviewPanel imageUrl={null} />
+            <StatusPanel
+              errorMessage={state.errorMessage ?? undefined}
+              steps={steps.length ? steps : fallbackSteps}
+            />
+            <PreviewPanel imageUrl={state.imageUrl} />
           </aside>
         </div>
       </main>
