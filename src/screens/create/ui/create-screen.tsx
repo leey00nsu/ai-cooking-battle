@@ -1,6 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
+import PreviewPanel from "@/screens/create/ui/preview-panel";
 import StatusPanel, { type StepItem } from "@/screens/create/ui/status-panel";
 
 type CreateFormValues = {
@@ -121,6 +122,7 @@ export default function CreateScreen() {
 
           <aside className="flex flex-col gap-6 lg:col-span-5">
             <StatusPanel errorMessage="Recipe rejected: example error message." steps={steps} />
+            <PreviewPanel imageUrl={null} />
           </aside>
         </div>
       </main>

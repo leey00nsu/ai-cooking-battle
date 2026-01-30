@@ -45,11 +45,6 @@ export default function StatusPanel({ errorMessage, steps }: StatusPanelProps) {
           </li>
         ))}
       </ol>
-      <div className="mt-auto pt-8">
-        <div className="flex aspect-video items-center justify-center rounded-2xl border border-dashed border-white/10 text-sm text-white/50">
-          Dish preview will appear here
-        </div>
-      </div>
     </div>
   );
 }
