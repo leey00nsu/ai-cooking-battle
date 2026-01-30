@@ -13,7 +13,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome lint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "prepare": "husky",
     "test": "vitest run",
     "test:run": "vitest run"
