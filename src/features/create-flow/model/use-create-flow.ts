@@ -8,6 +8,7 @@ import type {
   ValidateResponse,
 } from "@/features/create-flow/model/types";
 import { fetchJson } from "@/shared/lib/fetch-json";
+import { sleep } from "@/shared/lib/sleep";
 
 const initialState: CreateFlowState = {
   step: "idle",
@@ -146,33 +147,47 @@ export function useCreateFlow() {
       setState((prev) => ({ ...prev, step: "safety", requestId: generateResponse.requestId }));
     }
 
-    let statusResponse: StatusResponse;
-    try {
-      statusResponse = await fetchJson<StatusResponse>(
-        `/api/create/status?requestId=${generateResponse.requestId}`,
-        { signal: controller.signal },
-      );
-    } catch (error) {
-      if ((error as DOMException).name === "AbortError") {
+    const requestId = encodeURIComponent(generateResponse.requestId);
+    while (true) {
+      let statusResponse: StatusResponse;
+      try {
+        statusResponse = await fetchJson<StatusResponse>(
+          `/api/create/status?requestId=${requestId}`,
+          {
+            signal: controller.signal,
+          },
+        );
+      } catch (error) {
+        if ((error as DOMException).name === "AbortError") {
+          return;
+        }
+        handleError(error, "safety");
         return;
       }
-      handleError(error, "safety");
-      return;
-    }
 
-    if (!statusResponse.ok) {
-      handleError(new Error(statusResponse.message ?? "Status fetch failed."), "safety");
-      return;
-    }
+      if (!statusResponse.ok) {
+        handleError(new Error(statusResponse.message ?? "Status fetch failed."), "safety");
+        return;
+      }
 
-    if (isActive()) {
-      setState({
-        step: statusResponse.status === "DONE" ? "done" : "safety",
-        errorMessage: null,
-        errorStep: null,
-        requestId: generateResponse.requestId,
-        imageUrl: statusResponse.imageUrl,
-      });
+      if (statusResponse.status !== "PROCESSING") {
+        if (isActive()) {
+          setState({
+            step: statusResponse.status === "DONE" ? "done" : "safety",
+            errorMessage: null,
+            errorStep: null,
+            requestId: generateResponse.requestId,
+            imageUrl: statusResponse.imageUrl,
+          });
+        }
+        return;
+      }
+
+      if (!isActive()) {
+        return;
+      }
+
+      await sleep(1200);
     }
   }, []);
 

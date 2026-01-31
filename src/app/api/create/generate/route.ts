@@ -10,7 +10,9 @@ export async function POST(request: Request) {
   await sleep(2000);
   const body = (await request.json().catch(() => ({}))) as GeneratePayload;
 
-  if (!body.reservationId || !body.prompt) {
+  const prompt = (body.prompt ?? "").toString().trim();
+
+  if (!body.reservationId || prompt === "") {
     return NextResponse.json(
       {
         ok: false,
