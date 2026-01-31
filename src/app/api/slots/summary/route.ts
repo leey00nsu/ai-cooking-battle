@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { formatDayKeyForKST } from "@/shared/lib/day-key";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  // TODO: DB 연동 시 실제 카운터 조회로 교체
+  const dayKey = formatDayKeyForKST();
+  const counter = await prisma.dailySlotCounter.upsert({
+    where: { dayKey },
+    update: {},
+    create: { dayKey },
+  });
+
   return NextResponse.json({
-    freeLimit: 30,
-    freeUsedCount: 0,
-    adLimit: 30,
-    adUsedCount: 0,
+    freeLimit: counter.freeLimit,
+    freeUsedCount: counter.freeUsedCount,
+    adLimit: counter.adLimit,
+    adUsedCount: counter.adUsedCount,
   });
 }
