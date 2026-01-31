@@ -1,9 +1,9 @@
+import { headers } from "next/headers";
 import type { MatchFeed } from "@/entities/match/model/types";
-import type { SnapshotTop } from "@/entities/snapshot/model/types";
 import type { SlotSummary } from "@/entities/slot/model/types";
+import type { SnapshotTop } from "@/entities/snapshot/model/types";
 import type { Theme } from "@/entities/theme/model/types";
 import HomeScreen from "@/screens/home/ui/home-screen";
-import { headers } from "next/headers";
 
 type ThemeResponse = Theme;
 type SlotResponse = SlotSummary;

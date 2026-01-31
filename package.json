@@ -13,9 +13,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome lint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "prepare": "husky",
-    "test": "vitest",
+    "test": "vitest run",
     "test:run": "vitest run"
   },
   "lint-staged": {
@@ -34,6 +34,7 @@
     "next": "16.1.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-hook-form": "^7.71.1",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
