@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getGuestUserId } from "@/lib/guest-user";
 import { prisma } from "@/lib/prisma";
 import { formatDayKeyForKST } from "@/shared/lib/day-key";
 
@@ -7,7 +8,7 @@ export const runtime = "nodejs";
 const REWARD_TTL_MINUTES = 15;
 
 export async function POST() {
-  // TODO: 인증 연동 후 실제 userId로 교체
+  const userId = await getGuestUserId();
   const dayKey = formatDayKeyForKST();
   const expiresAt = new Date(Date.now() + REWARD_TTL_MINUTES * 60 * 1000);
   const nonce = globalThis.crypto?.randomUUID?.() ?? `nonce_${Date.now()}`;
@@ -18,7 +19,7 @@ export async function POST() {
       status: "PENDING",
       nonce,
       expiresAt,
-      userId: "guest",
+      userId,
     },
   });
 

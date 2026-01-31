@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getGuestUserId } from "@/lib/guest-user";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -24,8 +25,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const reward = await prisma.adReward.findUnique({
-    where: { nonce },
+  const userId = await getGuestUserId();
+  const reward = await prisma.adReward.findFirst({
+    where: { nonce, userId },
   });
 
   if (!reward) {
@@ -59,6 +61,14 @@ export async function POST(request: Request) {
       },
       { status: 409 },
     );
+  }
+
+  if (reward.confirmIdempotencyKey === idempotencyKey) {
+    return NextResponse.json({
+      ok: true,
+      rewardId: reward.id,
+      status: reward.status,
+    });
   }
 
   const updated = await prisma.adReward.update({
