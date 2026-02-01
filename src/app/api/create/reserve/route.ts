@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getGuestUserId } from "@/lib/guest-user";
 import { prisma } from "@/lib/prisma";
+import { reclaimSlotReservation } from "@/lib/slot-recovery";
 import { formatDayKeyForKST } from "@/shared/lib/day-key";
 
 export const runtime = "nodejs";
@@ -53,12 +54,16 @@ export async function POST(request: Request) {
     });
 
     if (existing) {
-      return {
-        type: "existing",
-        reservationId: existing.id,
-        slotType: existing.slotType,
-        expiresAt: existing.expiresAt,
-      };
+      if (existing.expiresAt.getTime() < now.getTime()) {
+        await reclaimSlotReservation(existing);
+      } else {
+        return {
+          type: "existing",
+          reservationId: existing.id,
+          slotType: existing.slotType,
+          expiresAt: existing.expiresAt,
+        };
+      }
     }
 
     const counter = await tx.dailySlotCounter.upsert({

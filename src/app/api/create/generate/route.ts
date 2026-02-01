@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getGuestUserId } from "@/lib/guest-user";
 import { prisma } from "@/lib/prisma";
+import {
+  hasReservationExpired,
+  markReservationFailed,
+  reclaimSlotReservation,
+} from "@/lib/slot-recovery";
 
 type GeneratePayload = {
   reservationId?: string;
@@ -74,11 +79,8 @@ export async function POST(request: Request) {
     );
   }
 
-  if (reservation.expiresAt.getTime() < Date.now()) {
-    await prisma.slotReservation.update({
-      where: { id: reservation.id },
-      data: { status: "EXPIRED" },
-    });
+  if (hasReservationExpired(reservation)) {
+    await reclaimSlotReservation(reservation);
 
     return NextResponse.json(
       {
@@ -108,14 +110,20 @@ export async function POST(request: Request) {
     });
   }
 
-  const requestRecord = await prisma.createRequest.create({
-    data: {
-      userId,
-      idempotencyKey,
-      reservationId: reservation.id,
-      status: "GENERATING",
-    },
-  });
+  let requestRecord: Awaited<ReturnType<typeof prisma.createRequest.create>>;
+  try {
+    requestRecord = await prisma.createRequest.create({
+      data: {
+        userId,
+        idempotencyKey,
+        reservationId: reservation.id,
+        status: "GENERATING",
+      },
+    });
+  } catch (error) {
+    await markReservationFailed(reservation);
+    throw error;
+  }
 
   return NextResponse.json({
     ok: true,

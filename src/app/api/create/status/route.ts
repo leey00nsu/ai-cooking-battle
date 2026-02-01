@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getGuestUserId } from "@/lib/guest-user";
 import { prisma } from "@/lib/prisma";
+import { hasReservationExpired, reclaimSlotReservation } from "@/lib/slot-recovery";
 
 export async function GET(request: NextRequest) {
   const requestId = request.nextUrl.searchParams.get("requestId");
@@ -38,6 +39,22 @@ export async function GET(request: NextRequest) {
         message: "Request not found.",
       },
       { status: 404 },
+    );
+  }
+
+  const reservation = await prisma.slotReservation.findUnique({
+    where: { id: createRequest.reservationId },
+  });
+
+  if (reservation && hasReservationExpired(reservation)) {
+    await reclaimSlotReservation(reservation);
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "RESERVATION_EXPIRED",
+        message: "Reservation expired.",
+      },
+      { status: 410 },
     );
   }
 
