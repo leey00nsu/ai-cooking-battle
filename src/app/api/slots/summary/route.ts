@@ -8,7 +8,7 @@ export async function GET() {
   const dayKey = formatDayKeyForKST();
   const counter = await prisma.dailySlotCounter.upsert({
     where: { dayKey },
-    update: {},
+    update: { updatedAt: new Date() },
     create: { dayKey },
   });
 

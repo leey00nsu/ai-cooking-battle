@@ -22,6 +22,13 @@ type ReservationResult =
     }
   | { type: "error"; status: number; code: string; message: string };
 
+const isUniqueConstraintError = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  return "code" in error && (error as { code?: string }).code === "P2002";
+};
+
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as ReservePayload;
   const idempotencyKey = body.idempotencyKey?.trim() ?? "";
@@ -44,6 +51,17 @@ export async function POST(request: Request) {
   const expiresAt = new Date(now.getTime() + RESERVATION_TTL_MS);
 
   const result = await prisma.$transaction<ReservationResult>(async (tx) => {
+    const asExistingResult = (reservation: {
+      id: string;
+      slotType: "FREE" | "AD";
+      expiresAt: Date;
+    }): ReservationResult => ({
+      type: "existing",
+      reservationId: reservation.id,
+      slotType: reservation.slotType,
+      expiresAt: reservation.expiresAt,
+    });
+
     const existing = await tx.slotReservation.findUnique({
       where: {
         userId_idempotencyKey: {
@@ -56,46 +74,64 @@ export async function POST(request: Request) {
     if (existing) {
       if (existing.expiresAt.getTime() < now.getTime()) {
         await reclaimSlotReservation(existing);
-      } else {
         return {
-          type: "existing",
-          reservationId: existing.id,
-          slotType: existing.slotType,
-          expiresAt: existing.expiresAt,
+          type: "error",
+          status: 410,
+          code: "RESERVATION_EXPIRED",
+          message: "Reservation expired.",
         };
       }
+      return asExistingResult(existing);
     }
 
     const counter = await tx.dailySlotCounter.upsert({
       where: { dayKey },
-      update: {},
+      update: { updatedAt: new Date() },
       create: { dayKey },
     });
 
     const freeRemaining = counter.freeLimit - counter.freeUsedCount;
     if (freeRemaining > 0) {
-      const reservation = await tx.slotReservation.create({
-        data: {
-          userId,
-          dayKey,
-          status: "RESERVED",
-          slotType: "FREE",
-          expiresAt,
-          idempotencyKey,
-        },
-      });
+      try {
+        const reservation = await tx.slotReservation.create({
+          data: {
+            userId,
+            dayKey,
+            status: "RESERVED",
+            slotType: "FREE",
+            expiresAt,
+            idempotencyKey,
+          },
+        });
 
-      await tx.dailySlotCounter.update({
-        where: { dayKey },
-        data: { freeUsedCount: { increment: 1 } },
-      });
+        await tx.dailySlotCounter.update({
+          where: { dayKey },
+          data: { freeUsedCount: { increment: 1 } },
+        });
 
-      return {
-        type: "created",
-        reservationId: reservation.id,
-        slotType: reservation.slotType,
-        expiresAt: reservation.expiresAt,
-      };
+        return {
+          type: "created",
+          reservationId: reservation.id,
+          slotType: reservation.slotType,
+          expiresAt: reservation.expiresAt,
+        };
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          const latest = await tx.slotReservation.findUnique({
+            where: {
+              userId_idempotencyKey: {
+                userId,
+                idempotencyKey,
+              },
+            },
+          });
+
+          if (latest) {
+            return asExistingResult(latest);
+          }
+        }
+        throw error;
+      }
     }
 
     if (!adRewardId) {
@@ -143,37 +179,55 @@ export async function POST(request: Request) {
       };
     }
 
-    const reservation = await tx.slotReservation.create({
-      data: {
-        userId,
-        dayKey,
-        status: "RESERVED",
-        slotType: "AD",
-        adRewardId: reward.id,
-        expiresAt,
-        idempotencyKey,
-      },
-    });
+    try {
+      const reservation = await tx.slotReservation.create({
+        data: {
+          userId,
+          dayKey,
+          status: "RESERVED",
+          slotType: "AD",
+          adRewardId: reward.id,
+          expiresAt,
+          idempotencyKey,
+        },
+      });
 
-    await tx.dailySlotCounter.update({
-      where: { dayKey },
-      data: { adUsedCount: { increment: 1 } },
-    });
+      await tx.dailySlotCounter.update({
+        where: { dayKey },
+        data: { adUsedCount: { increment: 1 } },
+      });
 
-    await tx.adReward.update({
-      where: { id: reward.id },
-      data: {
-        status: "USED",
-        usedAt: reward.usedAt ?? now,
-      },
-    });
+      await tx.adReward.update({
+        where: { id: reward.id },
+        data: {
+          status: "USED",
+          usedAt: reward.usedAt ?? now,
+        },
+      });
 
-    return {
-      type: "created",
-      reservationId: reservation.id,
-      slotType: reservation.slotType,
-      expiresAt: reservation.expiresAt,
-    };
+      return {
+        type: "created",
+        reservationId: reservation.id,
+        slotType: reservation.slotType,
+        expiresAt: reservation.expiresAt,
+      };
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        const latest = await tx.slotReservation.findUnique({
+          where: {
+            userId_idempotencyKey: {
+              userId,
+              idempotencyKey,
+            },
+          },
+        });
+
+        if (latest) {
+          return asExistingResult(latest);
+        }
+      }
+      throw error;
+    }
   });
 
   if (result.type === "error") {
