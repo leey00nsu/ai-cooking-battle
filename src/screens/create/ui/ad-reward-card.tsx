@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { SlotSummary } from "@/entities/slot/model/types";
 import { createIdempotencyKey } from "@/features/create-flow/model/create-recovery";
+import AdRewardRequest from "@/screens/create/ui/ad-reward-request";
+import AdRewardSuccess from "@/screens/create/ui/ad-reward-success";
 import { fetchJson } from "@/shared/lib/fetch-json";
 import { loadRewardedAd, type RewardedAdHandle } from "@/shared/lib/gpt-rewarded";
-import { Button } from "@/shared/ui/button";
-import { Card, CardContent } from "@/shared/ui/card";
 
 type RewardRequestResponse =
   | { ok: true; rewardId: string; nonce: string; expiresAt: string | null }
@@ -37,6 +38,7 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
   const [status, setStatus] = useState<RewardStatus>("idle");
   const statusRef = useRef<RewardStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [remainingLabel, setRemainingLabel] = useState<string | null>(null);
   const rewardRef = useRef<RewardPayload | null>(null);
   const handleRef = useRef<RewardedAdHandle | null>(null);
 
@@ -50,6 +52,25 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
   }, [status]);
 
   useEffect(() => () => cleanup(), [cleanup]);
+  useEffect(() => {
+    let active = true;
+    fetchJson<SlotSummary>("/api/slots/summary")
+      .then((summary) => {
+        if (!active) {
+          return;
+        }
+        const adRemaining = Math.max(summary.adLimit - summary.adUsedCount, 0);
+        setRemainingLabel(`Remaining Ad Slots: ${adRemaining}/${summary.adLimit}`);
+      })
+      .catch(() => {
+        if (active) {
+          setRemainingLabel(null);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleConfirmReward = useCallback(async () => {
     const payload = rewardRef.current;
@@ -166,47 +187,44 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
     handleRef.current.show();
   }, []);
 
-  const primaryLabel = status === "ready" ? "광고 보기" : "광고로 슬롯 받기";
+  const primaryLabel =
+    status === "ready" ? "광고 보기" : status === "error" ? "다시 시도" : "광고로 슬롯 받기";
   const isPrimaryDisabled = status === "loading" || status === "watching";
 
+  if (status === "success") {
+    return (
+      <AdRewardSuccess
+        onPrimary={() => {
+          setStatus("idle");
+          setMessage("보상 슬롯을 사용해 요리를 시작하세요.");
+        }}
+        onSecondary={() => {
+          setStatus("idle");
+          setMessage("보상 슬롯이 준비되었습니다.");
+        }}
+      />
+    );
+  }
+
   return (
-    <Card className="relative overflow-hidden" tone="accent">
-      <CardContent className="py-6">
-        <div className="relative z-10 flex flex-col gap-3">
-          <div>
-            <h3 className="text-lg font-bold">Out of credits?</h3>
-            <p className="mt-2 text-sm text-white/60">
-              Watch a short ad to refuel your kitchen with +1 Generation Slot.
-            </p>
-          </div>
-          <p className="text-xs font-semibold text-white/70">{statusLabels[status]}</p>
-          {message ? <p className="text-xs text-white/50">{message}</p> : null}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              intent="outline"
-              size="sm"
-              onClick={status === "ready" ? handleShowRewarded : handleLoadRewarded}
-              disabled={isPrimaryDisabled}
-            >
-              {primaryLabel}
-            </Button>
-            {status === "ready" ? (
-              <Button
-                intent="ghost"
-                size="sm"
-                onClick={() => {
-                  setStatus("idle");
-                  setMessage("광고를 취소했습니다.");
-                  cleanup();
-                }}
-              >
-                나중에 보기
-              </Button>
-            ) : null}
-          </div>
-        </div>
-        <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
-      </CardContent>
-    </Card>
+    <AdRewardRequest
+      title="Refill Your Cooking Slot"
+      description="무료 슬롯이 모두 소진되었어요. 짧은 광고를 보고 보너스 슬롯 1개를 즉시 받을 수 있습니다."
+      statusLabel={statusLabels[status]}
+      message={message}
+      primaryLabel={primaryLabel}
+      onPrimary={status === "ready" ? handleShowRewarded : handleLoadRewarded}
+      onSecondary={
+        status === "ready" || status === "error"
+          ? () => {
+              setStatus("idle");
+              setMessage("광고를 취소했습니다.");
+              cleanup();
+            }
+          : undefined
+      }
+      isPrimaryDisabled={isPrimaryDisabled}
+      remainingLabel={remainingLabel ?? undefined}
+    />
   );
 }
