@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createIdempotencyKey,
+  createRecoveryStorage,
+} from "@/features/create-flow/model/create-recovery";
 import { createStepItems } from "@/features/create-flow/model/stepper-state";
 import type {
   CreateFlowState,
@@ -23,6 +27,8 @@ export function useCreateFlow() {
   const runIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const recoveryKeyRef = useRef<string | null>(null);
+  const isRecoveringRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -35,6 +41,95 @@ export function useCreateFlow() {
     () => createStepItems(state.step, state.errorStep),
     [state.step, state.errorStep],
   );
+
+  const recover = useCallback(async (idempotencyKey: string) => {
+    runIdRef.current += 1;
+    const runId = runIdRef.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const isActive = () =>
+      mountedRef.current && runIdRef.current === runId && !controller.signal.aborted;
+
+    isRecoveringRef.current = true;
+    if (isActive()) {
+      setState({
+        step: "generating",
+        errorMessage: null,
+        errorStep: null,
+        requestId: null,
+        imageUrl: null,
+      });
+    }
+
+    let statusResponse: StatusResponse;
+    try {
+      statusResponse = await fetchJson<StatusResponse>(
+        `/api/create/status?idempotencyKey=${encodeURIComponent(idempotencyKey)}`,
+        { signal: controller.signal },
+      );
+    } catch (error) {
+      if ((error as DOMException).name === "AbortError") {
+        return;
+      }
+      if (isActive()) {
+        setState({
+          step: "error",
+          errorMessage: "복구 요청 중 오류가 발생했습니다.",
+          errorStep: "generating",
+          requestId: null,
+          imageUrl: null,
+        });
+      }
+      return;
+    }
+
+    if (!statusResponse.ok) {
+      if (
+        statusResponse.code === "REQUEST_NOT_FOUND" ||
+        statusResponse.code === "RESERVATION_EXPIRED"
+      ) {
+        createRecoveryStorage.clear();
+        recoveryKeyRef.current = null;
+      }
+      if (isActive()) {
+        setState({
+          step: "error",
+          errorMessage: statusResponse.message ?? "복구 요청에 실패했습니다.",
+          errorStep: "generating",
+          requestId: null,
+          imageUrl: null,
+        });
+      }
+      return;
+    }
+
+    if (!isActive()) {
+      return;
+    }
+
+    if (statusResponse.status === "DONE") {
+      setState({
+        step: "done",
+        errorMessage: null,
+        errorStep: null,
+        requestId: null,
+        imageUrl: statusResponse.imageUrl,
+      });
+      createRecoveryStorage.clear();
+      recoveryKeyRef.current = null;
+      return;
+    }
+
+    setState({
+      step: "safety",
+      errorMessage: null,
+      errorStep: null,
+      requestId: null,
+      imageUrl: statusResponse.imageUrl,
+    });
+  }, []);
 
   const start = useCallback(async (prompt: string) => {
     runIdRef.current += 1;
@@ -70,6 +165,10 @@ export function useCreateFlow() {
       });
     }
 
+    const idempotencyKey = recoveryKeyRef.current ?? createIdempotencyKey();
+    recoveryKeyRef.current = idempotencyKey;
+    createRecoveryStorage.save(idempotencyKey);
+
     let validateResponse: ValidateResponse;
     try {
       validateResponse = await fetchJson<ValidateResponse>("/api/create/validate", {
@@ -100,6 +199,7 @@ export function useCreateFlow() {
       reserveResponse = await fetchJson<ReserveResponse>("/api/create/reserve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idempotencyKey }),
         signal: controller.signal,
       });
     } catch (error) {
@@ -127,6 +227,7 @@ export function useCreateFlow() {
         body: JSON.stringify({
           reservationId: reserveResponse.reservationId,
           prompt: validateResponse.normalizedPrompt,
+          idempotencyKey,
         }),
         signal: controller.signal,
       });
@@ -145,6 +246,11 @@ export function useCreateFlow() {
 
     if (isActive()) {
       setState((prev) => ({ ...prev, step: "safety", requestId: generateResponse.requestId }));
+    }
+
+    if (generateResponse.requestId) {
+      recoveryKeyRef.current = idempotencyKey;
+      createRecoveryStorage.save(idempotencyKey);
     }
 
     const requestId = encodeURIComponent(generateResponse.requestId);
@@ -180,6 +286,10 @@ export function useCreateFlow() {
             imageUrl: statusResponse.imageUrl,
           });
         }
+        if (statusResponse.status === "DONE") {
+          createRecoveryStorage.clear();
+          recoveryKeyRef.current = null;
+        }
         return;
       }
 
@@ -193,12 +303,24 @@ export function useCreateFlow() {
 
   const reset = useCallback(() => {
     setState(initialState);
+    createRecoveryStorage.clear();
+    recoveryKeyRef.current = null;
   }, []);
+
+  useEffect(() => {
+    const stored = createRecoveryStorage.load();
+    if (!stored || isRecoveringRef.current) {
+      return;
+    }
+    recoveryKeyRef.current = stored.idempotencyKey;
+    void recover(stored.idempotencyKey);
+  }, [recover]);
 
   return {
     state,
     steps,
     start,
+    recover,
     reset,
   };
 }
