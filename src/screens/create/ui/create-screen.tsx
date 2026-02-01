@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useCreateFlow } from "@/features/create-flow/model/use-create-flow";
+import AdRewardCard from "@/screens/create/ui/ad-reward-card";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -38,6 +40,7 @@ const fallbackSteps: StepItem[] = [
 
 export default function CreateScreen() {
   const { state, steps, start } = useCreateFlow();
+  const [adRewardId, setAdRewardId] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -54,8 +57,17 @@ export default function CreateScreen() {
   const isProcessing = ["validating", "reserving", "generating", "safety"].includes(state.step);
 
   const handleFormSubmit = (data: CreateFormValues) => {
-    void start(data.prompt);
+    void start(data.prompt, { adRewardId: adRewardId ?? undefined });
   };
+
+  useEffect(() => {
+    if (!adRewardId) {
+      return;
+    }
+    if (["generating", "safety", "done"].includes(state.step)) {
+      setAdRewardId(null);
+    }
+  }, [adRewardId, state.step]);
 
   return (
     <div className="bg-background text-foreground">
@@ -117,17 +129,7 @@ export default function CreateScreen() {
               </Button>
             </form>
 
-            <Card className="relative overflow-hidden" tone="accent">
-              <CardContent className="py-6">
-                <div className="relative z-10">
-                  <h3 className="text-lg font-bold">Out of credits?</h3>
-                  <p className="mt-2 text-sm text-white/60">
-                    Watch a short ad to refuel your kitchen with +1 Generation Slot.
-                  </p>
-                </div>
-                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
-              </CardContent>
-            </Card>
+            <AdRewardCard onRewardGranted={setAdRewardId} />
           </section>
 
           <aside className="flex flex-col gap-6 lg:col-span-5">

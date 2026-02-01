@@ -131,7 +131,7 @@ export function useCreateFlow() {
     });
   }, []);
 
-  const start = useCallback(async (prompt: string) => {
+  const start = useCallback(async (prompt: string, options?: { adRewardId?: string }) => {
     runIdRef.current += 1;
     const runId = runIdRef.current;
     abortRef.current?.abort();
@@ -194,12 +194,16 @@ export function useCreateFlow() {
       setState((prev) => ({ ...prev, step: "reserving" }));
     }
 
+    const adRewardId = options?.adRewardId?.trim();
     let reserveResponse: ReserveResponse;
     try {
       reserveResponse = await fetchJson<ReserveResponse>("/api/create/reserve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idempotencyKey }),
+        body: JSON.stringify({
+          idempotencyKey,
+          ...(adRewardId ? { adRewardId } : {}),
+        }),
         signal: controller.signal,
       });
     } catch (error) {
