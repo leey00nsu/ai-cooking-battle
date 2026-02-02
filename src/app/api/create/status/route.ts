@@ -3,6 +3,8 @@ import { getGuestUserId } from "@/lib/guest-user";
 import { prisma } from "@/lib/prisma";
 import { hasReservationExpired, reclaimSlotReservation } from "@/lib/slot-recovery";
 
+const AUTO_COMPLETE_MS = 1000;
+
 export async function GET(request: NextRequest) {
   const requestId = request.nextUrl.searchParams.get("requestId");
   const idempotencyKey = request.nextUrl.searchParams.get("idempotencyKey");
@@ -56,6 +58,21 @@ export async function GET(request: NextRequest) {
       },
       { status: 410 },
     );
+  }
+
+  if (createRequest.status !== "DONE" && createRequest.status !== "FAILED") {
+    const elapsedMs = Date.now() - createRequest.createdAt.getTime();
+    if (elapsedMs > AUTO_COMPLETE_MS) {
+      const updated = await prisma.createRequest.update({
+        where: { id: createRequest.id },
+        data: { status: "DONE" },
+      });
+      return NextResponse.json({
+        ok: true,
+        status: "DONE",
+        imageUrl: updated.imageUrl ?? null,
+      });
+    }
   }
 
   if (createRequest.status === "FAILED") {

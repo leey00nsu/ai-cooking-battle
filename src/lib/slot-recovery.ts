@@ -35,7 +35,7 @@ export async function reclaimSlotReservation(reservation: SlotReservation) {
 }
 
 export async function markReservationFailed(reservation: SlotReservation) {
-  if (reservation.status !== "RESERVED") {
+  if (reservation.status !== "RESERVED" && reservation.status !== "CONFIRMED") {
     return reservation;
   }
 
@@ -44,7 +44,7 @@ export async function markReservationFailed(reservation: SlotReservation) {
       where: { id: reservation.id },
     });
 
-    if (!latest || latest.status !== "RESERVED") {
+    if (!latest || (latest.status !== "RESERVED" && latest.status !== "CONFIRMED")) {
       return latest ?? reservation;
     }
 
