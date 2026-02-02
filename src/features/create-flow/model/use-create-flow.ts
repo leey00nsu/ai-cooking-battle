@@ -327,13 +327,12 @@ export function useCreateFlow() {
   }, []);
 
   useEffect(() => {
-    const stored = createRecoveryStorage.load();
-    if (!stored || isRecoveringRef.current) {
-      return;
+    if (mountedRef.current) {
+      setState(initialState);
     }
-    recoveryKeyRef.current = stored.idempotencyKey;
-    void recover(stored.idempotencyKey);
-  }, [recover]);
+    createRecoveryStorage.clear();
+    recoveryKeyRef.current = null;
+  }, []);
 
   return {
     state,

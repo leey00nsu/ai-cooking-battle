@@ -29,25 +29,20 @@ beforeEach(() => {
 });
 
 describe("useCreateFlow", () => {
-  it("recovers when stored idempotencyKey exists", async () => {
+  it("clears stored recovery key on mount", async () => {
     storage["createFlow:idempotency"] = JSON.stringify({
       idempotencyKey: "recover-key",
       startedAt: "2026-02-01T00:00:00Z",
     });
 
-    fetchJson.mockResolvedValueOnce({
-      ok: true,
-      status: "DONE",
-      imageUrl: "https://example.com/result.png",
-    });
-
     const { result } = renderHook(() => useCreateFlow());
 
     await waitFor(() => {
-      expect(result.current.state.step).toBe("done");
+      expect(result.current.state.step).toBe("idle");
     });
 
-    expect(result.current.state.imageUrl).toBe("https://example.com/result.png");
+    expect(result.current.state.imageUrl).toBeNull();
     expect(storage["createFlow:idempotency"]).toBeUndefined();
+    expect(fetchJson).not.toHaveBeenCalled();
   });
 });
