@@ -96,7 +96,16 @@ export async function POST(request: Request) {
     });
 
     const freeRemaining = counter.freeLimit - counter.freeUsedCount;
-    if (freeRemaining > 0) {
+    const hasFreeReservation = await tx.slotReservation.findFirst({
+      where: {
+        userId,
+        dayKey,
+        slotType: "FREE",
+      },
+      select: { id: true },
+    });
+
+    if (freeRemaining > 0 && !hasFreeReservation) {
       try {
         const reservation = await tx.slotReservation.create({
           data: {
@@ -137,6 +146,15 @@ export async function POST(request: Request) {
         }
         throw error;
       }
+    }
+
+    if (hasFreeReservation && !adRewardId) {
+      return {
+        type: "error",
+        status: 429,
+        code: "FREE_SLOT_LIMIT_REACHED",
+        message: "무료 슬롯은 하루 1회만 가능합니다.",
+      };
     }
 
     if (!adRewardId) {
