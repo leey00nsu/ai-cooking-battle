@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/shared/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/shared/ui/shadcn/dialog";
 
 const MOCK_VIDEO_SRC = "/ads/mock-reward.mp4";
 const MOCK_DURATION_SECONDS = 6;
@@ -38,10 +45,6 @@ export default function MockRewardedModal({ isOpen, onClose, onGrant }: MockRewa
     return () => window.clearTimeout(timer);
   }, [hasEnded, isOpen, secondsLeft]);
 
-  if (!isOpen) {
-    return null;
-  }
-
   const canGrant = hasEnded || secondsLeft <= 0 || hasError;
   const statusLabel = hasError
     ? "영상 재생에 실패했습니다."
@@ -50,23 +53,24 @@ export default function MockRewardedModal({ isOpen, onClose, onGrant }: MockRewa
       : `남은 시간 ${secondsLeft}s`;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Mock rewarded ad"
-    >
-      <div className="w-full max-w-sm rounded-[32px] border border-white/10 bg-[#0b0a08] p-4 text-white shadow-[0_30px_60px_rgba(0,0,0,0.45)]">
+    <Dialog open={isOpen} onOpenChange={(open) => (!open ? onClose() : undefined)}>
+      <DialogContent className="w-[calc(100%-2rem)] max-w-sm border-white/10 bg-[#0b0a08] p-4 shadow-[0_30px_60px_rgba(0,0,0,0.45)]">
         <div className="mb-3 flex items-center justify-between text-sm font-semibold text-white/70">
-          <span>Mock Rewarded Ad</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/60 hover:bg-white/10"
-          >
-            닫기
-          </button>
+          <DialogTitle className="text-sm font-semibold text-white/70">
+            Mock Rewarded Ad
+          </DialogTitle>
+          <DialogClose asChild>
+            <button
+              type="button"
+              className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/60 hover:bg-white/10"
+            >
+              닫기
+            </button>
+          </DialogClose>
         </div>
+        <DialogDescription className="sr-only">
+          모의 보상형 광고 영상을 재생합니다. 재생 완료 후 보상이 지급됩니다.
+        </DialogDescription>
 
         <div className="relative aspect-[9/16] w-full overflow-hidden rounded-[24px] bg-black">
           <video
@@ -100,7 +104,7 @@ export default function MockRewardedModal({ isOpen, onClose, onGrant }: MockRewa
             보상 받기
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
