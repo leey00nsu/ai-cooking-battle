@@ -10,7 +10,12 @@ export const createRecoveryStorage = {
     if (typeof window === "undefined") {
       return null;
     }
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    let raw: string | null = null;
+    try {
+      raw = window.localStorage.getItem(STORAGE_KEY);
+    } catch {
+      return null;
+    }
     if (!raw) {
       return null;
     }
@@ -32,13 +37,17 @@ export const createRecoveryStorage = {
       idempotencyKey,
       startedAt: new Date().toISOString(),
     };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch {}
   },
   clear() {
     if (typeof window === "undefined") {
       return;
     }
-    window.localStorage.removeItem(STORAGE_KEY);
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {}
   },
 };
 

@@ -23,7 +23,7 @@ type AdRewardCardProps = {
 
 type RewardStatus = "idle" | "loading" | "ready" | "watching" | "success" | "error";
 
-type RewardPayload = { rewardId: string; nonce: string };
+type RewardPayload = { rewardId: string; nonce: string; confirmIdempotencyKey: string };
 
 const statusLabels: Record<RewardStatus, string> = {
   idle: "광고로 슬롯을 충전하세요",
@@ -100,7 +100,7 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nonce: payload.nonce,
-        idempotencyKey: createIdempotencyKey(),
+        idempotencyKey: payload.confirmIdempotencyKey,
       }),
     });
 
@@ -150,6 +150,7 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
     rewardRef.current = {
       rewardId: requestResponse.rewardId,
       nonce: requestResponse.nonce,
+      confirmIdempotencyKey: createIdempotencyKey(),
     };
 
     if (isMockMode) {

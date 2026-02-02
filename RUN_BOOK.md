@@ -47,7 +47,7 @@
 
 `.env.local`에 다음 값을 추가하세요.
 
-```
+```bash
 # Rewarded Ads (Google Ad Manager / GPT)
 NEXT_PUBLIC_GAM_REWARDED_AD_UNIT="/NETWORK_CODE/your-rewarded-unit"
 

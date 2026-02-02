@@ -71,18 +71,52 @@ export async function POST(request: Request) {
     });
   }
 
-  const updated = await prisma.adReward.update({
-    where: { nonce },
+  const now = new Date();
+  const { count } = await prisma.adReward.updateMany({
+    where: {
+      id: reward.id,
+      nonce,
+      userId,
+      OR: [{ confirmIdempotencyKey: null }, { confirmIdempotencyKey: idempotencyKey }],
+    },
     data: {
       status: "GRANTED",
       confirmIdempotencyKey: idempotencyKey,
-      grantedAt: reward.grantedAt ?? new Date(),
+      grantedAt: reward.grantedAt ?? now,
     },
+  });
+
+  if (count === 0) {
+    const latest = await prisma.adReward.findFirst({
+      where: { id: reward.id, nonce, userId },
+    });
+
+    if (latest?.confirmIdempotencyKey === idempotencyKey) {
+      return NextResponse.json({
+        ok: true,
+        rewardId: latest.id,
+        status: latest.status,
+      });
+    }
+
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "IDEMPOTENCY_CONFLICT",
+        message: "Idempotency key already used.",
+      },
+      { status: 409 },
+    );
+  }
+
+  const updated = await prisma.adReward.findUnique({
+    where: { id: reward.id },
+    select: { id: true, status: true },
   });
 
   return NextResponse.json({
     ok: true,
-    rewardId: updated.id,
-    status: updated.status,
+    rewardId: updated?.id ?? reward.id,
+    status: updated?.status ?? "GRANTED",
   });
 }

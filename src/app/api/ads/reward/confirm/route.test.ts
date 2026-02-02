@@ -4,7 +4,8 @@ const getGuestUserId = vi.fn(async () => "guest");
 const prisma = {
   adReward: {
     findFirst: vi.fn(),
-    update: vi.fn(),
+    updateMany: vi.fn(),
+    findUnique: vi.fn(),
   },
 };
 
@@ -70,10 +71,8 @@ describe("POST /api/ads/reward/confirm", () => {
       expiresAt: null,
       grantedAt: null,
     });
-    prisma.adReward.update.mockResolvedValue({
-      id: "reward",
-      status: "GRANTED",
-    });
+    prisma.adReward.updateMany.mockResolvedValue({ count: 1 });
+    prisma.adReward.findUnique.mockResolvedValue({ id: "reward", status: "GRANTED" });
 
     const request = new Request("http://localhost/api/ads/reward/confirm", {
       method: "POST",

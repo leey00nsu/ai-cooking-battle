@@ -106,8 +106,8 @@ enum CreateRequestStatus {
 
 model DailySlotCounter {
   dayKey        String   @id
-  freeLimit     Int      @default(30)
-  adLimit       Int      @default(30)
+  freeLimit     Int      @default(60)
+  adLimit       Int      @default(0)
   freeUsedCount Int      @default(0)
   adUsedCount   Int      @default(0)
   createdAt     DateTime @default(now())

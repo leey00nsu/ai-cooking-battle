@@ -95,10 +95,6 @@ export default function CreateScreen() {
   }, [adRewardId, state.step]);
 
   useEffect(() => {
-    void loadSlotSummary();
-  }, [loadSlotSummary]);
-
-  useEffect(() => {
     if (!["idle", "done", "error"].includes(state.step)) {
       return;
     }

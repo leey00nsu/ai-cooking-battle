@@ -13,6 +13,13 @@ type GeneratePayload = {
   idempotencyKey?: string;
 };
 
+const isUniqueConstraintError = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  return "code" in error && (error as { code?: string }).code === "P2002";
+};
+
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as GeneratePayload;
 
@@ -110,9 +117,8 @@ export async function POST(request: Request) {
     });
   }
 
-  let requestRecord: Awaited<ReturnType<typeof prisma.createRequest.create>>;
   try {
-    requestRecord = await prisma.createRequest.create({
+    const requestRecord = await prisma.createRequest.create({
       data: {
         userId,
         idempotencyKey,
@@ -120,14 +126,44 @@ export async function POST(request: Request) {
         status: "GENERATING",
       },
     });
+
+    return NextResponse.json({
+      ok: true,
+      requestId: requestRecord.id,
+      status: "PROCESSING",
+    });
   } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      const duplicated = await prisma.createRequest.findUnique({
+        where: {
+          userId_idempotencyKey: {
+            userId,
+            idempotencyKey,
+          },
+        },
+      });
+
+      if (duplicated) {
+        if (duplicated.reservationId !== reservation.id) {
+          return NextResponse.json(
+            {
+              ok: false,
+              code: "IDEMPOTENCY_CONFLICT",
+              message: "Idempotency key already used with another reservation.",
+            },
+            { status: 409 },
+          );
+        }
+
+        return NextResponse.json({
+          ok: true,
+          requestId: duplicated.id,
+          status: "PROCESSING",
+        });
+      }
+    }
+
     await markReservationFailed(reservation);
     throw error;
   }
-
-  return NextResponse.json({
-    ok: true,
-    requestId: requestRecord.id,
-    status: "PROCESSING",
-  });
 }

@@ -63,12 +63,19 @@ function loadGptScript() {
       script.async = true;
       script.src = GPT_SRC;
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Failed to load GPT script."));
+      script.onerror = () => {
+        gptPromise = null;
+        script.remove();
+        reject(new Error("Failed to load GPT script."));
+      };
       window.document.head.appendChild(script);
     });
   }
 
-  return gptPromise;
+  return gptPromise.catch((error) => {
+    gptPromise = null;
+    throw error;
+  });
 }
 
 export type RewardedAdCallbacks = {
