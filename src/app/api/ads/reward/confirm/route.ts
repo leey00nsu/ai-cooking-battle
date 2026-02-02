@@ -41,15 +41,12 @@ export async function POST(request: Request) {
     );
   }
 
-  if (reward.expiresAt && reward.expiresAt.getTime() < Date.now()) {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "REWARD_EXPIRED",
-        message: "Reward expired.",
-      },
-      { status: 410 },
-    );
+  if (reward.confirmIdempotencyKey === idempotencyKey) {
+    return NextResponse.json({
+      ok: true,
+      rewardId: reward.id,
+      status: reward.status,
+    });
   }
 
   if (reward.confirmIdempotencyKey && reward.confirmIdempotencyKey !== idempotencyKey) {
@@ -63,12 +60,15 @@ export async function POST(request: Request) {
     );
   }
 
-  if (reward.confirmIdempotencyKey === idempotencyKey) {
-    return NextResponse.json({
-      ok: true,
-      rewardId: reward.id,
-      status: reward.status,
-    });
+  if (reward.expiresAt && reward.expiresAt.getTime() < Date.now()) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "REWARD_EXPIRED",
+        message: "Reward expired.",
+      },
+      { status: 410 },
+    );
   }
 
   const now = new Date();

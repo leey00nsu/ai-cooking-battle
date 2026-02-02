@@ -61,14 +61,17 @@ export default function CreateScreen() {
   const promptLength = promptValue.length;
   const promptError = errors.prompt?.message;
   const isProcessing = ["validating", "reserving", "generating", "safety"].includes(state.step);
-  const freeLimit = slotSummary?.freeLimit ?? 0;
-  const freeUsedCount = slotSummary?.freeUsedCount ?? 0;
-  const hasUsedFreeSlotToday = slotSummary?.hasUsedFreeSlotToday ?? false;
+  const isSlotSummaryLoading = slotSummary === null && !isSlotSummaryError;
+  const freeLimit = slotSummary?.freeLimit;
+  const freeUsedCount = slotSummary?.freeUsedCount;
+  const hasUsedFreeSlotToday = slotSummary?.hasUsedFreeSlotToday;
   const freeSlotCaption = isSlotSummaryError
     ? "오늘 무료 슬롯 상태를 확인할 수 없습니다."
-    : hasUsedFreeSlotToday
-      ? "오늘 무료 슬롯을 이미 사용했습니다"
-      : "오늘 무료 슬롯을 사용 가능합니다";
+    : isSlotSummaryLoading
+      ? "오늘 무료 슬롯 상태를 불러오는 중입니다."
+      : hasUsedFreeSlotToday
+        ? "오늘 무료 슬롯을 이미 사용했습니다"
+        : "오늘 무료 슬롯을 사용 가능합니다";
 
   const loadSlotSummary = useCallback(async () => {
     try {
@@ -113,7 +116,9 @@ export default function CreateScreen() {
                   <Zap className="h-3.5 w-3.5 text-orange-400" />
                   {isSlotSummaryError
                     ? "Today Slots --/--"
-                    : `Today Slots ${freeUsedCount}/${freeLimit}`}
+                    : isSlotSummaryLoading
+                      ? "Today Slots Loading..."
+                      : `Today Slots ${freeUsedCount}/${freeLimit}`}
                 </div>
                 <p className="mt-1 text-[10px] text-white/55">{freeSlotCaption}</p>
               </div>

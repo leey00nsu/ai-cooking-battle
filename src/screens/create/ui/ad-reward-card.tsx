@@ -95,25 +95,42 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
       return;
     }
 
-    const response = await fetchJson<RewardConfirmResponse>("/api/ads/reward/confirm", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nonce: payload.nonce,
-        idempotencyKey: payload.confirmIdempotencyKey,
-      }),
-    });
+    let finalized = false;
+    setStatus("loading");
+    setMessage("보상 확정 중...");
 
-    if (!response.ok) {
+    try {
+      const response = await fetchJson<RewardConfirmResponse>("/api/ads/reward/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nonce: payload.nonce,
+          idempotencyKey: payload.confirmIdempotencyKey,
+        }),
+      });
+
+      if (!response.ok) {
+        finalized = true;
+        setStatus("error");
+        setMessage(response.message ?? "보상 확정에 실패했습니다.");
+        return;
+      }
+
+      finalized = true;
+      setStatus("success");
+      setMessage("슬롯이 충전되었습니다.");
+      onRewardGranted(response.rewardId);
+      rewardRef.current = null;
+    } catch (error) {
+      finalized = true;
       setStatus("error");
-      setMessage(response.message ?? "보상 확정에 실패했습니다.");
-      return;
+      setMessage(error instanceof Error ? error.message : "보상 확정에 실패했습니다.");
+    } finally {
+      if (!finalized) {
+        setStatus("error");
+        setMessage("보상 확정에 실패했습니다.");
+      }
     }
-
-    setStatus("success");
-    setMessage("슬롯이 충전되었습니다.");
-    onRewardGranted(response.rewardId);
-    rewardRef.current = null;
   }, [onRewardGranted]);
 
   const handleLoadRewarded = useCallback(async () => {
