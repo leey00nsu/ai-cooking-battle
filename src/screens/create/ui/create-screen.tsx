@@ -1,7 +1,8 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Zap } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { SlotSummary } from "@/entities/slot/model/types";
 import { useCreateFlow } from "@/features/create-flow/model/use-create-flow";
@@ -45,8 +46,15 @@ const fallbackSteps: StepItem[] = [
 export default function CreateScreen() {
   const { state, steps, start } = useCreateFlow();
   const [adRewardId, setAdRewardId] = useState<string | null>(null);
-  const [slotSummary, setSlotSummary] = useState<SlotSummary | null>(null);
-  const [isSlotSummaryError, setIsSlotSummaryError] = useState(false);
+  const {
+    data: slotSummary,
+    isError: isSlotSummaryError,
+    isPending: isSlotSummaryLoading,
+    refetch: refetchSlotSummary,
+  } = useQuery<SlotSummary>({
+    queryKey: ["slots", "summary"],
+    queryFn: () => fetchJson<SlotSummary>("/api/slots/summary"),
+  });
   const {
     register,
     handleSubmit,
@@ -61,7 +69,6 @@ export default function CreateScreen() {
   const promptLength = promptValue.length;
   const promptError = errors.prompt?.message;
   const isProcessing = ["validating", "reserving", "generating", "safety"].includes(state.step);
-  const isSlotSummaryLoading = slotSummary === null && !isSlotSummaryError;
   const freeLimit = slotSummary?.freeLimit;
   const freeUsedCount = slotSummary?.freeUsedCount;
   const hasUsedFreeSlotToday = slotSummary?.hasUsedFreeSlotToday;
@@ -72,17 +79,6 @@ export default function CreateScreen() {
       : hasUsedFreeSlotToday
         ? "오늘 무료 슬롯을 이미 사용했습니다"
         : "오늘 무료 슬롯을 사용 가능합니다";
-
-  const loadSlotSummary = useCallback(async () => {
-    try {
-      const summary = await fetchJson<SlotSummary>("/api/slots/summary");
-      setSlotSummary(summary);
-      setIsSlotSummaryError(false);
-    } catch {
-      setSlotSummary(null);
-      setIsSlotSummaryError(true);
-    }
-  }, []);
 
   const handleFormSubmit = (data: CreateFormValues) => {
     void start(data.prompt, { adRewardId: adRewardId ?? undefined });
@@ -101,8 +97,8 @@ export default function CreateScreen() {
     if (!["idle", "done", "error"].includes(state.step)) {
       return;
     }
-    void loadSlotSummary();
-  }, [loadSlotSummary, state.step]);
+    void refetchSlotSummary();
+  }, [refetchSlotSummary, state.step]);
 
   return (
     <div className="bg-background text-foreground">

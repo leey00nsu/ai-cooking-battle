@@ -1,5 +1,6 @@
 "use client";
 
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SlotSummary } from "@/entities/slot/model/types";
 import { createIdempotencyKey } from "@/features/create-flow/model/create-recovery";
@@ -43,10 +44,30 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
   const [status, setStatus] = useState<RewardStatus>("idle");
   const statusRef = useRef<RewardStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const [remainingLabel, setRemainingLabel] = useState<string | null>(null);
   const rewardRef = useRef<RewardPayload | null>(null);
   const handleRef = useRef<RewardedAdHandle | null>(null);
   const [isMockOpen, setIsMockOpen] = useState(false);
+  const { data: slotSummary } = useQuery<SlotSummary>({
+    queryKey: ["slots", "summary"],
+    queryFn: () => fetchJson<SlotSummary>("/api/slots/summary"),
+  });
+  const requestRewardMutation = useMutation({
+    mutationFn: () =>
+      fetchJson<RewardRequestResponse>("/api/ads/reward/request", {
+        method: "POST",
+      }),
+  });
+  const confirmRewardMutation = useMutation({
+    mutationFn: (payload: Pick<RewardPayload, "nonce" | "confirmIdempotencyKey">) =>
+      fetchJson<RewardConfirmResponse>("/api/ads/reward/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nonce: payload.nonce,
+          idempotencyKey: payload.confirmIdempotencyKey,
+        }),
+      }),
+  });
 
   const cleanup = useCallback(() => {
     handleRef.current?.destroy();
@@ -67,25 +88,9 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
   }, [status]);
 
   useEffect(() => () => cleanup(), [cleanup]);
-  useEffect(() => {
-    let active = true;
-    fetchJson<SlotSummary>("/api/slots/summary")
-      .then((summary) => {
-        if (!active) {
-          return;
-        }
-        const adRemaining = Math.max(summary.adLimit - summary.adUsedCount, 0);
-        setRemainingLabel(`Remaining Ad Slots: ${adRemaining}/${summary.adLimit}`);
-      })
-      .catch(() => {
-        if (active) {
-          setRemainingLabel(null);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const remainingLabel = slotSummary
+    ? `Remaining Ad Slots: ${Math.max(slotSummary.adLimit - slotSummary.adUsedCount, 0)}/${slotSummary.adLimit}`
+    : null;
 
   const handleConfirmReward = useCallback(async () => {
     const payload = rewardRef.current;
@@ -100,13 +105,9 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
     setMessage("보상 확정 중...");
 
     try {
-      const response = await fetchJson<RewardConfirmResponse>("/api/ads/reward/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nonce: payload.nonce,
-          idempotencyKey: payload.confirmIdempotencyKey,
-        }),
+      const response = await confirmRewardMutation.mutateAsync({
+        nonce: payload.nonce,
+        confirmIdempotencyKey: payload.confirmIdempotencyKey,
       });
 
       if (!response.ok) {
@@ -131,7 +132,7 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
         setMessage("보상 확정에 실패했습니다.");
       }
     }
-  }, [onRewardGranted]);
+  }, [confirmRewardMutation, onRewardGranted]);
 
   const handleLoadRewarded = useCallback(async () => {
     if (!isMockMode && !adUnitPath) {
@@ -149,12 +150,10 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
 
     let requestResponse: RewardRequestResponse;
     try {
-      requestResponse = await fetchJson<RewardRequestResponse>("/api/ads/reward/request", {
-        method: "POST",
-      });
-    } catch {
+      requestResponse = await requestRewardMutation.mutateAsync();
+    } catch (error) {
       setStatus("error");
-      setMessage("보상 요청에 실패했습니다.");
+      setMessage(error instanceof Error ? error.message : "보상 요청에 실패했습니다.");
       return;
     }
 
@@ -215,7 +214,7 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
       setStatus("error");
       setMessage("광고 로딩에 실패했습니다.");
     }
-  }, [adUnitPath, cleanup, handleConfirmReward, isMockMode, status]);
+  }, [adUnitPath, cleanup, handleConfirmReward, isMockMode, requestRewardMutation, status]);
 
   const handleShowRewarded = useCallback(() => {
     if (!handleRef.current) {
