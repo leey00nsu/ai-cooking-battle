@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useCreateFlow } from "@/features/create-flow/model/use-create-flow";
 import AdRewardCard from "@/screens/create/ui/ad-reward-card";
+import { ADS_ENABLED } from "@/shared/lib/slot-policy";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -129,7 +130,7 @@ export default function CreateScreen() {
               </Button>
             </form>
 
-            <AdRewardCard onRewardGranted={setAdRewardId} />
+            {ADS_ENABLED ? <AdRewardCard onRewardGranted={setAdRewardId} /> : null}
           </section>
 
           <aside className="flex flex-col gap-6 lg:col-span-5">

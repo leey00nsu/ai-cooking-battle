@@ -3,6 +3,7 @@ import { getGuestUserId } from "@/lib/guest-user";
 import { prisma } from "@/lib/prisma";
 import { reclaimSlotReservation } from "@/lib/slot-recovery";
 import { formatDayKeyForKST } from "@/shared/lib/day-key";
+import { AD_SLOT_LIMIT, FREE_SLOT_LIMIT } from "@/shared/lib/slot-policy";
 
 export const runtime = "nodejs";
 
@@ -86,8 +87,12 @@ export async function POST(request: Request) {
 
     const counter = await tx.dailySlotCounter.upsert({
       where: { dayKey },
-      update: { updatedAt: new Date() },
-      create: { dayKey },
+      update: {
+        updatedAt: new Date(),
+        freeLimit: FREE_SLOT_LIMIT,
+        adLimit: AD_SLOT_LIMIT,
+      },
+      create: { dayKey, freeLimit: FREE_SLOT_LIMIT, adLimit: AD_SLOT_LIMIT },
     });
 
     const freeRemaining = counter.freeLimit - counter.freeUsedCount;
