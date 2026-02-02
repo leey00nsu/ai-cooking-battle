@@ -11,6 +11,7 @@ import type {
   StatusResponse,
   ValidateResponse,
 } from "@/features/create-flow/model/types";
+import type { FetchJsonError } from "@/shared/lib/fetch-json";
 import { fetchJson } from "@/shared/lib/fetch-json";
 import { sleep } from "@/shared/lib/sleep";
 
@@ -71,6 +72,20 @@ export function useCreateFlow() {
       );
     } catch (error) {
       if ((error as DOMException).name === "AbortError") {
+        return;
+      }
+      const fetchError = error as FetchJsonError;
+      if (
+        fetchError?.status === 404 ||
+        fetchError?.status === 410 ||
+        fetchError?.code === "REQUEST_NOT_FOUND" ||
+        fetchError?.code === "RESERVATION_EXPIRED"
+      ) {
+        createRecoveryStorage.clear();
+        recoveryKeyRef.current = null;
+        if (isActive()) {
+          setState(initialState);
+        }
         return;
       }
       if (isActive()) {

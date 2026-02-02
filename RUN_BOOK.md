@@ -50,6 +50,10 @@
 ```
 # Rewarded Ads (Google Ad Manager / GPT)
 NEXT_PUBLIC_GAM_REWARDED_AD_UNIT="/NETWORK_CODE/your-rewarded-unit"
+
+# (선택) 로컬 Mock 광고 모드
+# true | false
+NEXT_PUBLIC_IS_AD_MOCKING="true"
 ```
 
 > `NEXT_PUBLIC_` 접두사는 클라이언트에서 사용하기 위해 필요합니다.
@@ -64,7 +68,19 @@ NEXT_PUBLIC_GAM_REWARDED_AD_UNIT="/NETWORK_CODE/your-rewarded-unit"
 
 ---
 
-## 5. 로컬/스테이징 테스트 체크리스트
+## 5. 로컬 Mock 광고 사용
+
+GAM 설정이 아직 준비되지 않았거나 로컬에서 빠르게 확인하려면 Mock 모드를 사용할 수 있습니다.
+
+1) `.env.local`에 `NEXT_PUBLIC_IS_AD_MOCKING="true"` 설정  
+2) `/create`에서 광고 CTA 클릭 → 모의 영상 광고가 전체 화면으로 재생  
+3) 영상 종료 후 “보상 받기” 클릭 시 서버 보상 확정 흐름이 그대로 실행
+
+> Mock 영상은 `public/ads/mock-reward.mp4` 파일을 사용합니다.
+
+---
+
+## 6. 로컬/스테이징 테스트 체크리스트
 
 - AdBlock/Tracker 차단 해제
 - Ad Unit / Line Item 매칭 확인
@@ -74,7 +90,7 @@ NEXT_PUBLIC_GAM_REWARDED_AD_UNIT="/NETWORK_CODE/your-rewarded-unit"
 
 ---
 
-## 6. 트러블슈팅
+## 7. 트러블슈팅
 
 ### 광고가 보이지 않을 때
 - House 라인 아이템 매칭 상태 확인
@@ -88,7 +104,7 @@ NEXT_PUBLIC_GAM_REWARDED_AD_UNIT="/NETWORK_CODE/your-rewarded-unit"
 
 ---
 
-## 7. 정책/주의사항
+## 8. 정책/주의사항
 
 - **Rewarded 광고는 반드시 사용자 제스처 기반으로 로드/표시**해야 합니다.
 - 광고 완료 후에만 보상을 확정해야 합니다.

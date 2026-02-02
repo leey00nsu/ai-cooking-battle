@@ -5,6 +5,7 @@ import type { SlotSummary } from "@/entities/slot/model/types";
 import { createIdempotencyKey } from "@/features/create-flow/model/create-recovery";
 import AdRewardRequest from "@/screens/create/ui/ad-reward-request";
 import AdRewardSuccess from "@/screens/create/ui/ad-reward-success";
+import MockRewardedModal from "@/screens/create/ui/mock-rewarded-modal";
 import { fetchJson } from "@/shared/lib/fetch-json";
 import { loadRewardedAd, type RewardedAdHandle } from "@/shared/lib/gpt-rewarded";
 
@@ -35,16 +36,30 @@ const statusLabels: Record<RewardStatus, string> = {
 
 export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
   const adUnitPath = useMemo(() => process.env.NEXT_PUBLIC_GAM_REWARDED_AD_UNIT ?? "", []);
+  const isMockMode = useMemo(
+    () => (process.env.NEXT_PUBLIC_IS_AD_MOCKING ?? "").toLowerCase() === "true",
+    [],
+  );
   const [status, setStatus] = useState<RewardStatus>("idle");
   const statusRef = useRef<RewardStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [remainingLabel, setRemainingLabel] = useState<string | null>(null);
   const rewardRef = useRef<RewardPayload | null>(null);
   const handleRef = useRef<RewardedAdHandle | null>(null);
+  const [isMockOpen, setIsMockOpen] = useState(false);
 
   const cleanup = useCallback(() => {
     handleRef.current?.destroy();
     handleRef.current = null;
+  }, []);
+
+  const closeMock = useCallback((messageText?: string) => {
+    setIsMockOpen(false);
+    rewardRef.current = null;
+    if (statusRef.current !== "success") {
+      setStatus("idle");
+      setMessage(messageText ?? "광고가 닫혔습니다.");
+    }
   }, []);
 
   useEffect(() => {
@@ -102,7 +117,7 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
   }, [onRewardGranted]);
 
   const handleLoadRewarded = useCallback(async () => {
-    if (!adUnitPath) {
+    if (!isMockMode && !adUnitPath) {
       setStatus("error");
       setMessage("광고 설정이 누락되었습니다.");
       return;
@@ -136,6 +151,13 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
       rewardId: requestResponse.rewardId,
       nonce: requestResponse.nonce,
     };
+
+    if (isMockMode) {
+      setStatus("watching");
+      setMessage("모의 광고를 재생합니다.");
+      setIsMockOpen(true);
+      return;
+    }
 
     try {
       handleRef.current = await loadRewardedAd({
@@ -175,7 +197,7 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
       setStatus("error");
       setMessage("광고 로딩에 실패했습니다.");
     }
-  }, [adUnitPath, cleanup, handleConfirmReward, status]);
+  }, [adUnitPath, cleanup, handleConfirmReward, isMockMode, status]);
 
   const handleShowRewarded = useCallback(() => {
     if (!handleRef.current) {
@@ -186,6 +208,13 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
     setStatus("watching");
     handleRef.current.show();
   }, []);
+
+  const handleMockGrant = useCallback(async () => {
+    setStatus("loading");
+    setMessage("보상 확정 중...");
+    await handleConfirmReward();
+    setIsMockOpen(false);
+  }, [handleConfirmReward]);
 
   const primaryLabel =
     status === "ready" ? "광고 보기" : status === "error" ? "다시 시도" : "광고로 슬롯 받기";
@@ -207,24 +236,31 @@ export default function AdRewardCard({ onRewardGranted }: AdRewardCardProps) {
   }
 
   return (
-    <AdRewardRequest
-      title="Refill Your Cooking Slot"
-      description="무료 슬롯이 모두 소진되었어요. 짧은 광고를 보고 보너스 슬롯 1개를 즉시 받을 수 있습니다."
-      statusLabel={statusLabels[status]}
-      message={message}
-      primaryLabel={primaryLabel}
-      onPrimary={status === "ready" ? handleShowRewarded : handleLoadRewarded}
-      onSecondary={
-        status === "ready" || status === "error"
-          ? () => {
-              setStatus("idle");
-              setMessage("광고를 취소했습니다.");
-              cleanup();
-            }
-          : undefined
-      }
-      isPrimaryDisabled={isPrimaryDisabled}
-      remainingLabel={remainingLabel ?? undefined}
-    />
+    <>
+      <AdRewardRequest
+        title="Refill Your Cooking Slot"
+        description="무료 슬롯이 모두 소진되었어요. 짧은 광고를 보고 보너스 슬롯 1개를 즉시 받을 수 있습니다."
+        statusLabel={statusLabels[status]}
+        message={message}
+        primaryLabel={primaryLabel}
+        onPrimary={status === "ready" ? handleShowRewarded : handleLoadRewarded}
+        onSecondary={
+          status === "ready" || status === "error"
+            ? () => {
+                setStatus("idle");
+                setMessage("광고를 취소했습니다.");
+                cleanup();
+              }
+            : undefined
+        }
+        isPrimaryDisabled={isPrimaryDisabled}
+        remainingLabel={remainingLabel ?? undefined}
+      />
+      <MockRewardedModal
+        isOpen={isMockOpen}
+        onClose={() => closeMock("광고가 닫혔습니다.")}
+        onGrant={handleMockGrant}
+      />
+    </>
   );
 }
