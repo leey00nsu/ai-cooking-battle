@@ -1,4 +1,7 @@
-import { CREATE_PIPELINE_JOB_NAME } from "@/lib/queue/create-pipeline-job";
+import {
+  CREATE_PIPELINE_JOB_NAME,
+  CREATE_PIPELINE_QUEUE_OPTIONS,
+} from "@/lib/queue/create-pipeline-job";
 import { startPgBoss, stopPgBoss } from "@/lib/queue/pg-boss";
 
 function sleep(ms: number) {
@@ -32,7 +35,7 @@ async function waitForCompletion(jobId: string) {
 
 async function main() {
   const boss = await startPgBoss();
-  await boss.createQueue(CREATE_PIPELINE_JOB_NAME);
+  await boss.createQueue(CREATE_PIPELINE_JOB_NAME, CREATE_PIPELINE_QUEUE_OPTIONS);
 
   await boss.work(CREATE_PIPELINE_JOB_NAME, { batchSize: 1 }, async () => {
     return;

@@ -184,10 +184,17 @@ export type LeesfieldGeneratedImage = {
   sourceUrl: string;
 };
 
-export async function generateImageBytes(
+export type LeesfieldGeneratedImageUrl = {
+  requestId: string;
+  url: string;
+  width?: number;
+  height?: number;
+};
+
+async function requestAndWaitForImageUrl(
   input: LeesfieldImageGenerationInput,
   options?: { timeoutMs?: number; pollIntervalMs?: number },
-): Promise<LeesfieldGeneratedImage> {
+): Promise<LeesfieldGeneratedImageUrl> {
   const timeoutMs = options?.timeoutMs ?? 120_000;
   const pollIntervalMs = options?.pollIntervalMs ?? 1200;
 
@@ -204,15 +211,15 @@ export async function generateImageBytes(
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const status = await fetchImageGenerationStatus(requestId);
-    const url = status.result?.images?.[0]?.url?.trim() ?? "";
+    const image = status.result?.images?.[0];
+    const url = image?.url?.trim() ?? "";
 
     if (url) {
-      const downloaded = await downloadBytes(url);
       return {
         requestId,
-        bytes: downloaded.bytes,
-        contentType: downloaded.contentType,
-        sourceUrl: url,
+        url,
+        width: image?.width,
+        height: image?.height,
       };
     }
 
@@ -233,4 +240,25 @@ export async function generateImageBytes(
     code: "TIMEOUT",
     message: `[leesfield] Timed out waiting for result. requestId=${requestId}`,
   });
+}
+
+export async function generateImageUrl(
+  input: LeesfieldImageGenerationInput,
+  options?: { timeoutMs?: number; pollIntervalMs?: number },
+): Promise<LeesfieldGeneratedImageUrl> {
+  return await requestAndWaitForImageUrl(input, options);
+}
+
+export async function generateImageBytes(
+  input: LeesfieldImageGenerationInput,
+  options?: { timeoutMs?: number; pollIntervalMs?: number },
+): Promise<LeesfieldGeneratedImage> {
+  const result = await requestAndWaitForImageUrl(input, options);
+  const downloaded = await downloadBytes(result.url);
+  return {
+    requestId: result.requestId,
+    bytes: downloaded.bytes,
+    contentType: downloaded.contentType,
+    sourceUrl: result.url,
+  };
 }
