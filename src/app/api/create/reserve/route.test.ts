@@ -25,6 +25,9 @@ const tx = {
 
 const prisma = {
   $transaction: vi.fn(async (fn: (txArg: typeof tx) => Promise<unknown>) => await fn(tx)),
+  slotReservation: {
+    findUnique: vi.fn(),
+  },
 };
 
 const reclaimSlotReservation = vi.fn();
@@ -53,6 +56,7 @@ describe("POST /api/create/reserve", () => {
     vi.clearAllMocks();
 
     tx.slotReservation.findUnique.mockResolvedValue(null);
+    prisma.slotReservation.findUnique.mockResolvedValue(null);
     tx.dailySlotCounter.upsert.mockResolvedValue({
       dayKey: "2026-02-03",
       freeLimit: 60,
@@ -125,5 +129,85 @@ describe("POST /api/create/reserve", () => {
     const payload = await response.json();
     expect(payload.ok).toBe(true);
     expect(payload.slotType).toBe("free");
+  });
+
+  it("returns existing reservation when concurrent create hits unique constraint", async () => {
+    const { POST } = await import("./route");
+    tx.slotReservation.create.mockRejectedValueOnce({ code: "P2002" });
+    prisma.slotReservation.findUnique.mockResolvedValueOnce({
+      id: "existing",
+      userId: "user",
+      dayKey: "2026-02-03",
+      status: "RESERVED",
+      slotType: "FREE",
+      adRewardId: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      idempotencyKey: "k4",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const request = new Request("http://localhost/api/create/reserve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idempotencyKey: "k4" }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.ok).toBe(true);
+    expect(payload.reservationId).toBe("existing");
+  });
+
+  it("returns existing reservation when ad slot create hits unique constraint", async () => {
+    const { POST } = await import("./route");
+    tx.slotReservation.count.mockResolvedValueOnce(1);
+    tx.dailySlotCounter.upsert.mockResolvedValueOnce({
+      dayKey: "2026-02-03",
+      freeLimit: 60,
+      adLimit: 10,
+      freeUsedCount: 0,
+      adUsedCount: 0,
+    });
+    tx.adReward.findFirst.mockResolvedValueOnce({
+      id: "reward",
+      userId: "user",
+      dayKey: "2026-02-03",
+      status: "GRANTED",
+      nonce: "nonce",
+      confirmIdempotencyKey: null,
+      grantedAt: new Date(),
+      usedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    tx.slotReservation.create.mockRejectedValueOnce({ code: "P2002" });
+    prisma.slotReservation.findUnique.mockResolvedValueOnce({
+      id: "existing-ad",
+      userId: "user",
+      dayKey: "2026-02-03",
+      status: "RESERVED",
+      slotType: "AD",
+      adRewardId: "reward",
+      expiresAt: new Date(Date.now() + 60_000),
+      idempotencyKey: "k5",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const request = new Request("http://localhost/api/create/reserve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idempotencyKey: "k5", adRewardId: "reward" }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.ok).toBe(true);
+    expect(payload.reservationId).toBe("existing-ad");
+    expect(payload.slotType).toBe("ad");
   });
 });
