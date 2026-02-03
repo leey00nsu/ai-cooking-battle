@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { getOpenAiPromptValidationInstructions } from "@/lib/prompts/prompt-templates";
 import { ProviderError } from "@/lib/providers/provider-error";
 
 const PROVIDER = "openai";
@@ -66,6 +67,23 @@ export type PromptValidationResult =
       normalizedPrompt?: string;
     };
 
+const PROMPT_VALIDATION_CATEGORIES: PromptValidationCategory[] = [
+  "OK",
+  "EMPTY",
+  "NON_FOOD",
+  "CHILD_SEXUAL",
+  "SEXUAL_EXPLICIT",
+  "VIOLENCE_GRAPHIC",
+  "HATE",
+  "ILLEGAL",
+  "REAL_PERSON",
+  "REAL_PERSON_SEXUAL",
+  "COPYRIGHT_CLEAR",
+  "COPYRIGHT_SUSPECTED",
+  "GRAY",
+  "OTHER",
+];
+
 export type PromptValidationRaw = {
   model: string;
   openAiResponseId: string | null;
@@ -85,55 +103,9 @@ async function callOpenAiForPromptValidation(
   const config = getOpenAiConfig();
   const client = new OpenAI({ apiKey: config.apiKey });
 
-  const instructions = [
-    "You validate user prompts for an AI cooking image generation app.",
-    "The final generated image must be a single plated dish photo: food on a plate.",
-    "You must follow the product policy below and return a decision.",
-    "",
-    "Policy (minimum):",
-    "- PROHIBITED (must BLOCK):",
-    "  - non-food / off-topic content (cannot reasonably produce a single plated dish photo: food on a plate)",
-    "  - child sexual content / sexual content involving minors",
-    "  - explicit sexual content",
-    "  - excessive graphic violence / gore",
-    "  - hate / discrimination incitement",
-    "  - illegal wrongdoing instructions or facilitation",
-    "  - sexual deepfake / sexual depiction of a real person",
-    "  - clear copyright infringement (e.g., exact protected characters/logos/style replication request)",
-    "- GRAY ZONE (ALLOW but warn):",
-    "  - mild violence, suggestive sexual content, potential hate/harassment, possible copyright issues, real-person depiction request (non-sexual).",
-    "",
-    "Return ONLY a JSON object that matches this schema:",
-    "{",
-    '  "decision": "ALLOW" | "BLOCK",',
-    '  "normalizedPrompt": string,',
-    `  "category": ${JSON.stringify([
-      "OK",
-      "EMPTY",
-      "NON_FOOD",
-      "CHILD_SEXUAL",
-      "SEXUAL_EXPLICIT",
-      "VIOLENCE_GRAPHIC",
-      "HATE",
-      "ILLEGAL",
-      "REAL_PERSON",
-      "REAL_PERSON_SEXUAL",
-      "COPYRIGHT_CLEAR",
-      "COPYRIGHT_SUSPECTED",
-      "GRAY",
-      "OTHER",
-    ])},`,
-    '  "fixGuide": string,',
-    '  "isGray": boolean',
-    "}",
-    'If decision is "ALLOW": set category="OK" and fixGuide="".',
-    'If decision is "BLOCK": category must be a value from the list above (not free-form) and fixGuide must be Korean.',
-    'If the prompt is non-food / off-topic: set decision="BLOCK", category="NON_FOOD", and fixGuide must ask for a plated-dish prompt (food on a plate).',
-    'If the prompt is GRAY ZONE: set decision="ALLOW", isGray=true, category="GRAY", and put a short Korean caution in fixGuide.',
-    "When blocking or warning, the fixGuide should suggest a safe alternative that results in a single plated dish photo.",
-    "The fixGuide should nudge users to include: dish name, ingredients, plating on a plate, camera angle, lighting, simple background.",
-    "Normalize whitespace in normalizedPrompt; keep meaning.",
-  ].join("\n");
+  const instructions = getOpenAiPromptValidationInstructions({
+    PROMPT_VALIDATION_CATEGORIES_JSON: JSON.stringify(PROMPT_VALIDATION_CATEGORIES),
+  });
 
   const response = await client.responses.create({
     model: config.model,
@@ -206,23 +178,7 @@ function toPromptValidationResult(
       : { ok: true, decision: "ALLOW", normalizedPrompt };
   }
 
-  const allowedCategories: PromptValidationCategory[] = [
-    "OK",
-    "EMPTY",
-    "NON_FOOD",
-    "CHILD_SEXUAL",
-    "SEXUAL_EXPLICIT",
-    "VIOLENCE_GRAPHIC",
-    "HATE",
-    "ILLEGAL",
-    "REAL_PERSON",
-    "REAL_PERSON_SEXUAL",
-    "COPYRIGHT_CLEAR",
-    "COPYRIGHT_SUSPECTED",
-    "GRAY",
-    "OTHER",
-  ];
-  const safeCategory = allowedCategories.includes(category as PromptValidationCategory)
+  const safeCategory = PROMPT_VALIDATION_CATEGORIES.includes(category as PromptValidationCategory)
     ? category
     : "OTHER";
 

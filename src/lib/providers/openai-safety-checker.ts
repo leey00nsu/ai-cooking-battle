@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { getOpenAiImageSafetyInstructions } from "@/lib/prompts/prompt-templates";
 import { ProviderError } from "@/lib/providers/provider-error";
 
 const PROVIDER = "openai";
@@ -102,29 +103,7 @@ export async function checkImageSafetyWithOpenAiWithRaw(args: {
   const config = getOpenAiConfig();
   const client = new OpenAI({ apiKey: config.apiKey });
 
-  const instructions = [
-    "You are a safety checker for an AI cooking image generation app.",
-    "The final generated image must be a single plated dish photo: food on a plate.",
-    "Your job: decide if the generated image is safe to show and matches the app scope.",
-    "",
-    "You MUST BLOCK if any of the following are present:",
-    "- explicit sexual content",
-    "- child sexual content or minors",
-    "- graphic violence / gore",
-    "- hate symbols / incitement",
-    "- clear illegal wrongdoing facilitation",
-    "- a real person in a sexual context",
-    "- non-food / off-topic image (not reasonably 'food on a plate')",
-    "",
-    "Return ONLY a JSON object with this schema:",
-    "{",
-    '  "decision": "ALLOW" | "BLOCK",',
-    '  "category": "OK" | "POLICY" | "NON_FOOD" | "OTHER",',
-    '  "reason": string',
-    "}",
-    'If decision is "ALLOW": category="OK" and reason="".',
-    'If decision is "BLOCK": reason must be Korean, concise, user-friendly.',
-  ].join("\n");
+  const instructions = getOpenAiImageSafetyInstructions();
 
   const response = await client.responses.create({
     model: config.model,

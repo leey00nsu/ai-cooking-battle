@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getPlatedDishSuffixEn } from "@/lib/prompts/prompt-templates";
 import { generateImageUrl } from "@/lib/providers/leesfield-image-generator";
 import { checkImageSafetyWithOpenAiWithRaw } from "@/lib/providers/openai-safety-checker";
 import { ProviderError } from "@/lib/providers/provider-error";
@@ -12,6 +13,14 @@ function safeUrlHost(url: string) {
   } catch {
     return "";
   }
+}
+
+function buildGenerationPrompt(userPrompt: string) {
+  const trimmed = userPrompt.trim();
+  if (!trimmed) {
+    return "";
+  }
+  return `${trimmed}\n\n${getPlatedDishSuffixEn()}`;
 }
 
 function isRetryableError(error: unknown) {
@@ -80,6 +89,7 @@ export async function processCreatePipelineRequest(requestId: string) {
   }
 
   let latestImageUrlForLog: string | null = createRequest.imageUrl?.trim() || null;
+  const generationPrompt = buildGenerationPrompt(prompt);
 
   try {
     const imageUrl =
@@ -92,7 +102,7 @@ export async function processCreatePipelineRequest(requestId: string) {
 
         console.log("[create-pipeline] leesfield start", { requestId: id });
         const generated = await generateImageUrl(
-          { prompt },
+          { prompt: generationPrompt },
           { timeoutMs: 180_000, pollIntervalMs: 1200 },
         );
         console.log("[create-pipeline] leesfield done", {
@@ -116,7 +126,10 @@ export async function processCreatePipelineRequest(requestId: string) {
     });
 
     console.log("[create-pipeline] safety start", { requestId: id });
-    const safetyChecked = await checkImageSafetyWithOpenAiWithRaw({ prompt, imageUrl });
+    const safetyChecked = await checkImageSafetyWithOpenAiWithRaw({
+      prompt: generationPrompt,
+      imageUrl,
+    });
     const safety = safetyChecked.result;
     console.log("[create-pipeline] safety done", { requestId: id, ok: safety.ok });
 
@@ -128,7 +141,7 @@ export async function processCreatePipelineRequest(requestId: string) {
           openAiResponseId: safetyChecked.raw.openAiResponseId,
           userId: createRequest.userId,
           createRequestId: id,
-          inputPrompt: prompt,
+          inputPrompt: generationPrompt || prompt,
           inputImageUrl: imageUrl,
           outputText: safetyChecked.raw.outputText,
           outputJson: safetyChecked.raw.outputJson as Prisma.InputJsonValue,
@@ -217,7 +230,7 @@ export async function processCreatePipelineRequest(requestId: string) {
             model: process.env.OPENAI_SAFETY_CHECK_MODEL?.trim() || "gpt-5.2-mini",
             userId: createRequest.userId,
             createRequestId: id,
-            inputPrompt: prompt,
+            inputPrompt: generationPrompt,
             inputImageUrl: latestImageUrlForLog,
             errorCode: error.code,
             errorStatus: error.status ?? null,

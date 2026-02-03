@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getPlatedDishSuffixEn } from "@/lib/prompts/prompt-templates";
 import { ProviderError } from "@/lib/providers/provider-error";
 
 const generateImageUrl = vi.fn();
@@ -48,6 +49,7 @@ describe("processCreatePipelineRequest", () => {
 
   it("creates dish and marks request DONE (happy path)", async () => {
     const { processCreatePipelineRequest } = await import("./create-pipeline-handler");
+    const generationPrompt = `피자\n\n${getPlatedDishSuffixEn()}`;
 
     prisma.createRequest.findUnique
       .mockResolvedValueOnce({
@@ -95,11 +97,13 @@ describe("processCreatePipelineRequest", () => {
     await processCreatePipelineRequest("req");
 
     expect(generateImageUrl).toHaveBeenCalledWith(
-      { prompt: "피자" },
+      {
+        prompt: generationPrompt,
+      },
       { timeoutMs: 180000, pollIntervalMs: 1200 },
     );
     expect(checkImageSafetyWithOpenAiWithRaw).toHaveBeenCalledWith({
-      prompt: "피자",
+      prompt: generationPrompt,
       imageUrl: "https://cdn.example/image.webp",
     });
     expect(prisma.openAiCallLog.create).toHaveBeenCalledWith({
@@ -108,7 +112,7 @@ describe("processCreatePipelineRequest", () => {
         model: "gpt-test",
         userId: "user",
         createRequestId: "req",
-        inputPrompt: "피자",
+        inputPrompt: generationPrompt,
         inputImageUrl: "https://cdn.example/image.webp",
       }),
     });
