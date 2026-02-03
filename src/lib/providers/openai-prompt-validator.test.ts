@@ -26,7 +26,7 @@ describe("openai-prompt-validator", () => {
     const result = await validatePromptWithOpenAi(" test ");
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.normalizedPrompt).toBe("ok");
+      expect(result.normalizedPrompt).toBe("test");
     }
   });
 

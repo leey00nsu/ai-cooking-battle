@@ -300,7 +300,7 @@ export function useCreateFlow() {
       try {
         generateResponse = await generateMutation.mutateAsync({
           reservationId: reserveResponse.reservationId,
-          prompt: validateResponse.normalizedPrompt,
+          prompt,
           idempotencyKey,
           signal: controller.signal,
         });

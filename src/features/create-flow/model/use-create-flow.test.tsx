@@ -76,4 +76,56 @@ describe("useCreateFlow", () => {
     expect(result.current.state.imageUrl).toBe("https://cdn.example/image.webp");
     expect(result.current.state.requestId).toBe("req");
   });
+
+  it("uses original prompt for generate (not normalizedPrompt)", async () => {
+    fetchJson
+      .mockResolvedValueOnce({
+        ok: true,
+        decision: "ALLOW",
+        normalizedPrompt: "가공된 프롬프트",
+        warnings: null,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        slotType: "free",
+        reservationId: "res",
+        expiresInSeconds: 300,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        requestId: "req",
+        status: "PROCESSING",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: "DONE",
+        dishId: "dish",
+        imageUrl: "https://cdn.example/image.webp",
+      });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    const { result } = renderHook(() => useCreateFlow(), { wrapper });
+    await result.current.start("원본 프롬프트");
+
+    await waitFor(() => {
+      expect(result.current.state.step).toBe("done");
+    });
+
+    const generateCall = fetchJson.mock.calls.find((call) => {
+      return typeof call[0] === "string" && String(call[0]).includes("/api/create/generate");
+    });
+    expect(generateCall).toBeTruthy();
+    const options = (generateCall?.[1] ?? {}) as { body?: string };
+    const payload = JSON.parse(options.body ?? "{}") as { prompt?: string };
+    expect(payload.prompt).toBe("원본 프롬프트");
+  });
 });

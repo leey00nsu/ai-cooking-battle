@@ -36,7 +36,9 @@
         "If the prompt is GRAY ZONE: set decision=\"ALLOW\", isGray=true, category=\"GRAY\", and put a short Korean caution in fixGuide.",
         "When blocking or warning, the fixGuide should suggest a safe alternative that results in a single plated dish photo.",
         "The fixGuide should nudge users to include: dish name, ingredients, plating on a plate, camera angle, lighting, simple background.",
-        "Normalize whitespace in normalizedPrompt; keep meaning."
+        "normalizedPrompt MUST be the user's input prompt with ONLY leading/trailing whitespace trimmed.",
+        "Do NOT rewrite, expand, translate, add ingredients, add plating/camera instructions, or add any new details.",
+        "If you want to suggest improvements, put them in fixGuide (Korean) and keep normalizedPrompt as-is."
       ]
     },
     "imageSafety": {

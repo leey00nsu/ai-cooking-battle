@@ -152,7 +152,9 @@ function toPromptValidationResult(
   record: Record<string, unknown>,
 ): PromptValidationResult {
   const decision = String(record.decision ?? "").toUpperCase();
-  const normalizedPrompt = String(record.normalizedPrompt ?? "").trim() || trimmedPrompt;
+  const normalizedPromptCandidate = String(record.normalizedPrompt ?? "").trim() || trimmedPrompt;
+  const normalizedPrompt =
+    normalizedPromptCandidate === trimmedPrompt ? normalizedPromptCandidate : trimmedPrompt;
   const category = String(record.category ?? "").trim() || "OTHER";
   const fixGuide = String(record.fixGuide ?? "").trim();
   const isGray = Boolean(record.isGray);
