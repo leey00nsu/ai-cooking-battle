@@ -1,9 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  createIdempotencyKey,
-  createRecoveryStorage,
-} from "@/features/create-flow/model/create-recovery";
+import { createIdempotencyKey } from "@/features/create-flow/model/create-recovery";
 import { createStepItems } from "@/features/create-flow/model/stepper-state";
 import type {
   CreateFlowState,
@@ -47,8 +44,6 @@ export function useCreateFlow() {
   const runIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
-  const recoveryKeyRef = useRef<string | null>(null);
-  const isRecoveringRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -118,8 +113,13 @@ export function useCreateFlow() {
       fetchJson<StatusResponse>(`/api/create/status?${query}`, { signal }),
   });
 
-  const recover = useCallback(
-    async (idempotencyKey: string) => {
+  const recoverByRequestId = useCallback(
+    async (requestId: string) => {
+      const trimmedRequestId = requestId.trim();
+      if (!trimmedRequestId) {
+        return;
+      }
+
       runIdRef.current += 1;
       const runId = runIdRef.current;
       abortRef.current?.abort();
@@ -129,97 +129,83 @@ export function useCreateFlow() {
       const isActive = () =>
         mountedRef.current && runIdRef.current === runId && !controller.signal.aborted;
 
-      isRecoveringRef.current = true;
       if (isActive()) {
         setState({
           step: "generating",
           errorMessage: null,
           errorStep: null,
-          requestId: null,
+          requestId: trimmedRequestId,
           imageUrl: null,
         });
       }
 
-      let statusResponse: StatusResponse;
-      try {
-        statusResponse = await statusMutation.mutateAsync({
-          query: `idempotencyKey=${encodeURIComponent(idempotencyKey)}`,
-          signal: controller.signal,
-        });
-      } catch (error) {
-        if ((error as DOMException).name === "AbortError") {
-          return;
-        }
-        const fetchError = error as FetchJsonError;
-        if (
-          fetchError?.status === 404 ||
-          fetchError?.status === 410 ||
-          fetchError?.code === "REQUEST_NOT_FOUND" ||
-          fetchError?.code === "RESERVATION_EXPIRED"
-        ) {
-          createRecoveryStorage.clear();
-          recoveryKeyRef.current = null;
+      const encodedRequestId = encodeURIComponent(trimmedRequestId);
+      while (true) {
+        let statusResponse: StatusResponse;
+        try {
+          statusResponse = await statusMutation.mutateAsync({
+            query: `requestId=${encodedRequestId}`,
+            signal: controller.signal,
+          });
+        } catch (error) {
+          if ((error as DOMException).name === "AbortError") {
+            return;
+          }
+          const fetchError = error as FetchJsonError;
+          if (
+            fetchError?.status === 404 ||
+            fetchError?.status === 410 ||
+            fetchError?.code === "REQUEST_NOT_FOUND" ||
+            fetchError?.code === "RESERVATION_EXPIRED"
+          ) {
+            if (isActive()) {
+              setState(initialState);
+            }
+            return;
+          }
           if (isActive()) {
-            setState(initialState);
+            setState({
+              step: "error",
+              errorMessage: "복구 요청 중 오류가 발생했습니다.",
+              errorStep: "generating",
+              requestId: trimmedRequestId,
+              imageUrl: null,
+            });
           }
           return;
         }
-        if (isActive()) {
-          setState({
-            step: "error",
-            errorMessage: "복구 요청 중 오류가 발생했습니다.",
-            errorStep: "generating",
-            requestId: null,
-            imageUrl: null,
-          });
-        }
-        return;
-      }
 
-      if (!statusResponse.ok) {
-        if (
-          statusResponse.code === "REQUEST_NOT_FOUND" ||
-          statusResponse.code === "RESERVATION_EXPIRED"
-        ) {
-          createRecoveryStorage.clear();
-          recoveryKeyRef.current = null;
+        if (!statusResponse.ok) {
+          if (isActive()) {
+            setState({
+              step: "error",
+              errorMessage: statusResponse.message ?? "복구 요청에 실패했습니다.",
+              errorStep: "generating",
+              requestId: trimmedRequestId,
+              imageUrl: null,
+            });
+          }
+          return;
         }
-        if (isActive()) {
-          setState({
-            step: "error",
-            errorMessage: statusResponse.message ?? "복구 요청에 실패했습니다.",
-            errorStep: "generating",
-            requestId: null,
-            imageUrl: null,
-          });
+
+        if (!isActive()) {
+          return;
         }
-        return;
-      }
 
-      if (!isActive()) {
-        return;
-      }
-
-      if (statusResponse.status === "DONE") {
         setState({
-          step: "done",
+          step: mapStatusToStep(statusResponse.status),
           errorMessage: null,
           errorStep: null,
-          requestId: null,
+          requestId: trimmedRequestId,
           imageUrl: statusResponse.imageUrl,
         });
-        createRecoveryStorage.clear();
-        recoveryKeyRef.current = null;
-        return;
-      }
 
-      setState({
-        step: mapStatusToStep(statusResponse.status),
-        errorMessage: null,
-        errorStep: null,
-        requestId: null,
-        imageUrl: statusResponse.imageUrl,
-      });
+        if (statusResponse.status === "DONE") {
+          return;
+        }
+
+        await sleep(1200);
+      }
     },
     [statusMutation],
   );
@@ -260,9 +246,7 @@ export function useCreateFlow() {
         });
       }
 
-      const idempotencyKey = recoveryKeyRef.current ?? createIdempotencyKey();
-      recoveryKeyRef.current = idempotencyKey;
-      createRecoveryStorage.save(idempotencyKey);
+      const idempotencyKey = createIdempotencyKey();
 
       let validateResponse: ValidateResponse;
       try {
@@ -341,11 +325,6 @@ export function useCreateFlow() {
         }));
       }
 
-      if (generateResponse.requestId) {
-        recoveryKeyRef.current = idempotencyKey;
-        createRecoveryStorage.save(idempotencyKey);
-      }
-
       const requestId = encodeURIComponent(generateResponse.requestId);
       while (true) {
         let statusResponse: StatusResponse;
@@ -378,8 +357,6 @@ export function useCreateFlow() {
         }
 
         if (statusResponse.status === "DONE") {
-          createRecoveryStorage.clear();
-          recoveryKeyRef.current = null;
           return;
         }
 
@@ -391,23 +368,19 @@ export function useCreateFlow() {
 
   const reset = useCallback(() => {
     setState(initialState);
-    createRecoveryStorage.clear();
-    recoveryKeyRef.current = null;
   }, []);
 
   useEffect(() => {
     if (mountedRef.current) {
       setState(initialState);
     }
-    createRecoveryStorage.clear();
-    recoveryKeyRef.current = null;
   }, []);
 
   return {
     state,
     steps,
     start,
-    recover,
+    recoverByRequestId,
     reset,
   };
 }

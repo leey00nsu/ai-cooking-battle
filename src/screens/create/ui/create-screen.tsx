@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { SlotSummary } from "@/entities/slot/model/types";
 import { useCreateFlow } from "@/features/create-flow/model/use-create-flow";
@@ -44,7 +44,8 @@ const fallbackSteps: StepItem[] = [
 ];
 
 export default function CreateScreen() {
-  const { state, steps, start } = useCreateFlow();
+  const { state, steps, start, recoverByRequestId } = useCreateFlow();
+  const hasAutoRecoveredRef = useRef(false);
   const [adRewardId, setAdRewardId] = useState<string | null>(null);
   const {
     data: slotSummary,
@@ -81,8 +82,54 @@ export default function CreateScreen() {
         : "오늘 무료 슬롯을 사용 가능합니다";
 
   const handleFormSubmit = (data: CreateFormValues) => {
+    hasAutoRecoveredRef.current = false;
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.hash) {
+        url.hash = "";
+        window.history.replaceState(null, "", url);
+      }
+    }
     void start(data.prompt, { adRewardId: adRewardId ?? undefined });
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (hasAutoRecoveredRef.current) {
+      return;
+    }
+    const hash = window.location.hash.replace(/^#/, "").trim();
+    if (!hash) {
+      return;
+    }
+    const params = new URLSearchParams(hash);
+    const requestId = (params.get("requestId") ?? "").trim();
+    if (!requestId) {
+      return;
+    }
+
+    hasAutoRecoveredRef.current = true;
+    void recoverByRequestId(requestId);
+  }, [recoverByRequestId]);
+
+  useEffect(() => {
+    const requestId = state.requestId?.trim() ?? "";
+    if (!requestId) {
+      return;
+    }
+    if (typeof window === "undefined") {
+      return;
+    }
+    const url = new URL(window.location.href);
+    const current = new URLSearchParams(url.hash.replace(/^#/, "")).get("requestId") ?? "";
+    if (current === requestId) {
+      return;
+    }
+    url.hash = `requestId=${encodeURIComponent(requestId)}`;
+    window.history.replaceState(null, "", url);
+  }, [state.requestId]);
 
   useEffect(() => {
     if (!adRewardId) {
