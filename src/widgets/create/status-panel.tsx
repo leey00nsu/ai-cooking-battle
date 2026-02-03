@@ -1,4 +1,5 @@
 import { AlertCircle, Check, LoaderCircleIcon } from "lucide-react";
+import { resolveActiveStep } from "@/features/create-flow/model/stepper-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import {
   Stepper,
@@ -23,18 +24,6 @@ type StatusPanelProps = {
   errorMessage?: string;
   steps: StepItem[];
 };
-
-function resolveActiveStep(steps: StepItem[]) {
-  const activeIndex = steps.findIndex((step) => step.status === "active");
-  const errorIndex = steps.findIndex((step) => step.status === "error");
-  if (activeIndex >= 0) {
-    return activeIndex + 1;
-  }
-  if (errorIndex >= 0) {
-    return errorIndex + 1;
-  }
-  return steps.length > 0 ? steps.length : 1;
-}
 
 export default function StatusPanel({ errorMessage, steps }: StatusPanelProps) {
   const activeStep = resolveActiveStep(steps);

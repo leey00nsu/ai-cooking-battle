@@ -1,7 +1,14 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import { Zap } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import type { SlotSummary } from "@/entities/slot/model/types";
 import { useCreateFlow } from "@/features/create-flow/model/use-create-flow";
+import AdRewardCard from "@/screens/create/ui/ad-reward-card";
+import { fetchJson } from "@/shared/lib/fetch-json";
+import { ADS_ENABLED } from "@/shared/lib/slot-policy";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -38,6 +45,16 @@ const fallbackSteps: StepItem[] = [
 
 export default function CreateScreen() {
   const { state, steps, start } = useCreateFlow();
+  const [adRewardId, setAdRewardId] = useState<string | null>(null);
+  const {
+    data: slotSummary,
+    isError: isSlotSummaryError,
+    isPending: isSlotSummaryLoading,
+    refetch: refetchSlotSummary,
+  } = useQuery<SlotSummary>({
+    queryKey: ["slots", "summary"],
+    queryFn: () => fetchJson<SlotSummary>("/api/slots/summary"),
+  });
   const {
     register,
     handleSubmit,
@@ -52,10 +69,36 @@ export default function CreateScreen() {
   const promptLength = promptValue.length;
   const promptError = errors.prompt?.message;
   const isProcessing = ["validating", "reserving", "generating", "safety"].includes(state.step);
+  const freeLimit = slotSummary?.freeLimit;
+  const freeUsedCount = slotSummary?.freeUsedCount;
+  const hasUsedFreeSlotToday = slotSummary?.hasUsedFreeSlotToday;
+  const freeSlotCaption = isSlotSummaryError
+    ? "오늘 무료 슬롯 상태를 확인할 수 없습니다."
+    : isSlotSummaryLoading
+      ? "오늘 무료 슬롯 상태를 불러오는 중입니다."
+      : hasUsedFreeSlotToday
+        ? "오늘 무료 슬롯을 이미 사용했습니다"
+        : "오늘 무료 슬롯을 사용 가능합니다";
 
   const handleFormSubmit = (data: CreateFormValues) => {
-    void start(data.prompt);
+    void start(data.prompt, { adRewardId: adRewardId ?? undefined });
   };
+
+  useEffect(() => {
+    if (!adRewardId) {
+      return;
+    }
+    if (["generating", "safety", "done"].includes(state.step)) {
+      setAdRewardId(null);
+    }
+  }, [adRewardId, state.step]);
+
+  useEffect(() => {
+    if (!["idle", "done", "error"].includes(state.step)) {
+      return;
+    }
+    void refetchSlotSummary();
+  }, [refetchSlotSummary, state.step]);
 
   return (
     <div className="bg-background text-foreground">
@@ -64,9 +107,17 @@ export default function CreateScreen() {
           <section className="flex flex-col gap-6 lg:col-span-7">
             <div className="flex items-center justify-between">
               <h2 className="text-3xl font-bold tracking-tight">Chef&apos;s Station</h2>
-              <span className="rounded-full border border-white/10 bg-card/60 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
-                Prompt Guide
-              </span>
+              <div className="rounded-2xl border border-white/10 bg-card/60 px-4 py-2">
+                <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
+                  <Zap className="h-3.5 w-3.5 text-orange-400" />
+                  {isSlotSummaryError
+                    ? "Today Slots --/--"
+                    : isSlotSummaryLoading
+                      ? "Today Slots Loading..."
+                      : `Today Slots ${freeUsedCount}/${freeLimit}`}
+                </div>
+                <p className="mt-1 text-[10px] text-white/55">{freeSlotCaption}</p>
+              </div>
             </div>
 
             <form className="flex flex-col gap-6" onSubmit={handleSubmit(handleFormSubmit)}>
@@ -75,9 +126,14 @@ export default function CreateScreen() {
                   <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
                     Dish Prompt
                   </CardTitle>
-                  <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
-                    {promptLength} / 500
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full border border-white/10 bg-card/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                      Prompt Guide
+                    </span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                      {promptLength} / 500
+                    </span>
+                  </div>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <Textarea
@@ -117,17 +173,7 @@ export default function CreateScreen() {
               </Button>
             </form>
 
-            <Card className="relative overflow-hidden" tone="accent">
-              <CardContent className="py-6">
-                <div className="relative z-10">
-                  <h3 className="text-lg font-bold">Out of credits?</h3>
-                  <p className="mt-2 text-sm text-white/60">
-                    Watch a short ad to refuel your kitchen with +1 Generation Slot.
-                  </p>
-                </div>
-                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
-              </CardContent>
-            </Card>
+            {ADS_ENABLED ? <AdRewardCard onRewardGranted={setAdRewardId} /> : null}
           </section>
 
           <aside className="flex flex-col gap-6 lg:col-span-5">

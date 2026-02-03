@@ -20,6 +20,9 @@ model User {
   termsAcceptedVersion String?
   sessions             Session[]
   accounts             Account[]
+  slotReservations     SlotReservation[]
+  adRewards            AdReward[]
+  createRequests       CreateRequest[]
 
   @@map("user")
 }
@@ -71,4 +74,108 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+enum SlotReservationStatus {
+  RESERVED
+  CONFIRMED
+  EXPIRED
+  FAILED
+}
+
+enum SlotType {
+  FREE
+  AD
+}
+
+enum AdRewardStatus {
+  PENDING
+  GRANTED
+  USED
+  EXPIRED
+}
+
+enum CreateRequestStatus {
+  VALIDATING
+  RESERVING
+  GENERATING
+  SAFETY
+  DONE
+  FAILED
+}
+
+model DailySlotCounter {
+  dayKey        String   @id
+  freeLimit     Int      @default(60)
+  adLimit       Int      @default(0)
+  freeUsedCount Int      @default(0)
+  adUsedCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("daily_slot_counter")
+}
+
+model SlotReservation {
+  id             String                @id @default(cuid())
+  userId         String
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayKey         String
+  status         SlotReservationStatus
+  slotType       SlotType
+  adRewardId     String?
+  adReward       AdReward?             @relation(fields: [adRewardId], references: [id], onDelete: SetNull)
+  createRequests CreateRequest[]
+  expiresAt      DateTime
+  idempotencyKey String
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId])
+  @@index([dayKey])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("slot_reservation")
+}
+
+model AdReward {
+  id                     String         @id @default(cuid())
+  userId                 String
+  user                   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayKey                 String
+  status                 AdRewardStatus
+  nonce                  String         @unique
+  confirmIdempotencyKey  String?
+  grantedAt              DateTime?
+  usedAt                 DateTime?
+  expiresAt              DateTime?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  slotReservations       SlotReservation[]
+
+  @@unique([userId, confirmIdempotencyKey])
+  @@index([userId])
+  @@index([dayKey])
+  @@index([status])
+  @@map("ad_reward")
+}
+
+model CreateRequest {
+  id             String              @id @default(cuid())
+  userId         String
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idempotencyKey String
+  reservationId  String
+  reservation    SlotReservation     @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  status         CreateRequestStatus
+  imageUrl       String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId])
+  @@index([reservationId])
+  @@index([status])
+  @@map("create_request")
 }

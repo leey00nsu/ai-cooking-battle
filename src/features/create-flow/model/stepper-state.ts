@@ -138,3 +138,15 @@ export const createStepItems = (
     status: resolveStatus(stepIndex, index, step, errorStep ?? null),
   }));
 };
+
+export const resolveActiveStep = (steps: CreateStepItem[]) => {
+  const activeIndex = steps.findIndex((step) => step.status === "active");
+  const errorIndex = steps.findIndex((step) => step.status === "error");
+  if (activeIndex >= 0) {
+    return activeIndex + 1;
+  }
+  if (errorIndex >= 0) {
+    return errorIndex + 1;
+  }
+  return steps.length > 0 ? 1 : 0;
+};
