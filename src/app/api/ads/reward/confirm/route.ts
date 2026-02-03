@@ -77,7 +77,14 @@ export async function POST(request: Request) {
       id: reward.id,
       nonce,
       userId,
-      OR: [{ confirmIdempotencyKey: null }, { confirmIdempotencyKey: idempotencyKey }],
+      AND: [
+        {
+          OR: [{ confirmIdempotencyKey: null }, { confirmIdempotencyKey: idempotencyKey }],
+        },
+        {
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+      ],
     },
     data: {
       status: "GRANTED",
@@ -87,16 +94,66 @@ export async function POST(request: Request) {
   });
 
   if (count === 0) {
+    const latestNonExpired = await prisma.adReward.findFirst({
+      where: {
+        id: reward.id,
+        nonce,
+        userId,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+    });
+
+    if (latestNonExpired?.confirmIdempotencyKey === idempotencyKey) {
+      return NextResponse.json({
+        ok: true,
+        rewardId: latestNonExpired.id,
+        status: latestNonExpired.status,
+      });
+    }
+
     const latest = await prisma.adReward.findFirst({
       where: { id: reward.id, nonce, userId },
     });
 
-    if (latest?.confirmIdempotencyKey === idempotencyKey) {
+    if (!latest) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "REWARD_NOT_FOUND",
+          message: "Reward not found.",
+        },
+        { status: 404 },
+      );
+    }
+
+    if (latest.confirmIdempotencyKey === idempotencyKey) {
       return NextResponse.json({
         ok: true,
         rewardId: latest.id,
         status: latest.status,
       });
+    }
+
+    if (latest.confirmIdempotencyKey && latest.confirmIdempotencyKey !== idempotencyKey) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "IDEMPOTENCY_CONFLICT",
+          message: "Idempotency key already used.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (latest.expiresAt && latest.expiresAt.getTime() <= now.getTime()) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "REWARD_EXPIRED",
+          message: "Reward expired.",
+        },
+        { status: 410 },
+      );
     }
 
     return NextResponse.json(
