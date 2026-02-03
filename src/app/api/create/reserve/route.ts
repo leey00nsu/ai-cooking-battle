@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getGuestUserId } from "@/lib/guest-user";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { reclaimSlotReservation } from "@/lib/slot-recovery";
 import { formatDayKeyForKST } from "@/shared/lib/day-key";
@@ -46,7 +46,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const userId = await getGuestUserId();
+  const session = await auth.api.getSession({ headers: request.headers });
+  const userId = session?.user?.id?.toString().trim() ?? "";
+  if (!userId) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "UNAUTHORIZED",
+        message: "로그인이 필요합니다.",
+      },
+      { status: 401 },
+    );
+  }
   const dayKey = formatDayKeyForKST();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + RESERVATION_TTL_MS);

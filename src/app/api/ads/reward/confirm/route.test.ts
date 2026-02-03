@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const getGuestUserId = vi.fn(async () => "guest");
+const getSessionMock = vi.fn(async () => ({ user: { id: "user" } }));
 const prisma = {
   adReward: {
     findFirst: vi.fn(),
@@ -9,7 +9,13 @@ const prisma = {
   },
 };
 
-vi.mock("@/lib/guest-user", () => ({ getGuestUserId }));
+vi.mock("@/lib/auth", () => ({
+  auth: {
+    api: {
+      getSession: getSessionMock,
+    },
+  },
+}));
 vi.mock("@/lib/prisma", () => ({ prisma }));
 
 describe("POST /api/ads/reward/confirm", () => {

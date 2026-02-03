@@ -167,6 +167,7 @@ model CreateRequest {
   userId         String
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   idempotencyKey String
+  prompt         String?
   reservationId  String
   reservation    SlotReservation     @relation(fields: [reservationId], references: [id], onDelete: Restrict)
   status         CreateRequestStatus
@@ -209,6 +210,7 @@ model DishDayScore {
   updatedAt  DateTime @updatedAt
 
   @@unique([dishId, dayKey])
+  @@index([dishId])
   @@index([dayKey])
   @@map("dish_day_score")
 }

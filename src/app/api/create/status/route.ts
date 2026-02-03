@@ -1,9 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getGuestUserId } from "@/lib/guest-user";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasReservationExpired, reclaimSlotReservation } from "@/lib/slot-recovery";
 
 const AUTO_COMPLETE_MS = 1000;
+
+export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const requestId = request.nextUrl.searchParams.get("requestId");
@@ -20,10 +22,21 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const userId = await getGuestUserId();
+  const session = await auth.api.getSession({ headers: request.headers });
+  const userId = session?.user?.id?.toString().trim() ?? "";
+  if (!userId) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "UNAUTHORIZED",
+        message: "로그인이 필요합니다.",
+      },
+      { status: 401 },
+    );
+  }
 
   const createRequest = requestId
-    ? await prisma.createRequest.findUnique({ where: { id: requestId } })
+    ? await prisma.createRequest.findFirst({ where: { id: requestId, userId } })
     : await prisma.createRequest.findUnique({
         where: {
           userId_idempotencyKey: {

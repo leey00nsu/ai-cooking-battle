@@ -2,6 +2,7 @@ import { PgBoss, type StopOptions } from "pg-boss";
 
 type PgBossGlobal = typeof globalThis & {
   __pgBoss?: PgBoss | undefined;
+  __pgBossStartPromise?: Promise<PgBoss> | undefined;
 };
 
 function getDatabaseUrl() {
@@ -21,9 +22,14 @@ export function getPgBoss(): PgBoss {
 }
 
 export async function startPgBoss(): Promise<PgBoss> {
+  const globalForBoss = globalThis as PgBossGlobal;
+  if (globalForBoss.__pgBossStartPromise) {
+    return await globalForBoss.__pgBossStartPromise;
+  }
+
   const boss = getPgBoss();
-  await boss.start();
-  return boss;
+  globalForBoss.__pgBossStartPromise = boss.start().then(() => boss);
+  return await globalForBoss.__pgBossStartPromise;
 }
 
 export async function stopPgBoss(options?: StopOptions) {
@@ -34,4 +40,5 @@ export async function stopPgBoss(options?: StopOptions) {
   }
   await boss.stop(options);
   globalForBoss.__pgBoss = undefined;
+  globalForBoss.__pgBossStartPromise = undefined;
 }
