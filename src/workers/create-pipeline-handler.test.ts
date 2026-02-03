@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProviderError } from "@/lib/providers/provider-error";
 
 const generateImageUrl = vi.fn();
-const checkImageSafetyWithOpenAi = vi.fn();
+const checkImageSafetyWithOpenAiWithRaw = vi.fn();
 const markReservationFailed = vi.fn();
 const formatDayKeyForKST = vi.fn(() => "2026-02-03");
 
@@ -17,6 +17,9 @@ const prisma = {
   dishDayScore: {
     create: vi.fn(),
   },
+  openAiCallLog: {
+    create: vi.fn(),
+  },
   $transaction: vi.fn(async (fn: (tx: typeof prisma) => Promise<void>) => await fn(prisma)),
 };
 
@@ -25,7 +28,7 @@ vi.mock("@/lib/providers/leesfield-image-generator", () => ({
 }));
 
 vi.mock("@/lib/providers/openai-safety-checker", () => ({
-  checkImageSafetyWithOpenAi,
+  checkImageSafetyWithOpenAiWithRaw,
 }));
 
 vi.mock("@/lib/slot-recovery", () => ({
@@ -78,7 +81,15 @@ describe("processCreatePipelineRequest", () => {
       width: 1024,
       height: 1024,
     });
-    checkImageSafetyWithOpenAi.mockResolvedValueOnce({ ok: true });
+    checkImageSafetyWithOpenAiWithRaw.mockResolvedValueOnce({
+      result: { ok: true },
+      raw: {
+        model: "gpt-test",
+        openAiResponseId: "resp",
+        outputText: '{"decision":"ALLOW"}',
+        outputJson: { decision: "ALLOW" },
+      },
+    });
     prisma.dish.create.mockResolvedValueOnce({ id: "dish" });
 
     await processCreatePipelineRequest("req");
@@ -87,9 +98,19 @@ describe("processCreatePipelineRequest", () => {
       { prompt: "피자" },
       { timeoutMs: 180000, pollIntervalMs: 1200 },
     );
-    expect(checkImageSafetyWithOpenAi).toHaveBeenCalledWith({
+    expect(checkImageSafetyWithOpenAiWithRaw).toHaveBeenCalledWith({
       prompt: "피자",
       imageUrl: "https://cdn.example/image.webp",
+    });
+    expect(prisma.openAiCallLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        kind: "IMAGE_SAFETY",
+        model: "gpt-test",
+        userId: "user",
+        createRequestId: "req",
+        inputPrompt: "피자",
+        inputImageUrl: "https://cdn.example/image.webp",
+      }),
     });
 
     expect(prisma.dish.create).toHaveBeenCalledWith({
@@ -134,10 +155,14 @@ describe("processCreatePipelineRequest", () => {
       },
     });
 
-    checkImageSafetyWithOpenAi.mockResolvedValueOnce({
-      ok: false,
-      category: "POLICY",
-      reason: "차단",
+    checkImageSafetyWithOpenAiWithRaw.mockResolvedValueOnce({
+      result: { ok: false, category: "POLICY", reason: "차단" },
+      raw: {
+        model: "gpt-test",
+        openAiResponseId: "resp",
+        outputText: '{"decision":"BLOCK"}',
+        outputJson: { decision: "BLOCK" },
+      },
     });
 
     await processCreatePipelineRequest("req");
@@ -145,6 +170,7 @@ describe("processCreatePipelineRequest", () => {
     expect(generateImageUrl).not.toHaveBeenCalled();
     expect(prisma.dish.create).not.toHaveBeenCalled();
     expect(markReservationFailed).toHaveBeenCalled();
+    expect(prisma.openAiCallLog.create).toHaveBeenCalled();
     expect(prisma.createRequest.update).toHaveBeenCalledWith({
       where: { id: "req" },
       data: { status: "FAILED" },
@@ -179,6 +205,7 @@ describe("processCreatePipelineRequest", () => {
       where: { id: "req" },
       data: { status: "FAILED" },
     });
+    expect(prisma.openAiCallLog.create).not.toHaveBeenCalled();
     expect(markReservationFailed).not.toHaveBeenCalled();
   });
 });

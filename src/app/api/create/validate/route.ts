@@ -1,6 +1,8 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { validatePromptWithOpenAi } from "@/lib/providers/openai-prompt-validator";
+import { prisma } from "@/lib/prisma";
+import { validatePromptWithOpenAiWithRaw } from "@/lib/providers/openai-prompt-validator";
 import { ProviderError } from "@/lib/providers/provider-error";
 import { checkRateLimit } from "@/lib/rate-limit/user-rate-limit";
 
@@ -73,7 +75,30 @@ export async function POST(request: Request) {
       promptPreview: sanitizePreview(prompt),
     });
 
-    const result = await validatePromptWithOpenAi(prompt);
+    const validated = await validatePromptWithOpenAiWithRaw(prompt);
+    const result = validated.result;
+
+    try {
+      await prisma.openAiCallLog.create({
+        data: {
+          kind: "PROMPT_VALIDATE",
+          model: validated.raw.model,
+          openAiResponseId: validated.raw.openAiResponseId,
+          userId,
+          inputPrompt: prompt,
+          outputText: validated.raw.outputText,
+          outputJson: validated.raw.outputJson as Prisma.InputJsonValue,
+          decision: result.decision,
+          category: result.ok ? "OK" : result.category,
+          reason: result.ok ? null : result.fixGuide,
+        },
+      });
+    } catch (logError) {
+      console.warn("[create.validate] failed to persist openai call log", {
+        error: logError instanceof Error ? logError.message : String(logError),
+      });
+    }
+
     if (result.ok) {
       const warnings =
         result.warnings?.map((warning) => ({
@@ -120,6 +145,25 @@ export async function POST(request: Request) {
         status: error.status ?? null,
         message: error.message,
       });
+
+      try {
+        await prisma.openAiCallLog.create({
+          data: {
+            kind: "PROMPT_VALIDATE",
+            model: process.env.OPENAI_PROMPT_VALIDATION_MODEL?.trim() || "gpt-5.2-mini",
+            userId,
+            inputPrompt: prompt,
+            errorCode: error.code,
+            errorStatus: error.status ?? null,
+            errorMessage: error.message,
+          },
+        });
+      } catch (logError) {
+        console.warn("[create.validate] failed to persist openai error log", {
+          error: logError instanceof Error ? logError.message : String(logError),
+        });
+      }
+
       return NextResponse.json(
         {
           ok: false,

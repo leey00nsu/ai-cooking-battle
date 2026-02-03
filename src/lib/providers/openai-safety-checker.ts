@@ -43,10 +43,52 @@ export type SafetyCheckResult =
 
 type SafetyBlockCategory = "POLICY" | "NON_FOOD" | "OTHER";
 
-export async function checkImageSafetyWithOpenAi(args: {
+export type SafetyCheckRaw = {
+  model: string;
+  openAiResponseId: string | null;
+  outputText: string;
+  outputJson: unknown;
+};
+
+type SafetyCheckWithRaw = {
+  result: SafetyCheckResult;
+  raw: SafetyCheckRaw;
+};
+
+function toSafetyResult(rawOutput: unknown): SafetyCheckResult {
+  if (!rawOutput || typeof rawOutput !== "object") {
+    throw new ProviderError({
+      provider: PROVIDER,
+      code: "INVALID_RESPONSE",
+      message: "[openai] Invalid JSON output for safety check.",
+    });
+  }
+
+  const record = rawOutput as Record<string, unknown>;
+  const decision = String(record.decision ?? "").toUpperCase();
+  const categoryRaw = String(record.category ?? "")
+    .trim()
+    .toUpperCase();
+  const reason = String(record.reason ?? "").trim();
+
+  if (decision === "ALLOW") {
+    return { ok: true };
+  }
+
+  const category: SafetyBlockCategory =
+    categoryRaw === "NON_FOOD" ? "NON_FOOD" : categoryRaw === "POLICY" ? "POLICY" : "OTHER";
+
+  return {
+    ok: false,
+    category,
+    reason: reason || "안전 정책에 따라 해당 이미지는 표시할 수 없습니다.",
+  };
+}
+
+export async function checkImageSafetyWithOpenAiWithRaw(args: {
   prompt: string;
   imageUrl: string;
-}): Promise<SafetyCheckResult> {
+}): Promise<SafetyCheckWithRaw> {
   const prompt = args.prompt.trim();
   const imageUrl = args.imageUrl.trim();
   if (!prompt || !imageUrl) {
@@ -113,31 +155,22 @@ export async function checkImageSafetyWithOpenAi(args: {
     });
   }
 
-  if (!parsed || typeof parsed !== "object") {
-    throw new ProviderError({
-      provider: PROVIDER,
-      code: "INVALID_RESPONSE",
-      message: "[openai] Invalid JSON output for safety check.",
-    });
-  }
-
-  const record = parsed as Record<string, unknown>;
-  const decision = String(record.decision ?? "").toUpperCase();
-  const categoryRaw = String(record.category ?? "")
-    .trim()
-    .toUpperCase();
-  const reason = String(record.reason ?? "").trim();
-
-  if (decision === "ALLOW") {
-    return { ok: true };
-  }
-
-  const category: SafetyBlockCategory =
-    categoryRaw === "NON_FOOD" ? "NON_FOOD" : categoryRaw === "POLICY" ? "POLICY" : "OTHER";
-
+  const result = toSafetyResult(parsed);
   return {
-    ok: false,
-    category,
-    reason: reason || "안전 정책에 따라 해당 이미지는 표시할 수 없습니다.",
+    result,
+    raw: {
+      model: config.model,
+      openAiResponseId: (response as { id?: string | null })?.id?.toString() ?? null,
+      outputText,
+      outputJson: parsed,
+    },
   };
+}
+
+export async function checkImageSafetyWithOpenAi(args: {
+  prompt: string;
+  imageUrl: string;
+}): Promise<SafetyCheckResult> {
+  const { result } = await checkImageSafetyWithOpenAiWithRaw(args);
+  return result;
 }

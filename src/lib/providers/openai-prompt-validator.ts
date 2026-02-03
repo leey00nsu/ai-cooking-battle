@@ -66,12 +66,22 @@ export type PromptValidationResult =
       normalizedPrompt?: string;
     };
 
-export async function validatePromptWithOpenAi(prompt: string): Promise<PromptValidationResult> {
-  const trimmed = prompt.trim();
-  if (!trimmed) {
-    return { ok: false, decision: "BLOCK", category: "EMPTY", fixGuide: "프롬프트를 입력하세요." };
-  }
+export type PromptValidationRaw = {
+  model: string;
+  openAiResponseId: string | null;
+  outputText: string;
+  outputJson: unknown;
+};
 
+type PromptValidationWithRaw = {
+  result: PromptValidationResult;
+  raw: PromptValidationRaw;
+};
+
+async function callOpenAiForPromptValidation(
+  prompt: string,
+): Promise<{ raw: PromptValidationRaw; record: Record<string, unknown> }> {
+  const trimmed = prompt.trim();
   const config = getOpenAiConfig();
   const client = new OpenAI({ apiKey: config.apiKey });
 
@@ -154,9 +164,23 @@ export async function validatePromptWithOpenAi(prompt: string): Promise<PromptVa
     });
   }
 
-  const record = parsed as Record<string, unknown>;
+  return {
+    raw: {
+      model: config.model,
+      openAiResponseId: (response as { id?: string | null })?.id?.toString() ?? null,
+      outputText,
+      outputJson: parsed,
+    },
+    record: parsed as Record<string, unknown>,
+  };
+}
+
+function toPromptValidationResult(
+  trimmedPrompt: string,
+  record: Record<string, unknown>,
+): PromptValidationResult {
   const decision = String(record.decision ?? "").toUpperCase();
-  const normalizedPrompt = String(record.normalizedPrompt ?? "").trim() || trimmed;
+  const normalizedPrompt = String(record.normalizedPrompt ?? "").trim() || trimmedPrompt;
   const category = String(record.category ?? "").trim() || "OTHER";
   const fixGuide = String(record.fixGuide ?? "").trim();
   const isGray = Boolean(record.isGray);
@@ -213,4 +237,40 @@ export async function validatePromptWithOpenAi(prompt: string): Promise<PromptVa
         : "접시 위에 올라간 음식 사진이 나오도록 안전하게 다시 작성해 주세요."),
     normalizedPrompt,
   };
+}
+
+export async function validatePromptWithOpenAiWithRaw(
+  prompt: string,
+): Promise<PromptValidationWithRaw> {
+  const trimmed = prompt.trim();
+  if (!trimmed) {
+    return {
+      result: {
+        ok: false,
+        decision: "BLOCK",
+        category: "EMPTY",
+        fixGuide: "프롬프트를 입력하세요.",
+      },
+      raw: {
+        model: process.env.OPENAI_PROMPT_VALIDATION_MODEL?.trim() || "gpt-5.2-mini",
+        openAiResponseId: null,
+        outputText: "",
+        outputJson: { decision: "BLOCK", category: "EMPTY" },
+      },
+    };
+  }
+
+  const { raw, record } = await callOpenAiForPromptValidation(trimmed);
+  const result = toPromptValidationResult(trimmed, record);
+  return { result, raw };
+}
+
+export async function validatePromptWithOpenAi(prompt: string): Promise<PromptValidationResult> {
+  const trimmed = prompt.trim();
+  if (!trimmed) {
+    return { ok: false, decision: "BLOCK", category: "EMPTY", fixGuide: "프롬프트를 입력하세요." };
+  }
+
+  const { record } = await callOpenAiForPromptValidation(trimmed);
+  return toPromptValidationResult(trimmed, record);
 }

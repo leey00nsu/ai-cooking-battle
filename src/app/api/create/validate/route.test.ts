@@ -1,11 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { ProviderError } from "@/lib/providers/provider-error";
 
-const validatePromptWithOpenAi = vi.fn();
+const validatePromptWithOpenAiWithRaw = vi.fn();
 const getSessionMock = vi.fn();
+const prisma = {
+  openAiCallLog: {
+    create: vi.fn(),
+  },
+};
 
 vi.mock("@/lib/providers/openai-prompt-validator", () => ({
-  validatePromptWithOpenAi,
+  validatePromptWithOpenAiWithRaw,
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -15,6 +20,8 @@ vi.mock("@/lib/auth", () => ({
     },
   },
 }));
+
+vi.mock("@/lib/prisma", () => ({ prisma }));
 
 describe("POST /api/create/validate", () => {
   it("returns 400 when prompt is missing", async () => {
@@ -37,10 +44,14 @@ describe("POST /api/create/validate", () => {
   it("returns allow result", async () => {
     const { POST } = await import("./route");
     getSessionMock.mockResolvedValueOnce({ user: { id: "user-allow" } });
-    validatePromptWithOpenAi.mockResolvedValueOnce({
-      ok: true,
-      decision: "ALLOW",
-      normalizedPrompt: "ok",
+    validatePromptWithOpenAiWithRaw.mockResolvedValueOnce({
+      result: { ok: true, decision: "ALLOW", normalizedPrompt: "ok" },
+      raw: {
+        model: "gpt-test",
+        openAiResponseId: "resp",
+        outputText: '{"decision":"ALLOW","normalizedPrompt":"ok"}',
+        outputJson: { decision: "ALLOW", normalizedPrompt: "ok" },
+      },
     });
 
     const request = new Request("http://localhost/api/create/validate", {
@@ -55,17 +66,26 @@ describe("POST /api/create/validate", () => {
       ok: true,
       normalizedPrompt: "ok",
     });
+    expect(prisma.openAiCallLog.create).toHaveBeenCalled();
   });
 
   it("returns blocked result with category and fixGuide", async () => {
     const { POST } = await import("./route");
     getSessionMock.mockResolvedValueOnce({ user: { id: "user-block" } });
-    validatePromptWithOpenAi.mockResolvedValueOnce({
-      ok: false,
-      decision: "BLOCK",
-      category: "POLICY",
-      fixGuide: "가이드를 따르세요.",
-      normalizedPrompt: "normalized",
+    validatePromptWithOpenAiWithRaw.mockResolvedValueOnce({
+      result: {
+        ok: false,
+        decision: "BLOCK",
+        category: "POLICY",
+        fixGuide: "가이드를 따르세요.",
+        normalizedPrompt: "normalized",
+      },
+      raw: {
+        model: "gpt-test",
+        openAiResponseId: "resp",
+        outputText: '{"decision":"BLOCK"}',
+        outputJson: { decision: "BLOCK" },
+      },
     });
 
     const request = new Request("http://localhost/api/create/validate", {
@@ -84,12 +104,13 @@ describe("POST /api/create/validate", () => {
       fixGuide: "가이드를 따르세요.",
       normalizedPrompt: "normalized",
     });
+    expect(prisma.openAiCallLog.create).toHaveBeenCalled();
   });
 
   it("returns 503 when openai provider is unavailable", async () => {
     const { POST } = await import("./route");
     getSessionMock.mockResolvedValueOnce({ user: { id: "user-unavailable" } });
-    validatePromptWithOpenAi.mockRejectedValueOnce(
+    validatePromptWithOpenAiWithRaw.mockRejectedValueOnce(
       new ProviderError({
         provider: "openai",
         code: "TIMEOUT",
@@ -108,15 +129,20 @@ describe("POST /api/create/validate", () => {
     const payload = await response.json();
     expect(payload.ok).toBe(false);
     expect(payload.code).toBe("VALIDATION_UNAVAILABLE");
+    expect(prisma.openAiCallLog.create).toHaveBeenCalled();
   });
 
   it("returns 429 when rate limited", async () => {
     const { POST } = await import("./route");
     getSessionMock.mockResolvedValue({ user: { id: "user-rate-limited" } });
-    validatePromptWithOpenAi.mockResolvedValue({
-      ok: true,
-      decision: "ALLOW",
-      normalizedPrompt: "ok",
+    validatePromptWithOpenAiWithRaw.mockResolvedValue({
+      result: { ok: true, decision: "ALLOW", normalizedPrompt: "ok" },
+      raw: {
+        model: "gpt-test",
+        openAiResponseId: "resp",
+        outputText: '{"decision":"ALLOW"}',
+        outputJson: { decision: "ALLOW" },
+      },
     });
 
     for (let i = 0; i < 5; i += 1) {

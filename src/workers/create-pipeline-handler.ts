@@ -1,6 +1,7 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateImageUrl } from "@/lib/providers/leesfield-image-generator";
-import { checkImageSafetyWithOpenAi } from "@/lib/providers/openai-safety-checker";
+import { checkImageSafetyWithOpenAiWithRaw } from "@/lib/providers/openai-safety-checker";
 import { ProviderError } from "@/lib/providers/provider-error";
 import { markReservationFailed } from "@/lib/slot-recovery";
 import { formatDayKeyForKST } from "@/shared/lib/day-key";
@@ -78,6 +79,8 @@ export async function processCreatePipelineRequest(requestId: string) {
     return;
   }
 
+  let latestImageUrlForLog: string | null = createRequest.imageUrl?.trim() || null;
+
   try {
     const imageUrl =
       createRequest.imageUrl?.trim() ||
@@ -105,14 +108,42 @@ export async function processCreatePipelineRequest(requestId: string) {
         return generated.url;
       })());
 
+    latestImageUrlForLog = imageUrl;
+
     await prisma.createRequest.update({
       where: { id },
       data: { status: "SAFETY" },
     });
 
     console.log("[create-pipeline] safety start", { requestId: id });
-    const safety = await checkImageSafetyWithOpenAi({ prompt, imageUrl });
+    const safetyChecked = await checkImageSafetyWithOpenAiWithRaw({ prompt, imageUrl });
+    const safety = safetyChecked.result;
     console.log("[create-pipeline] safety done", { requestId: id, ok: safety.ok });
+
+    try {
+      await prisma.openAiCallLog.create({
+        data: {
+          kind: "IMAGE_SAFETY",
+          model: safetyChecked.raw.model,
+          openAiResponseId: safetyChecked.raw.openAiResponseId,
+          userId: createRequest.userId,
+          createRequestId: id,
+          inputPrompt: prompt,
+          inputImageUrl: imageUrl,
+          outputText: safetyChecked.raw.outputText,
+          outputJson: safetyChecked.raw.outputJson as Prisma.InputJsonValue,
+          decision: safety.ok ? "ALLOW" : "BLOCK",
+          category: safety.ok ? "OK" : safety.category,
+          reason: safety.ok ? null : safety.reason,
+        },
+      });
+    } catch (logError) {
+      console.warn("[create-pipeline] failed to persist openai safety log", {
+        requestId: id,
+        error: logError instanceof Error ? logError.message : String(logError),
+      });
+    }
+
     if (!safety.ok) {
       await prisma.createRequest.update({
         where: { id },
@@ -177,6 +208,29 @@ export async function processCreatePipelineRequest(requestId: string) {
       requestId: id,
       error: error instanceof Error ? error.message : String(error),
     });
+
+    if (error instanceof ProviderError && error.provider === "openai") {
+      try {
+        await prisma.openAiCallLog.create({
+          data: {
+            kind: "IMAGE_SAFETY",
+            model: process.env.OPENAI_SAFETY_CHECK_MODEL?.trim() || "gpt-5.2-mini",
+            userId: createRequest.userId,
+            createRequestId: id,
+            inputPrompt: prompt,
+            inputImageUrl: latestImageUrlForLog,
+            errorCode: error.code,
+            errorStatus: error.status ?? null,
+            errorMessage: error.message,
+          },
+        });
+      } catch (logError) {
+        console.warn("[create-pipeline] failed to persist openai safety error log", {
+          requestId: id,
+          error: logError instanceof Error ? logError.message : String(logError),
+        });
+      }
+    }
 
     await prisma.createRequest.update({
       where: { id },
