@@ -23,6 +23,7 @@ model User {
   slotReservations     SlotReservation[]
   adRewards            AdReward[]
   createRequests       CreateRequest[]
+  dishes               Dish[]
 
   @@map("user")
 }
@@ -178,4 +179,36 @@ model CreateRequest {
   @@index([reservationId])
   @@index([status])
   @@map("create_request")
+}
+
+model Dish {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    String
+  imageUrl  String
+  isHidden  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dayScores DishDayScore[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([isHidden])
+  @@map("dish")
+}
+
+model DishDayScore {
+  id         String   @id @default(cuid())
+  dishId     String
+  dish       Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  dayKey     String
+  totalScore Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([dishId, dayKey])
+  @@index([dayKey])
+  @@map("dish_day_score")
 }
