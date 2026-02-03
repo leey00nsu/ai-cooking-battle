@@ -1,15 +1,14 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasReservationExpired, reclaimSlotReservation } from "@/lib/slot-recovery";
 
-const AUTO_COMPLETE_MS = 1000;
-
 export const runtime = "nodejs";
 
-export async function GET(request: NextRequest) {
-  const requestId = request.nextUrl.searchParams.get("requestId");
-  const idempotencyKey = request.nextUrl.searchParams.get("idempotencyKey");
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const requestId = url.searchParams.get("requestId");
+  const idempotencyKey = url.searchParams.get("idempotencyKey");
 
   if (!requestId && !idempotencyKey) {
     return NextResponse.json(
@@ -61,7 +60,7 @@ export async function GET(request: NextRequest) {
     where: { id: createRequest.reservationId },
   });
 
-  if (reservation && hasReservationExpired(reservation)) {
+  if (reservation && reservation.status === "RESERVED" && hasReservationExpired(reservation)) {
     await reclaimSlotReservation(reservation);
     return NextResponse.json(
       {
@@ -73,37 +72,19 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  if (createRequest.status !== "DONE" && createRequest.status !== "FAILED") {
-    const elapsedMs = Date.now() - createRequest.createdAt.getTime();
-    if (elapsedMs > AUTO_COMPLETE_MS) {
-      const updated = await prisma.createRequest.update({
-        where: { id: createRequest.id },
-        data: { status: "DONE" },
-      });
-      return NextResponse.json({
-        ok: true,
-        status: "DONE",
-        imageUrl: updated.imageUrl ?? null,
-      });
-    }
-  }
-
   if (createRequest.status === "FAILED") {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "GENERATE_FAILED",
-        message: "Generation failed.",
-      },
-      { status: 422 },
-    );
+    return NextResponse.json({
+      ok: false,
+      code: "GENERATE_FAILED",
+      message: "생성에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      retryable: true,
+    });
   }
-
-  const status = createRequest.status === "DONE" ? "DONE" : "PROCESSING";
 
   return NextResponse.json({
     ok: true,
-    status,
+    status: createRequest.status,
+    dishId: createRequest.dishId ?? null,
     imageUrl: createRequest.imageUrl ?? null,
   });
 }

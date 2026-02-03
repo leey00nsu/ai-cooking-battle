@@ -171,6 +171,8 @@ model CreateRequest {
   reservationId  String
   reservation    SlotReservation     @relation(fields: [reservationId], references: [id], onDelete: Restrict)
   status         CreateRequestStatus
+  dishId         String?
+  dish           Dish?               @relation(fields: [dishId], references: [id], onDelete: SetNull)
   imageUrl       String?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
@@ -178,6 +180,7 @@ model CreateRequest {
   @@unique([userId, idempotencyKey])
   @@index([userId])
   @@index([reservationId])
+  @@index([dishId])
   @@index([status])
   @@map("create_request")
 }
@@ -192,6 +195,7 @@ model Dish {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  createRequests CreateRequest[]
   dayScores DishDayScore[]
 
   @@index([userId])

@@ -39,5 +39,10 @@ export type GenerateResponse =
   | { ok: false; code: string; message: string };
 
 export type StatusResponse =
-  | { ok: true; status: "PROCESSING" | "DONE"; imageUrl: string | null }
-  | { ok: false; code: string; message: string };
+  | {
+      ok: true;
+      status: "VALIDATING" | "RESERVING" | "GENERATING" | "SAFETY" | "DONE";
+      dishId: string | null;
+      imageUrl: string | null;
+    }
+  | { ok: false; code: string; message: string; retryable?: boolean };

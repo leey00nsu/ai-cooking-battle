@@ -7,6 +7,7 @@ import {
 import { createStepItems } from "@/features/create-flow/model/stepper-state";
 import type {
   CreateFlowState,
+  CreateStep,
   GenerateResponse,
   ReserveResponse,
   StatusResponse,
@@ -22,6 +23,23 @@ const initialState: CreateFlowState = {
   errorStep: null,
   requestId: null,
   imageUrl: null,
+};
+
+type ApiCreateStatus = Extract<StatusResponse, { ok: true }>["status"];
+
+const mapStatusToStep = (status: ApiCreateStatus): CreateStep => {
+  switch (status) {
+    case "VALIDATING":
+      return "validating";
+    case "RESERVING":
+      return "reserving";
+    case "GENERATING":
+      return "generating";
+    case "SAFETY":
+      return "safety";
+    case "DONE":
+      return "done";
+  }
 };
 
 export function useCreateFlow() {
@@ -196,7 +214,7 @@ export function useCreateFlow() {
       }
 
       setState({
-        step: "safety",
+        step: mapStatusToStep(statusResponse.status),
         errorMessage: null,
         errorStep: null,
         requestId: null,
@@ -316,7 +334,11 @@ export function useCreateFlow() {
       }
 
       if (isActive()) {
-        setState((prev) => ({ ...prev, step: "safety", requestId: generateResponse.requestId }));
+        setState((prev) => ({
+          ...prev,
+          step: "generating",
+          requestId: generateResponse.requestId,
+        }));
       }
 
       if (generateResponse.requestId) {
@@ -345,24 +367,19 @@ export function useCreateFlow() {
           return;
         }
 
-        if (statusResponse.status !== "PROCESSING") {
-          if (isActive()) {
-            setState({
-              step: statusResponse.status === "DONE" ? "done" : "safety",
-              errorMessage: null,
-              errorStep: null,
-              requestId: generateResponse.requestId,
-              imageUrl: statusResponse.imageUrl,
-            });
-          }
-          if (statusResponse.status === "DONE") {
-            createRecoveryStorage.clear();
-            recoveryKeyRef.current = null;
-          }
-          return;
+        if (isActive()) {
+          setState({
+            step: mapStatusToStep(statusResponse.status),
+            errorMessage: null,
+            errorStep: null,
+            requestId: generateResponse.requestId,
+            imageUrl: statusResponse.imageUrl,
+          });
         }
 
-        if (!isActive()) {
+        if (statusResponse.status === "DONE") {
+          createRecoveryStorage.clear();
+          recoveryKeyRef.current = null;
           return;
         }
 
