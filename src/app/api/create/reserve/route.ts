@@ -106,17 +106,23 @@ export async function POST(request: Request) {
       create: { dayKey, freeLimit: FREE_SLOT_LIMIT, adLimit: AD_SLOT_LIMIT },
     });
 
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { freeDailyLimit: true },
+    });
+    const freeDailyLimit = user?.freeDailyLimit ?? 1;
+
     const freeRemaining = counter.freeLimit - counter.freeUsedCount;
-    const hasFreeReservation = await tx.slotReservation.findFirst({
+    const activeFreeReservationCount = await tx.slotReservation.count({
       where: {
         userId,
         dayKey,
         slotType: "FREE",
+        status: { in: ["RESERVED", "CONFIRMED"] },
       },
-      select: { id: true },
     });
 
-    if (freeRemaining > 0 && !hasFreeReservation) {
+    if (freeRemaining > 0 && activeFreeReservationCount < freeDailyLimit) {
       try {
         const reservation = await tx.slotReservation.create({
           data: {
@@ -159,7 +165,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (hasFreeReservation && !adRewardId) {
+    if (activeFreeReservationCount >= freeDailyLimit && !adRewardId) {
       return {
         type: "error",
         status: 429,
