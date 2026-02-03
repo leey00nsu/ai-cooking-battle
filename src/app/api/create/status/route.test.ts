@@ -77,6 +77,77 @@ describe("GET /api/create/status", () => {
     });
   });
 
+  it("returns status for idempotencyKey", async () => {
+    const { GET } = await import("./route");
+    prisma.createRequest.findUnique.mockResolvedValueOnce({
+      id: "req",
+      userId: "user",
+      reservationId: "res",
+      status: "SAFETY",
+      dishId: null,
+      imageUrl: "https://cdn.example/image.webp",
+    });
+    prisma.slotReservation.findUnique.mockResolvedValueOnce(null);
+
+    const request = new Request("http://localhost/api/create/status?idempotencyKey=k");
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      ok: true,
+      status: "SAFETY",
+      dishId: null,
+      imageUrl: "https://cdn.example/image.webp",
+    });
+  });
+
+  it("returns dishId and imageUrl when request is DONE", async () => {
+    const { GET } = await import("./route");
+    prisma.createRequest.findFirst.mockResolvedValueOnce({
+      id: "req",
+      userId: "user",
+      reservationId: "res",
+      status: "DONE",
+      dishId: "dish",
+      imageUrl: "https://cdn.example/image.webp",
+    });
+    prisma.slotReservation.findUnique.mockResolvedValueOnce(null);
+
+    const request = new Request("http://localhost/api/create/status?requestId=req");
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      ok: true,
+      status: "DONE",
+      dishId: "dish",
+      imageUrl: "https://cdn.example/image.webp",
+    });
+  });
+
+  it("returns 410 when reservation expired (RESERVED only)", async () => {
+    const { GET } = await import("./route");
+    prisma.createRequest.findFirst.mockResolvedValueOnce({
+      id: "req",
+      userId: "user",
+      reservationId: "res",
+      status: "GENERATING",
+      dishId: null,
+      imageUrl: null,
+    });
+    prisma.slotReservation.findUnique.mockResolvedValueOnce({
+      id: "res",
+      status: "RESERVED",
+      expiresAt: new Date(Date.now() - 1_000),
+    });
+    hasReservationExpired.mockReturnValueOnce(true);
+
+    const request = new Request("http://localhost/api/create/status?requestId=req");
+    const response = await GET(request);
+    expect(response.status).toBe(410);
+    const payload = await response.json();
+    expect(payload.code).toBe("RESERVATION_EXPIRED");
+    expect(reclaimSlotReservation).toHaveBeenCalled();
+  });
+
   it("returns ok false payload when failed", async () => {
     const { GET } = await import("./route");
     prisma.createRequest.findFirst.mockResolvedValueOnce({
