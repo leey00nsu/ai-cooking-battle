@@ -20,7 +20,7 @@ function buildGenerationPrompt(userPrompt: string) {
   if (!trimmed) {
     return "";
   }
-  return `${trimmed}\n\n${getPlatedDishSuffixEn()}`;
+  return `${trimmed}, ${getPlatedDishSuffixEn()}`;
 }
 
 function isRetryableError(error: unknown) {

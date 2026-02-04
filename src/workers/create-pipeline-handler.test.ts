@@ -49,7 +49,7 @@ describe("processCreatePipelineRequest", () => {
 
   it("creates dish and marks request DONE (happy path)", async () => {
     const { processCreatePipelineRequest } = await import("./create-pipeline-handler");
-    const generationPrompt = `pizza\n\n${getPlatedDishSuffixEn()}`;
+    const generationPrompt = `pizza, ${getPlatedDishSuffixEn()}`;
 
     prisma.createRequest.findUnique
       .mockResolvedValueOnce({
