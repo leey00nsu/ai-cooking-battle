@@ -179,8 +179,9 @@ export async function POST(request: Request) {
     const validated = await validatePromptWithOpenAiWithRaw(prompt);
     const result = validated.result;
 
+    let validationId: string | null = null;
     try {
-      await prisma.openAiCallLog.create({
+      const log = await prisma.openAiCallLog.create({
         data: {
           kind: "PROMPT_VALIDATE",
           model: validated.raw.model,
@@ -194,10 +195,19 @@ export async function POST(request: Request) {
           reason: result.ok ? null : result.fixGuide,
         },
       });
+      validationId = log.id;
     } catch (logError) {
       console.warn("[create.validate] failed to persist openai call log", {
         error: logError instanceof Error ? logError.message : String(logError),
       });
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "VALIDATION_LOG_FAILED",
+          message: "검증 로그 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        },
+        { status: 503 },
+      );
     }
 
     if (result.ok) {
@@ -216,6 +226,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         ok: true,
         normalizedPrompt: result.normalizedPrompt,
+        validationId,
       });
     }
 
@@ -237,6 +248,7 @@ export async function POST(request: Request) {
       category: result.category,
       fixGuide: result.fixGuide,
       normalizedPrompt: result.normalizedPrompt ?? null,
+      validationId,
     });
   } catch (error) {
     if (error instanceof ProviderError) {

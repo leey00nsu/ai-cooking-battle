@@ -83,6 +83,7 @@ describe("useCreateFlow", () => {
         ok: true,
         decision: "ALLOW",
         normalizedPrompt: "가공된 프롬프트",
+        validationId: "v",
         warnings: null,
       })
       .mockResolvedValueOnce({
@@ -125,7 +126,16 @@ describe("useCreateFlow", () => {
     });
     expect(generateCall).toBeTruthy();
     const options = (generateCall?.[1] ?? {}) as { body?: string };
-    const payload = JSON.parse(options.body ?? "{}") as { prompt?: string };
-    expect(payload.prompt).toBe("원본 프롬프트");
+    const payload = JSON.parse(options.body ?? "{}") as { prompt?: string; validationId?: string };
+    expect(payload.prompt).toBeUndefined();
+    expect(payload.validationId).toBe("v");
+
+    const validateCall = fetchJson.mock.calls.find((call) => {
+      return typeof call[0] === "string" && String(call[0]).includes("/api/create/validate");
+    });
+    expect(validateCall).toBeTruthy();
+    const validateOptions = (validateCall?.[1] ?? {}) as { body?: string };
+    const validatePayload = JSON.parse(validateOptions.body ?? "{}") as { prompt?: string };
+    expect(validatePayload.prompt).toBe("원본 프롬프트");
   });
 });

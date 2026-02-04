@@ -12,8 +12,8 @@ export const runtime = "nodejs";
 
 type GeneratePayload = {
   reservationId?: string;
-  prompt?: string;
   idempotencyKey?: string;
+  validationId?: string;
 };
 
 const isUniqueConstraintError = (error: unknown) => {
@@ -26,16 +26,16 @@ const isUniqueConstraintError = (error: unknown) => {
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as GeneratePayload;
 
-  const prompt = (body.prompt ?? "").toString().trim();
   const reservationId = body.reservationId?.toString().trim() ?? "";
   const idempotencyKey = body.idempotencyKey?.toString().trim() ?? "";
+  const validationId = body.validationId?.toString().trim() ?? "";
 
-  if (!reservationId || !idempotencyKey || prompt === "") {
+  if (!reservationId || !idempotencyKey || !validationId) {
     return NextResponse.json(
       {
         ok: false,
         code: "MISSING_FIELDS",
-        message: "reservationId, idempotencyKey, and prompt are required.",
+        message: "reservationId, idempotencyKey, and validationId are required.",
       },
       { status: 400 },
     );
@@ -51,6 +51,48 @@ export async function POST(request: Request) {
         message: "로그인이 필요합니다.",
       },
       { status: 401 },
+    );
+  }
+
+  const validationLog = await prisma.openAiCallLog.findUnique({
+    where: { id: validationId },
+  });
+
+  if (
+    !validationLog ||
+    validationLog.userId !== userId ||
+    validationLog.kind !== "PROMPT_VALIDATE"
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "VALIDATION_NOT_FOUND",
+        message: "Validation not found.",
+      },
+      { status: 404 },
+    );
+  }
+
+  if (validationLog.decision !== "ALLOW") {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "PROMPT_BLOCKED",
+        message: validationLog.reason ?? "프롬프트가 차단되었습니다.",
+      },
+      { status: 409 },
+    );
+  }
+
+  const prompt = validationLog.inputPrompt.trim();
+  if (!prompt) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "VALIDATION_INVALID",
+        message: "Validation prompt is invalid.",
+      },
+      { status: 400 },
     );
   }
 

@@ -88,13 +88,13 @@ export function useCreateFlow() {
   const generateMutation = useMutation({
     mutationFn: ({
       reservationId,
-      prompt,
       idempotencyKey,
+      validationId,
       signal,
     }: {
       reservationId: string;
-      prompt: string;
       idempotencyKey: string;
+      validationId: string;
       signal: AbortSignal;
     }) =>
       fetchJson<GenerateResponse>("/api/create/generate", {
@@ -102,8 +102,8 @@ export function useCreateFlow() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           reservationId,
-          prompt,
           idempotencyKey,
+          validationId,
         }),
         signal,
       }),
@@ -271,6 +271,7 @@ export function useCreateFlow() {
         setState((prev) => ({ ...prev, step: "reserving" }));
       }
 
+      const validationId = validateResponse.validationId;
       const adRewardId = options?.adRewardId?.trim();
       let reserveResponse: ReserveResponse;
       try {
@@ -300,8 +301,8 @@ export function useCreateFlow() {
       try {
         generateResponse = await generateMutation.mutateAsync({
           reservationId: reserveResponse.reservationId,
-          prompt,
           idempotencyKey,
+          validationId,
           signal: controller.signal,
         });
       } catch (error) {

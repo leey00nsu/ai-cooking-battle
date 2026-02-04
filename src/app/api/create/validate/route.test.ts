@@ -50,6 +50,7 @@ describe("POST /api/create/validate", () => {
     });
     prisma.user.findUnique.mockResolvedValue({ freeDailyLimit: 1 });
     prisma.slotReservation.count.mockResolvedValue(0);
+    prisma.openAiCallLog.create.mockResolvedValue({ id: "v" });
   });
 
   it("returns 400 when prompt is missing", async () => {
@@ -136,6 +137,7 @@ describe("POST /api/create/validate", () => {
         outputJson: { decision: "ALLOW", normalizedPrompt: "ok" },
       },
     });
+    prisma.openAiCallLog.create.mockResolvedValueOnce({ id: "v" });
 
     const request = new Request("http://localhost/api/create/validate", {
       method: "POST",
@@ -148,6 +150,7 @@ describe("POST /api/create/validate", () => {
     expect(await response.json()).toEqual({
       ok: true,
       normalizedPrompt: "ok",
+      validationId: "v",
     });
     expect(prisma.openAiCallLog.create).toHaveBeenCalled();
   });
@@ -170,6 +173,7 @@ describe("POST /api/create/validate", () => {
         outputJson: { decision: "BLOCK" },
       },
     });
+    prisma.openAiCallLog.create.mockResolvedValueOnce({ id: "v" });
 
     const request = new Request("http://localhost/api/create/validate", {
       method: "POST",
@@ -186,6 +190,7 @@ describe("POST /api/create/validate", () => {
       category: "POLICY",
       fixGuide: "가이드를 따르세요.",
       normalizedPrompt: "normalized",
+      validationId: "v",
     });
     expect(prisma.openAiCallLog.create).toHaveBeenCalled();
   });

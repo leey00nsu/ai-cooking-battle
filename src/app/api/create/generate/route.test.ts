@@ -10,6 +10,9 @@ const prisma = {
     create: vi.fn(),
     update: vi.fn(),
   },
+  openAiCallLog: {
+    findUnique: vi.fn(),
+  },
   slotReservation: {
     findFirst: vi.fn(),
     update: vi.fn(),
@@ -50,7 +53,7 @@ describe("POST /api/create/generate", () => {
     const request = new Request("http://localhost/api/create/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", prompt: "   " }),
+      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k" }),
     });
 
     const response = await POST(request);
@@ -63,7 +66,7 @@ describe("POST /api/create/generate", () => {
     const request = new Request("http://localhost/api/create/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", prompt: "p" }),
+      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", validationId: "v" }),
     });
 
     const response = await POST(request);
@@ -74,6 +77,14 @@ describe("POST /api/create/generate", () => {
 
   it("returns existing requestId when idempotent", async () => {
     const { POST } = await import("./route");
+    prisma.openAiCallLog.findUnique.mockResolvedValueOnce({
+      id: "v",
+      userId: "user",
+      kind: "PROMPT_VALIDATE",
+      decision: "ALLOW",
+      inputPrompt: "p",
+      reason: null,
+    });
     prisma.createRequest.findUnique.mockResolvedValueOnce({
       id: "req",
       userId: "user",
@@ -86,7 +97,7 @@ describe("POST /api/create/generate", () => {
     const request = new Request("http://localhost/api/create/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", prompt: "p" }),
+      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", validationId: "v" }),
     });
 
     const response = await POST(request);
@@ -97,6 +108,14 @@ describe("POST /api/create/generate", () => {
 
   it("returns 409 on idempotency conflict", async () => {
     const { POST } = await import("./route");
+    prisma.openAiCallLog.findUnique.mockResolvedValueOnce({
+      id: "v",
+      userId: "user",
+      kind: "PROMPT_VALIDATE",
+      decision: "ALLOW",
+      inputPrompt: "p",
+      reason: null,
+    });
     prisma.createRequest.findUnique.mockResolvedValueOnce({
       id: "req",
       reservationId: "other",
@@ -105,7 +124,7 @@ describe("POST /api/create/generate", () => {
     const request = new Request("http://localhost/api/create/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", prompt: "p" }),
+      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", validationId: "v" }),
     });
 
     const response = await POST(request);
@@ -114,6 +133,14 @@ describe("POST /api/create/generate", () => {
 
   it("creates request and enqueues job", async () => {
     const { POST } = await import("./route");
+    prisma.openAiCallLog.findUnique.mockResolvedValueOnce({
+      id: "v",
+      userId: "user",
+      kind: "PROMPT_VALIDATE",
+      decision: "ALLOW",
+      inputPrompt: "p",
+      reason: null,
+    });
     prisma.createRequest.findUnique.mockResolvedValueOnce(null);
     prisma.slotReservation.findFirst.mockResolvedValueOnce({
       id: "r",
@@ -134,7 +161,7 @@ describe("POST /api/create/generate", () => {
     const request = new Request("http://localhost/api/create/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", prompt: "p" }),
+      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", validationId: "v" }),
     });
 
     const response = await POST(request);
@@ -145,6 +172,14 @@ describe("POST /api/create/generate", () => {
 
   it("returns 410 and reclaims reservation when expired", async () => {
     const { POST } = await import("./route");
+    prisma.openAiCallLog.findUnique.mockResolvedValueOnce({
+      id: "v",
+      userId: "user",
+      kind: "PROMPT_VALIDATE",
+      decision: "ALLOW",
+      inputPrompt: "p",
+      reason: null,
+    });
     prisma.createRequest.findUnique.mockResolvedValueOnce(null);
     prisma.slotReservation.findFirst.mockResolvedValueOnce({
       id: "r",
@@ -159,7 +194,7 @@ describe("POST /api/create/generate", () => {
     const request = new Request("http://localhost/api/create/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", prompt: "p" }),
+      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", validationId: "v" }),
     });
 
     const response = await POST(request);
@@ -173,6 +208,14 @@ describe("POST /api/create/generate", () => {
 
   it("returns 409 when reservation already FAILED", async () => {
     const { POST } = await import("./route");
+    prisma.openAiCallLog.findUnique.mockResolvedValueOnce({
+      id: "v",
+      userId: "user",
+      kind: "PROMPT_VALIDATE",
+      decision: "ALLOW",
+      inputPrompt: "p",
+      reason: null,
+    });
     prisma.createRequest.findUnique.mockResolvedValueOnce(null);
     prisma.slotReservation.findFirst.mockResolvedValueOnce({
       id: "r",
@@ -186,7 +229,7 @@ describe("POST /api/create/generate", () => {
     const request = new Request("http://localhost/api/create/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", prompt: "p" }),
+      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", validationId: "v" }),
     });
 
     const response = await POST(request);
@@ -199,6 +242,14 @@ describe("POST /api/create/generate", () => {
 
   it("returns 503 and marks reservation failed when enqueue fails", async () => {
     const { POST } = await import("./route");
+    prisma.openAiCallLog.findUnique.mockResolvedValueOnce({
+      id: "v",
+      userId: "user",
+      kind: "PROMPT_VALIDATE",
+      decision: "ALLOW",
+      inputPrompt: "p",
+      reason: null,
+    });
     prisma.createRequest.findUnique.mockResolvedValueOnce(null);
     prisma.slotReservation.findFirst.mockResolvedValueOnce({
       id: "r",
@@ -214,7 +265,7 @@ describe("POST /api/create/generate", () => {
     const request = new Request("http://localhost/api/create/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", prompt: "p" }),
+      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", validationId: "v" }),
     });
 
     const response = await POST(request);
@@ -222,5 +273,44 @@ describe("POST /api/create/generate", () => {
     const payload = await response.json();
     expect(payload.code).toBe("QUEUE_UNAVAILABLE");
     expect(markReservationFailed).toHaveBeenCalled();
+  });
+
+  it("returns 404 when validationId is not found", async () => {
+    const { POST } = await import("./route");
+    prisma.openAiCallLog.findUnique.mockResolvedValueOnce(null);
+
+    const request = new Request("http://localhost/api/create/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", validationId: "v" }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(404);
+    const payload = await response.json();
+    expect(payload.code).toBe("VALIDATION_NOT_FOUND");
+  });
+
+  it("returns 409 when validation is BLOCK", async () => {
+    const { POST } = await import("./route");
+    prisma.openAiCallLog.findUnique.mockResolvedValueOnce({
+      id: "v",
+      userId: "user",
+      kind: "PROMPT_VALIDATE",
+      decision: "BLOCK",
+      inputPrompt: "p",
+      reason: "blocked",
+    });
+
+    const request = new Request("http://localhost/api/create/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", validationId: "v" }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(409);
+    const payload = await response.json();
+    expect(payload.code).toBe("PROMPT_BLOCKED");
   });
 });
