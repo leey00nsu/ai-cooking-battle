@@ -84,6 +84,7 @@ enum SlotReservationStatus {
   CONFIRMED
   EXPIRED
   FAILED
+  CANCELLED
 }
 
 enum SlotType {

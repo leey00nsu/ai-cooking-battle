@@ -57,11 +57,19 @@ export function useCreateFlow() {
     [state.step, state.errorStep],
   );
   const validateMutation = useMutation({
-    mutationFn: ({ prompt, signal }: { prompt: string; signal: AbortSignal }) =>
+    mutationFn: ({
+      prompt,
+      reservationId,
+      signal,
+    }: {
+      prompt: string;
+      reservationId: string;
+      signal: AbortSignal;
+    }) =>
       fetchJson<ValidateResponse>("/api/create/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, reservationId }),
         signal,
       }),
   });
@@ -242,7 +250,7 @@ export function useCreateFlow() {
 
       if (isActive()) {
         setState({
-          step: "validating",
+          step: "reserving",
           errorMessage: null,
           errorStep: null,
           requestId: null,
@@ -251,32 +259,8 @@ export function useCreateFlow() {
       }
 
       const idempotencyKey = createIdempotencyKey();
-
-      let validateResponse: ValidateResponse;
-      try {
-        validateResponse = await validateMutation.mutateAsync({
-          prompt,
-          signal: controller.signal,
-        });
-      } catch (error) {
-        if ((error as DOMException).name === "AbortError") {
-          return;
-        }
-        handleError(error, "validating");
-        return;
-      }
-
-      if (!validateResponse.ok) {
-        handleError(new Error(validateResponse.message ?? "Validation failed."), "validating");
-        return;
-      }
-
-      if (isActive()) {
-        setState((prev) => ({ ...prev, step: "reserving" }));
-      }
-
-      const validationId = validateResponse.validationId;
       const adRewardId = options?.adRewardId?.trim();
+
       let reserveResponse: ReserveResponse;
       try {
         reserveResponse = await reserveMutation.mutateAsync({
@@ -298,9 +282,34 @@ export function useCreateFlow() {
       }
 
       if (isActive()) {
+        setState((prev) => ({ ...prev, step: "validating" }));
+      }
+
+      let validateResponse: ValidateResponse;
+      try {
+        validateResponse = await validateMutation.mutateAsync({
+          prompt,
+          reservationId: reserveResponse.reservationId,
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if ((error as DOMException).name === "AbortError") {
+          return;
+        }
+        handleError(error, "validating");
+        return;
+      }
+
+      if (!validateResponse.ok) {
+        handleError(new Error(validateResponse.message ?? "Validation failed."), "validating");
+        return;
+      }
+
+      if (isActive()) {
         setState((prev) => ({ ...prev, step: "generating" }));
       }
 
+      const validationId = validateResponse.validationId;
       let generateResponse: GenerateResponse;
       try {
         generateResponse = await generateMutation.mutateAsync({

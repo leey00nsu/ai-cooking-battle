@@ -5,13 +5,17 @@ import { prisma } from "@/lib/prisma";
 import { validatePromptWithOpenAiWithRaw } from "@/lib/providers/openai-prompt-validator";
 import { ProviderError } from "@/lib/providers/provider-error";
 import { checkRateLimit } from "@/lib/rate-limit/user-rate-limit";
-import { formatDayKeyForKST } from "@/shared/lib/day-key";
-import { AD_SLOT_LIMIT, FREE_SLOT_LIMIT } from "@/shared/lib/slot-policy";
+import {
+  cancelSlotReservation,
+  hasReservationExpired,
+  reclaimSlotReservation,
+} from "@/lib/slot-recovery";
 
 export const runtime = "nodejs";
 
 type ValidatePayload = {
   prompt?: string;
+  reservationId?: string;
 };
 
 const RATE_LIMIT_PER_MINUTE = 5;
@@ -26,12 +30,24 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as ValidatePayload;
 
   const prompt = body.prompt?.trim() ?? "";
+  const reservationId = body.reservationId?.trim() ?? "";
   if (!prompt) {
     return NextResponse.json(
       {
         ok: false,
         code: "VALIDATION_REQUIRED",
         message: "Prompt is required.",
+      },
+      { status: 400 },
+    );
+  }
+
+  if (!reservationId) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "MISSING_RESERVATION_ID",
+        message: "reservationId is required.",
       },
       { status: 400 },
     );
@@ -47,6 +63,47 @@ export async function POST(request: Request) {
         message: "로그인이 필요합니다.",
       },
       { status: 401 },
+    );
+  }
+
+  const reservation = await prisma.slotReservation.findFirst({
+    where: {
+      id: reservationId,
+      userId,
+    },
+  });
+
+  if (!reservation) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "RESERVATION_NOT_FOUND",
+        message: "Reservation not found.",
+      },
+      { status: 404 },
+    );
+  }
+
+  if (reservation.status === "RESERVED" && hasReservationExpired(reservation)) {
+    await reclaimSlotReservation(reservation);
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "RESERVATION_EXPIRED",
+        message: "Reservation expired.",
+      },
+      { status: 410 },
+    );
+  }
+
+  if (reservation.status !== "RESERVED") {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "RESERVATION_NOT_ACTIVE",
+        message: "Reservation is not active.",
+      },
+      { status: 409 },
     );
   }
 
@@ -71,109 +128,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const dayKey = formatDayKeyForKST();
-  try {
-    const counter = await prisma.dailySlotCounter.upsert({
-      where: { dayKey },
-      update: {
-        updatedAt: new Date(),
-        freeLimit: FREE_SLOT_LIMIT,
-        adLimit: AD_SLOT_LIMIT,
-      },
-      create: { dayKey, freeLimit: FREE_SLOT_LIMIT, adLimit: AD_SLOT_LIMIT },
-    });
-
-    const freeRemaining = counter.freeLimit - counter.freeUsedCount;
-    const adRemaining = counter.adLimit - counter.adUsedCount;
-    const totalRemaining = freeRemaining + adRemaining;
-
-    if (totalRemaining <= 0) {
-      console.log("[create.validate] fail-fast", {
-        reason: "SLOT_SOLD_OUT",
-        dayKey,
-        freeRemaining,
-        adRemaining,
-      });
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "SLOT_SOLD_OUT",
-          message: "오늘의 생성 슬롯이 모두 소진되었습니다.",
-        },
-        { status: 409 },
-      );
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { freeDailyLimit: true },
-    });
-    const freeDailyLimit = user?.freeDailyLimit ?? 1;
-
-    const activeFreeReservationCount = await prisma.slotReservation.count({
-      where: {
-        userId,
-        dayKey,
-        slotType: "FREE",
-        status: { in: ["RESERVED", "CONFIRMED"] },
-      },
-    });
-
-    if (freeRemaining <= 0) {
-      console.log("[create.validate] fail-fast", {
-        reason: "FREE_SLOT_SOLD_OUT",
-        dayKey,
-        freeRemaining,
-        adRemaining,
-      });
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "FREE_SLOT_SOLD_OUT",
-          message: "오늘의 무료 슬롯이 모두 소진되었습니다.",
-        },
-        { status: 409 },
-      );
-    }
-
-    if (activeFreeReservationCount >= freeDailyLimit) {
-      console.log("[create.validate] fail-fast", {
-        reason: "FREE_SLOT_LIMIT_REACHED",
-        dayKey,
-        activeFreeReservationCount,
-        freeDailyLimit,
-      });
-      const limitMessage =
-        freeDailyLimit === 1
-          ? "무료 슬롯은 하루 1회만 가능합니다."
-          : `무료 슬롯은 하루 ${freeDailyLimit}회만 가능합니다.`;
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "FREE_SLOT_LIMIT_REACHED",
-          message: limitMessage,
-        },
-        { status: 429 },
-      );
-    }
-  } catch (error) {
-    console.warn("[create.validate] slot check failed", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "SLOT_CHECK_UNAVAILABLE",
-        message: "슬롯 정보를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.",
-      },
-      { status: 503 },
-    );
-  }
-
   try {
     console.log("[create.validate] request", {
       promptLength: prompt.length,
       promptPreview: sanitizePreview(prompt),
+      reservationId,
     });
 
     const validated = await validatePromptWithOpenAiWithRaw(prompt);
@@ -200,6 +159,14 @@ export async function POST(request: Request) {
       console.warn("[create.validate] failed to persist openai call log", {
         error: logError instanceof Error ? logError.message : String(logError),
       });
+      try {
+        await cancelSlotReservation(reservation);
+      } catch (refundError) {
+        console.warn("[create.validate] failed to refund reservation after log failure", {
+          reservationId,
+          error: refundError instanceof Error ? refundError.message : String(refundError),
+        });
+      }
       return NextResponse.json(
         {
           ok: false,
@@ -232,6 +199,23 @@ export async function POST(request: Request) {
       });
     }
 
+    try {
+      await cancelSlotReservation(reservation);
+    } catch (refundError) {
+      console.warn("[create.validate] failed to refund reservation after block", {
+        reservationId,
+        error: refundError instanceof Error ? refundError.message : String(refundError),
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "RESERVATION_REFUND_FAILED",
+          message: "예약 환불 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        },
+        { status: 503 },
+      );
+    }
+
     console.log("[create.validate] response", {
       ok: false,
       decision: result.decision,
@@ -260,6 +244,7 @@ export async function POST(request: Request) {
         code: error.code,
         status: error.status ?? null,
         message: error.message,
+        reservationId,
       });
 
       try {
@@ -278,6 +263,23 @@ export async function POST(request: Request) {
         console.warn("[create.validate] failed to persist openai error log", {
           error: logError instanceof Error ? logError.message : String(logError),
         });
+      }
+
+      try {
+        await cancelSlotReservation(reservation);
+      } catch (refundError) {
+        console.warn("[create.validate] failed to refund reservation after provider error", {
+          reservationId,
+          error: refundError instanceof Error ? refundError.message : String(refundError),
+        });
+        return NextResponse.json(
+          {
+            ok: false,
+            code: "RESERVATION_REFUND_FAILED",
+            message: "예약 환불 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+          },
+          { status: 503 },
+        );
       }
 
       return NextResponse.json(

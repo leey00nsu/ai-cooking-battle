@@ -214,6 +214,17 @@ export async function POST(request: Request) {
     );
   }
 
+  if (reservation.status === "CANCELLED") {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "RESERVATION_CANCELLED",
+        message: "Reservation cancelled.",
+      },
+      { status: 409 },
+    );
+  }
+
   if (reservation.status !== "CONFIRMED") {
     await prisma.slotReservation.update({
       where: { id: reservation.id },

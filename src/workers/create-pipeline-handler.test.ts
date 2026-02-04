@@ -143,7 +143,7 @@ describe("processCreatePipelineRequest", () => {
     expect(markReservationFailed).not.toHaveBeenCalled();
   });
 
-  it("marks request FAILED and refunds slot when safety blocks", async () => {
+  it("marks request FAILED without refund when safety blocks", async () => {
     const { processCreatePipelineRequest } = await import("./create-pipeline-handler");
 
     prisma.createRequest.findUnique.mockResolvedValueOnce({
@@ -176,7 +176,7 @@ describe("processCreatePipelineRequest", () => {
 
     expect(generateImageUrl).not.toHaveBeenCalled();
     expect(prisma.dish.create).not.toHaveBeenCalled();
-    expect(markReservationFailed).toHaveBeenCalled();
+    expect(markReservationFailed).not.toHaveBeenCalled();
     expect(prisma.openAiCallLog.create).toHaveBeenCalled();
     expect(prisma.createRequest.update).toHaveBeenCalledWith({
       where: { id: "req" },

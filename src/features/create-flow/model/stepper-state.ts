@@ -1,6 +1,6 @@
 import type { CreateFlowState, CreateStepItem } from "@/features/create-flow/model/types";
 
-const stepOrder = ["validating", "reserving", "generating", "safety"] as const;
+const stepOrder = ["reserving", "validating", "generating", "safety"] as const;
 
 const stepLabels = {
   validating: {

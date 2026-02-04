@@ -3,15 +3,12 @@ import { ProviderError } from "@/lib/providers/provider-error";
 
 const validatePromptWithOpenAiWithRaw = vi.fn();
 const getSessionMock = vi.fn();
+const cancelSlotReservation = vi.fn();
+const reclaimSlotReservation = vi.fn();
+const checkRateLimit = vi.fn();
 const prisma = {
-  dailySlotCounter: {
-    upsert: vi.fn(),
-  },
   slotReservation: {
-    count: vi.fn(),
-  },
-  user: {
-    findUnique: vi.fn(),
+    findFirst: vi.fn(),
   },
   openAiCallLog: {
     create: vi.fn(),
@@ -20,6 +17,17 @@ const prisma = {
 
 vi.mock("@/lib/providers/openai-prompt-validator", () => ({
   validatePromptWithOpenAiWithRaw,
+}));
+
+vi.mock("@/lib/rate-limit/user-rate-limit", () => ({
+  checkRateLimit,
+}));
+
+vi.mock("@/lib/slot-recovery", () => ({
+  cancelSlotReservation,
+  reclaimSlotReservation,
+  hasReservationExpired: (reservation: { expiresAt: Date }) =>
+    reservation.expiresAt.getTime() < Date.now(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -32,25 +40,23 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/prisma", () => ({ prisma }));
 
-vi.mock("@/shared/lib/day-key", () => ({
-  formatDayKeyForKST: vi.fn(() => "2026-02-03"),
-}));
-
 describe("POST /api/create/validate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    prisma.dailySlotCounter.upsert.mockResolvedValue({
+    checkRateLimit.mockReturnValue({ allowed: true, remaining: 0 });
+    prisma.slotReservation.findFirst.mockResolvedValue({
+      id: "res",
+      userId: "user",
       dayKey: "2026-02-03",
-      freeLimit: 60,
-      freeUsedCount: 0,
-      adLimit: 0,
-      adUsedCount: 0,
+      status: "RESERVED",
+      slotType: "FREE",
+      expiresAt: new Date(Date.now() + 60_000),
+      idempotencyKey: "k",
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    prisma.user.findUnique.mockResolvedValue({ freeDailyLimit: 1 });
-    prisma.slotReservation.count.mockResolvedValue(0);
     prisma.openAiCallLog.create.mockResolvedValue({ id: "v" });
+    cancelSlotReservation.mockResolvedValue({ id: "res", status: "CANCELLED" });
   });
 
   it("returns 400 when prompt is missing", async () => {
@@ -70,59 +76,43 @@ describe("POST /api/create/validate", () => {
     });
   });
 
-  it("returns 409 when slots are sold out (fail-fast, no OpenAI call)", async () => {
+  it("returns 400 when reservationId is missing", async () => {
     const { POST } = await import("./route");
-    getSessionMock.mockResolvedValueOnce({ user: { id: "user-sold-out" } });
-    prisma.dailySlotCounter.upsert.mockResolvedValueOnce({
-      dayKey: "2026-02-03",
-      freeLimit: 1,
-      freeUsedCount: 1,
-      adLimit: 0,
-      adUsedCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    getSessionMock.mockResolvedValueOnce({ user: { id: "user" } });
 
     const request = new Request("http://localhost/api/create/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: "test" }),
+      body: JSON.stringify({ prompt: "test", reservationId: "   " }),
     });
 
     const response = await POST(request);
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       ok: false,
-      code: "SLOT_SOLD_OUT",
-      message: "오늘의 생성 슬롯이 모두 소진되었습니다.",
+      code: "MISSING_RESERVATION_ID",
+      message: "reservationId is required.",
     });
-    expect(validatePromptWithOpenAiWithRaw).not.toHaveBeenCalled();
-    expect(prisma.openAiCallLog.create).not.toHaveBeenCalled();
-    expect(prisma.user.findUnique).not.toHaveBeenCalled();
-    expect(prisma.slotReservation.count).not.toHaveBeenCalled();
   });
 
-  it("returns 429 when user cannot get free slot today (fail-fast, no OpenAI call)", async () => {
+  it("returns 404 when reservation does not exist", async () => {
     const { POST } = await import("./route");
-    getSessionMock.mockResolvedValueOnce({ user: { id: "user-free-limit" } });
-    prisma.user.findUnique.mockResolvedValueOnce({ freeDailyLimit: 1 });
-    prisma.slotReservation.count.mockResolvedValueOnce(1);
+    getSessionMock.mockResolvedValueOnce({ user: { id: "user" } });
+    prisma.slotReservation.findFirst.mockResolvedValueOnce(null);
 
     const request = new Request("http://localhost/api/create/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: "test" }),
+      body: JSON.stringify({ prompt: "test", reservationId: "res" }),
     });
 
     const response = await POST(request);
-    expect(response.status).toBe(429);
+    expect(response.status).toBe(404);
     expect(await response.json()).toEqual({
       ok: false,
-      code: "FREE_SLOT_LIMIT_REACHED",
-      message: "무료 슬롯은 하루 1회만 가능합니다.",
+      code: "RESERVATION_NOT_FOUND",
+      message: "Reservation not found.",
     });
-    expect(validatePromptWithOpenAiWithRaw).not.toHaveBeenCalled();
-    expect(prisma.openAiCallLog.create).not.toHaveBeenCalled();
   });
 
   it("returns allow result", async () => {
@@ -142,7 +132,7 @@ describe("POST /api/create/validate", () => {
     const request = new Request("http://localhost/api/create/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: "test" }),
+      body: JSON.stringify({ prompt: "test", reservationId: "res" }),
     });
 
     const response = await POST(request);
@@ -154,6 +144,7 @@ describe("POST /api/create/validate", () => {
       validationId: "v",
     });
     expect(prisma.openAiCallLog.create).toHaveBeenCalled();
+    expect(cancelSlotReservation).not.toHaveBeenCalled();
   });
 
   it("returns blocked result with category and fixGuide", async () => {
@@ -180,7 +171,7 @@ describe("POST /api/create/validate", () => {
     const request = new Request("http://localhost/api/create/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: "test" }),
+      body: JSON.stringify({ prompt: "test", reservationId: "res" }),
     });
 
     const response = await POST(request);
@@ -196,6 +187,7 @@ describe("POST /api/create/validate", () => {
       validationId: "v",
     });
     expect(prisma.openAiCallLog.create).toHaveBeenCalled();
+    expect(cancelSlotReservation).toHaveBeenCalled();
   });
 
   it("returns 503 when openai provider is unavailable", async () => {
@@ -212,7 +204,7 @@ describe("POST /api/create/validate", () => {
     const request = new Request("http://localhost/api/create/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: "test" }),
+      body: JSON.stringify({ prompt: "test", reservationId: "res" }),
     });
 
     const response = await POST(request);
@@ -221,6 +213,7 @@ describe("POST /api/create/validate", () => {
     expect(payload.ok).toBe(false);
     expect(payload.code).toBe("VALIDATION_UNAVAILABLE");
     expect(prisma.openAiCallLog.create).toHaveBeenCalled();
+    expect(cancelSlotReservation).toHaveBeenCalled();
   });
 
   it("returns 429 when rate limited", async () => {
@@ -236,11 +229,19 @@ describe("POST /api/create/validate", () => {
       },
     });
 
+    checkRateLimit
+      .mockReturnValueOnce({ allowed: true, remaining: 4 })
+      .mockReturnValueOnce({ allowed: true, remaining: 3 })
+      .mockReturnValueOnce({ allowed: true, remaining: 2 })
+      .mockReturnValueOnce({ allowed: true, remaining: 1 })
+      .mockReturnValueOnce({ allowed: true, remaining: 0 })
+      .mockReturnValueOnce({ allowed: false, retryAfterSeconds: 60 });
+
     for (let i = 0; i < 5; i += 1) {
       const request = new Request("http://localhost/api/create/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: "test" }),
+        body: JSON.stringify({ prompt: "test", reservationId: "res" }),
       });
       const response = await POST(request);
       expect(response.status).toBe(200);
@@ -250,7 +251,7 @@ describe("POST /api/create/validate", () => {
       new Request("http://localhost/api/create/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: "test" }),
+        body: JSON.stringify({ prompt: "test", reservationId: "res" }),
       }),
     );
     expect(limited.status).toBe(429);

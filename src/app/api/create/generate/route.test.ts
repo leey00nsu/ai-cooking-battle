@@ -248,6 +248,40 @@ describe("POST /api/create/generate", () => {
     expect(enqueueCreatePipelineJob).not.toHaveBeenCalled();
   });
 
+  it("returns 409 when reservation is CANCELLED", async () => {
+    const { POST } = await import("./route");
+    prisma.openAiCallLog.findUnique.mockResolvedValueOnce({
+      id: "v",
+      userId: "user",
+      kind: "PROMPT_VALIDATE",
+      decision: "ALLOW",
+      inputPrompt: "p",
+      reason: null,
+    });
+    prisma.createRequest.findUnique.mockResolvedValueOnce(null);
+    prisma.slotReservation.findFirst.mockResolvedValueOnce({
+      id: "r",
+      userId: "user",
+      status: "CANCELLED",
+      expiresAt: new Date(Date.now() + 60_000),
+      dayKey: "2026-02-03",
+      slotType: "FREE",
+    });
+
+    const request = new Request("http://localhost/api/create/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reservationId: "r", idempotencyKey: "k", validationId: "v" }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(409);
+    const payload = await response.json();
+    expect(payload.code).toBe("RESERVATION_CANCELLED");
+    expect(prisma.createRequest.create).not.toHaveBeenCalled();
+    expect(enqueueCreatePipelineJob).not.toHaveBeenCalled();
+  });
+
   it("returns 503 and marks reservation failed when enqueue fails", async () => {
     const { POST } = await import("./route");
     prisma.openAiCallLog.findUnique.mockResolvedValueOnce({

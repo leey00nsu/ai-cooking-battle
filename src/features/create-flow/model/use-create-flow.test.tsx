@@ -81,17 +81,17 @@ describe("useCreateFlow", () => {
     fetchJson
       .mockResolvedValueOnce({
         ok: true,
+        slotType: "free",
+        reservationId: "res",
+        expiresInSeconds: 300,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
         decision: "ALLOW",
         normalizedPrompt: "가공된 프롬프트",
         validationId: "v",
         translatedPromptEn: "translated",
         warnings: null,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        slotType: "free",
-        reservationId: "res",
-        expiresInSeconds: 300,
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -136,12 +136,22 @@ describe("useCreateFlow", () => {
     });
     expect(validateCall).toBeTruthy();
     const validateOptions = (validateCall?.[1] ?? {}) as { body?: string };
-    const validatePayload = JSON.parse(validateOptions.body ?? "{}") as { prompt?: string };
+    const validatePayload = JSON.parse(validateOptions.body ?? "{}") as {
+      prompt?: string;
+      reservationId?: string;
+    };
     expect(validatePayload.prompt).toBe("원본 프롬프트");
+    expect(validatePayload.reservationId).toBe("res");
   });
 
   it("keeps preview imageUrl on safety failure", async () => {
     fetchJson
+      .mockResolvedValueOnce({
+        ok: true,
+        slotType: "free",
+        reservationId: "res",
+        expiresInSeconds: 300,
+      })
       .mockResolvedValueOnce({
         ok: true,
         decision: "ALLOW",
@@ -149,12 +159,6 @@ describe("useCreateFlow", () => {
         translatedPromptEn: "translated",
         validationId: "v",
         warnings: null,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        slotType: "free",
-        reservationId: "res",
-        expiresInSeconds: 300,
       })
       .mockResolvedValueOnce({
         ok: true,

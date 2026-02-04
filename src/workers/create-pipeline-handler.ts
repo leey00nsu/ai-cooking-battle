@@ -164,7 +164,6 @@ export async function processCreatePipelineRequest(requestId: string) {
         where: { id },
         data: { status: "FAILED" },
       });
-      await markReservationFailed(createRequest.reservation);
       console.warn("[create-pipeline] safety check blocked", {
         requestId: id,
         category: safety.category,
