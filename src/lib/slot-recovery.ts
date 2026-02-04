@@ -90,8 +90,8 @@ export async function reclaimSlotReservation(reservation: SlotReservation) {
     });
 
     await safeDecrementDailySlotCounter(tx, {
-      dayKey: reservation.dayKey,
-      slotType: reservation.slotType,
+      dayKey: latest.dayKey,
+      slotType: latest.slotType,
     });
 
     return updated;
@@ -120,8 +120,8 @@ export async function markReservationFailed(reservation: SlotReservation) {
     });
 
     await safeDecrementDailySlotCounter(tx, {
-      dayKey: reservation.dayKey,
-      slotType: reservation.slotType,
+      dayKey: latest.dayKey,
+      slotType: latest.slotType,
     });
 
     return updated;

@@ -77,7 +77,7 @@ async function createImageGenerationRequest(input: LeesfieldImageGenerationInput
   if (!prompt) {
     throw new ProviderError({
       provider: PROVIDER,
-      code: "INVALID_RESPONSE",
+      code: "INVALID_INPUT",
       message: "[leesfield] prompt is required.",
     });
   }

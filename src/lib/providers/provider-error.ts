@@ -2,6 +2,7 @@ export type ProviderErrorCode =
   | "MISSING_ENV"
   | "HTTP_ERROR"
   | "GENERATION_FAILED"
+  | "INVALID_INPUT"
   | "TIMEOUT"
   | "INVALID_RESPONSE"
   | "UNKNOWN";

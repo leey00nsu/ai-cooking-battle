@@ -21,9 +21,11 @@ function extractTranslatedPromptEn(originalPrompt: string, outputJson: unknown) 
     return null;
   }
   const record = outputJson as Record<string, unknown>;
-  const candidate = String(record.translatedPromptEn ?? "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const translated = record.translatedPromptEn;
+  if (typeof translated !== "string") {
+    return null;
+  }
+  const candidate = translated.replace(/\s+/g, " ").trim();
   if (!candidate) {
     return null;
   }
