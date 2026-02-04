@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const responsesCreateMock = vi.fn(async () => ({
   output_text:
@@ -10,7 +10,6 @@ vi.mock("openai", () => {
     responses = {
       create: responsesCreateMock,
     };
-    constructor() {}
   }
 
   return { default: OpenAI };
@@ -19,6 +18,10 @@ vi.mock("openai", () => {
 import { validatePromptWithOpenAi } from "@/lib/providers/openai-prompt-validator";
 
 describe("openai-prompt-validator", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("parses allow response", async () => {
     vi.stubEnv("OPENAI_API_KEY", "key");
     vi.stubEnv("OPENAI_PROMPT_VALIDATION_MODEL", "gpt-5-mini");

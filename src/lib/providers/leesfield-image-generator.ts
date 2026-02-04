@@ -171,7 +171,15 @@ async function downloadBytes(url: string, timeoutMs = 30_000) {
         cause: error,
       });
     }
-    throw error;
+    if (error instanceof ProviderError) {
+      throw error;
+    }
+    throw new ProviderError({
+      provider: PROVIDER,
+      code: "UNKNOWN",
+      message: "[leesfield] Image download failed.",
+      cause: error,
+    });
   } finally {
     clearTimeout(timeoutId);
   }
@@ -227,7 +235,7 @@ async function requestAndWaitForImageUrl(
     if (state === "FAILED" || state === "ERROR") {
       throw new ProviderError({
         provider: PROVIDER,
-        code: "HTTP_ERROR",
+        code: "GENERATION_FAILED",
         message: `[leesfield] Generation failed. requestId=${requestId} (${status.errorMessage ?? "unknown"})`,
       });
     }

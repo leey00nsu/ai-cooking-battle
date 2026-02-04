@@ -1,8 +1,40 @@
-import type { DailySlotCounter, SlotReservation } from "@prisma/client";
+import { type DailySlotCounter, Prisma, type SlotReservation } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const decrementFieldBySlotType = (slotType: SlotReservation["slotType"]) =>
   slotType === "FREE" ? { freeUsedCount: { decrement: 1 } } : { adUsedCount: { decrement: 1 } };
+
+async function safeDecrementDailySlotCounter(
+  tx: Prisma.TransactionClient,
+  args: { dayKey: string; slotType: SlotReservation["slotType"] },
+) {
+  const { dayKey, slotType } = args;
+  const data = decrementFieldBySlotType(slotType);
+
+  const updated = await tx.dailySlotCounter.updateMany({
+    where: { dayKey },
+    data,
+  });
+
+  if (updated.count > 0) {
+    return;
+  }
+
+  try {
+    await tx.dailySlotCounter.create({
+      data: {
+        dayKey,
+        freeUsedCount: 0,
+        adUsedCount: 0,
+      },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return;
+    }
+    throw error;
+  }
+}
 
 export async function cancelSlotReservation(reservation: SlotReservation) {
   if (reservation.status !== "RESERVED") {
@@ -23,10 +55,7 @@ export async function cancelSlotReservation(reservation: SlotReservation) {
       data: { status: "CANCELLED" },
     });
 
-    await tx.dailySlotCounter.update({
-      where: { dayKey: latest.dayKey },
-      data: decrementFieldBySlotType(latest.slotType),
-    });
+    await safeDecrementDailySlotCounter(tx, { dayKey: latest.dayKey, slotType: latest.slotType });
 
     if (latest.slotType === "AD" && latest.adRewardId) {
       await tx.adReward.update({
@@ -60,9 +89,9 @@ export async function reclaimSlotReservation(reservation: SlotReservation) {
       data: { status: "EXPIRED" },
     });
 
-    await tx.dailySlotCounter.update({
-      where: { dayKey: reservation.dayKey },
-      data: decrementFieldBySlotType(reservation.slotType),
+    await safeDecrementDailySlotCounter(tx, {
+      dayKey: reservation.dayKey,
+      slotType: reservation.slotType,
     });
 
     return updated;
@@ -90,9 +119,9 @@ export async function markReservationFailed(reservation: SlotReservation) {
       data: { status: "FAILED" },
     });
 
-    await tx.dailySlotCounter.update({
-      where: { dayKey: reservation.dayKey },
-      data: decrementFieldBySlotType(reservation.slotType),
+    await safeDecrementDailySlotCounter(tx, {
+      dayKey: reservation.dayKey,
+      slotType: reservation.slotType,
     });
 
     return updated;

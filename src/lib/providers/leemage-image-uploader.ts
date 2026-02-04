@@ -93,7 +93,15 @@ async function putPresigned(presignedUrl: string, bytes: Uint8Array, contentType
         cause: error,
       });
     }
-    throw error;
+    if (error instanceof ProviderError) {
+      throw error;
+    }
+    throw new ProviderError({
+      provider: PROVIDER,
+      code: "UNKNOWN",
+      message: "[leemage] Presigned upload failed.",
+      cause: error,
+    });
   } finally {
     clearTimeout(timeoutId);
   }

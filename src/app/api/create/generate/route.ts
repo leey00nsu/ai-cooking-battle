@@ -294,10 +294,13 @@ export async function POST(request: Request) {
           );
         }
 
-        if (!duplicated.prompt) {
+        if (!duplicated.prompt || (promptEn && !duplicated.promptEn)) {
           await prisma.createRequest.update({
             where: { id: duplicated.id },
-            data: { prompt },
+            data: {
+              ...(duplicated.prompt ? {} : { prompt }),
+              ...(promptEn && !duplicated.promptEn ? { promptEn } : {}),
+            },
           });
         }
 
