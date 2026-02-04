@@ -1,12 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  createIdempotencyKey,
-  createRecoveryStorage,
-} from "@/features/create-flow/model/create-recovery";
+import { createIdempotencyKey } from "@/features/create-flow/model/create-recovery";
 import { createStepItems } from "@/features/create-flow/model/stepper-state";
 import type {
   CreateFlowState,
+  CreateStep,
   GenerateResponse,
   ReserveResponse,
   StatusResponse,
@@ -24,13 +22,28 @@ const initialState: CreateFlowState = {
   imageUrl: null,
 };
 
+type ApiCreateStatus = Extract<StatusResponse, { ok: true }>["status"];
+
+const mapStatusToStep = (status: ApiCreateStatus): CreateStep => {
+  switch (status) {
+    case "VALIDATING":
+      return "validating";
+    case "RESERVING":
+      return "reserving";
+    case "GENERATING":
+      return "generating";
+    case "SAFETY":
+      return "safety";
+    case "DONE":
+      return "done";
+  }
+};
+
 export function useCreateFlow() {
   const [state, setState] = useState<CreateFlowState>(initialState);
   const runIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
-  const recoveryKeyRef = useRef<string | null>(null);
-  const isRecoveringRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -44,11 +57,19 @@ export function useCreateFlow() {
     [state.step, state.errorStep],
   );
   const validateMutation = useMutation({
-    mutationFn: ({ prompt, signal }: { prompt: string; signal: AbortSignal }) =>
+    mutationFn: ({
+      prompt,
+      reservationId,
+      signal,
+    }: {
+      prompt: string;
+      reservationId: string;
+      signal: AbortSignal;
+    }) =>
       fetchJson<ValidateResponse>("/api/create/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, reservationId }),
         signal,
       }),
   });
@@ -75,13 +96,13 @@ export function useCreateFlow() {
   const generateMutation = useMutation({
     mutationFn: ({
       reservationId,
-      prompt,
       idempotencyKey,
+      validationId,
       signal,
     }: {
       reservationId: string;
-      prompt: string;
       idempotencyKey: string;
+      validationId: string;
       signal: AbortSignal;
     }) =>
       fetchJson<GenerateResponse>("/api/create/generate", {
@@ -89,8 +110,8 @@ export function useCreateFlow() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           reservationId,
-          prompt,
           idempotencyKey,
+          validationId,
         }),
         signal,
       }),
@@ -100,8 +121,13 @@ export function useCreateFlow() {
       fetchJson<StatusResponse>(`/api/create/status?${query}`, { signal }),
   });
 
-  const recover = useCallback(
-    async (idempotencyKey: string) => {
+  const recoverByRequestId = useCallback(
+    async (requestId: string) => {
+      const trimmedRequestId = requestId.trim();
+      if (!trimmedRequestId) {
+        return;
+      }
+
       runIdRef.current += 1;
       const runId = runIdRef.current;
       abortRef.current?.abort();
@@ -111,97 +137,83 @@ export function useCreateFlow() {
       const isActive = () =>
         mountedRef.current && runIdRef.current === runId && !controller.signal.aborted;
 
-      isRecoveringRef.current = true;
       if (isActive()) {
         setState({
           step: "generating",
           errorMessage: null,
           errorStep: null,
-          requestId: null,
+          requestId: trimmedRequestId,
           imageUrl: null,
         });
       }
 
-      let statusResponse: StatusResponse;
-      try {
-        statusResponse = await statusMutation.mutateAsync({
-          query: `idempotencyKey=${encodeURIComponent(idempotencyKey)}`,
-          signal: controller.signal,
-        });
-      } catch (error) {
-        if ((error as DOMException).name === "AbortError") {
-          return;
-        }
-        const fetchError = error as FetchJsonError;
-        if (
-          fetchError?.status === 404 ||
-          fetchError?.status === 410 ||
-          fetchError?.code === "REQUEST_NOT_FOUND" ||
-          fetchError?.code === "RESERVATION_EXPIRED"
-        ) {
-          createRecoveryStorage.clear();
-          recoveryKeyRef.current = null;
+      const encodedRequestId = encodeURIComponent(trimmedRequestId);
+      while (true) {
+        let statusResponse: StatusResponse;
+        try {
+          statusResponse = await statusMutation.mutateAsync({
+            query: `requestId=${encodedRequestId}`,
+            signal: controller.signal,
+          });
+        } catch (error) {
+          if ((error as DOMException).name === "AbortError") {
+            return;
+          }
+          const fetchError = error as FetchJsonError;
+          if (
+            fetchError?.status === 404 ||
+            fetchError?.status === 410 ||
+            fetchError?.code === "REQUEST_NOT_FOUND" ||
+            fetchError?.code === "RESERVATION_EXPIRED"
+          ) {
+            if (isActive()) {
+              setState(initialState);
+            }
+            return;
+          }
           if (isActive()) {
-            setState(initialState);
+            setState({
+              step: "error",
+              errorMessage: "복구 요청 중 오류가 발생했습니다.",
+              errorStep: "generating",
+              requestId: trimmedRequestId,
+              imageUrl: null,
+            });
           }
           return;
         }
-        if (isActive()) {
-          setState({
-            step: "error",
-            errorMessage: "복구 요청 중 오류가 발생했습니다.",
-            errorStep: "generating",
-            requestId: null,
-            imageUrl: null,
-          });
-        }
-        return;
-      }
 
-      if (!statusResponse.ok) {
-        if (
-          statusResponse.code === "REQUEST_NOT_FOUND" ||
-          statusResponse.code === "RESERVATION_EXPIRED"
-        ) {
-          createRecoveryStorage.clear();
-          recoveryKeyRef.current = null;
+        if (!statusResponse.ok) {
+          if (isActive()) {
+            setState({
+              step: "error",
+              errorMessage: statusResponse.message ?? "복구 요청에 실패했습니다.",
+              errorStep: "generating",
+              requestId: trimmedRequestId,
+              imageUrl: null,
+            });
+          }
+          return;
         }
-        if (isActive()) {
-          setState({
-            step: "error",
-            errorMessage: statusResponse.message ?? "복구 요청에 실패했습니다.",
-            errorStep: "generating",
-            requestId: null,
-            imageUrl: null,
-          });
+
+        if (!isActive()) {
+          return;
         }
-        return;
-      }
 
-      if (!isActive()) {
-        return;
-      }
-
-      if (statusResponse.status === "DONE") {
         setState({
-          step: "done",
+          step: mapStatusToStep(statusResponse.status),
           errorMessage: null,
           errorStep: null,
-          requestId: null,
+          requestId: trimmedRequestId,
           imageUrl: statusResponse.imageUrl,
         });
-        createRecoveryStorage.clear();
-        recoveryKeyRef.current = null;
-        return;
-      }
 
-      setState({
-        step: "safety",
-        errorMessage: null,
-        errorStep: null,
-        requestId: null,
-        imageUrl: statusResponse.imageUrl,
-      });
+        if (statusResponse.status === "DONE") {
+          return;
+        }
+
+        await sleep(1200);
+      }
     },
     [statusMutation],
   );
@@ -217,24 +229,28 @@ export function useCreateFlow() {
       const isActive = () =>
         mountedRef.current && runIdRef.current === runId && !controller.signal.aborted;
 
-      const handleError = (error: unknown, errorStep: CreateFlowState["errorStep"]) => {
+      const handleError = (
+        error: unknown,
+        errorStep: CreateFlowState["errorStep"],
+        options?: { keepRequestId?: string; keepImageUrl?: string | null },
+      ) => {
         if (!isActive()) {
           return;
         }
         const message =
           error instanceof Error ? error.message : "요청 처리 중 오류가 발생했습니다.";
-        setState({
+        setState((prev) => ({
           step: "error",
           errorMessage: message,
           errorStep,
-          requestId: null,
-          imageUrl: null,
-        });
+          requestId: options?.keepRequestId ?? null,
+          imageUrl: options?.keepImageUrl ?? prev.imageUrl ?? null,
+        }));
       };
 
       if (isActive()) {
         setState({
-          step: "validating",
+          step: "reserving",
           errorMessage: null,
           errorStep: null,
           requestId: null,
@@ -242,34 +258,9 @@ export function useCreateFlow() {
         });
       }
 
-      const idempotencyKey = recoveryKeyRef.current ?? createIdempotencyKey();
-      recoveryKeyRef.current = idempotencyKey;
-      createRecoveryStorage.save(idempotencyKey);
-
-      let validateResponse: ValidateResponse;
-      try {
-        validateResponse = await validateMutation.mutateAsync({
-          prompt,
-          signal: controller.signal,
-        });
-      } catch (error) {
-        if ((error as DOMException).name === "AbortError") {
-          return;
-        }
-        handleError(error, "validating");
-        return;
-      }
-
-      if (!validateResponse.ok) {
-        handleError(new Error(validateResponse.message ?? "Validation failed."), "validating");
-        return;
-      }
-
-      if (isActive()) {
-        setState((prev) => ({ ...prev, step: "reserving" }));
-      }
-
+      const idempotencyKey = createIdempotencyKey();
       const adRewardId = options?.adRewardId?.trim();
+
       let reserveResponse: ReserveResponse;
       try {
         reserveResponse = await reserveMutation.mutateAsync({
@@ -291,15 +282,40 @@ export function useCreateFlow() {
       }
 
       if (isActive()) {
+        setState((prev) => ({ ...prev, step: "validating" }));
+      }
+
+      let validateResponse: ValidateResponse;
+      try {
+        validateResponse = await validateMutation.mutateAsync({
+          prompt,
+          reservationId: reserveResponse.reservationId,
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if ((error as DOMException).name === "AbortError") {
+          return;
+        }
+        handleError(error, "validating");
+        return;
+      }
+
+      if (!validateResponse.ok) {
+        handleError(new Error(validateResponse.message ?? "Validation failed."), "validating");
+        return;
+      }
+
+      if (isActive()) {
         setState((prev) => ({ ...prev, step: "generating" }));
       }
 
+      const validationId = validateResponse.validationId;
       let generateResponse: GenerateResponse;
       try {
         generateResponse = await generateMutation.mutateAsync({
           reservationId: reserveResponse.reservationId,
-          prompt: validateResponse.normalizedPrompt,
           idempotencyKey,
+          validationId,
           signal: controller.signal,
         });
       } catch (error) {
@@ -316,12 +332,11 @@ export function useCreateFlow() {
       }
 
       if (isActive()) {
-        setState((prev) => ({ ...prev, step: "safety", requestId: generateResponse.requestId }));
-      }
-
-      if (generateResponse.requestId) {
-        recoveryKeyRef.current = idempotencyKey;
-        createRecoveryStorage.save(idempotencyKey);
+        setState((prev) => ({
+          ...prev,
+          step: "generating",
+          requestId: generateResponse.requestId,
+        }));
       }
 
       const requestId = encodeURIComponent(generateResponse.requestId);
@@ -341,28 +356,23 @@ export function useCreateFlow() {
         }
 
         if (!statusResponse.ok) {
-          handleError(new Error(statusResponse.message ?? "Status fetch failed."), "safety");
+          handleError(new Error(statusResponse.message ?? "Status fetch failed."), "safety", {
+            keepRequestId: generateResponse.requestId,
+          });
           return;
         }
 
-        if (statusResponse.status !== "PROCESSING") {
-          if (isActive()) {
-            setState({
-              step: statusResponse.status === "DONE" ? "done" : "safety",
-              errorMessage: null,
-              errorStep: null,
-              requestId: generateResponse.requestId,
-              imageUrl: statusResponse.imageUrl,
-            });
-          }
-          if (statusResponse.status === "DONE") {
-            createRecoveryStorage.clear();
-            recoveryKeyRef.current = null;
-          }
-          return;
+        if (isActive()) {
+          setState({
+            step: mapStatusToStep(statusResponse.status),
+            errorMessage: null,
+            errorStep: null,
+            requestId: generateResponse.requestId,
+            imageUrl: statusResponse.imageUrl,
+          });
         }
 
-        if (!isActive()) {
+        if (statusResponse.status === "DONE") {
           return;
         }
 
@@ -374,23 +384,19 @@ export function useCreateFlow() {
 
   const reset = useCallback(() => {
     setState(initialState);
-    createRecoveryStorage.clear();
-    recoveryKeyRef.current = null;
   }, []);
 
   useEffect(() => {
     if (mountedRef.current) {
       setState(initialState);
     }
-    createRecoveryStorage.clear();
-    recoveryKeyRef.current = null;
   }, []);
 
   return {
     state,
     steps,
     start,
-    recover,
+    recoverByRequestId,
     reset,
   };
 }

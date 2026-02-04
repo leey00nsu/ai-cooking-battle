@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { SlotSummary } from "@/entities/slot/model/types";
 import { useCreateFlow } from "@/features/create-flow/model/use-create-flow";
@@ -44,7 +44,8 @@ const fallbackSteps: StepItem[] = [
 ];
 
 export default function CreateScreen() {
-  const { state, steps, start } = useCreateFlow();
+  const { state, steps, start, recoverByRequestId } = useCreateFlow();
+  const hasAutoRecoveredRef = useRef(false);
   const [adRewardId, setAdRewardId] = useState<string | null>(null);
   const {
     data: slotSummary,
@@ -71,18 +72,68 @@ export default function CreateScreen() {
   const isProcessing = ["validating", "reserving", "generating", "safety"].includes(state.step);
   const freeLimit = slotSummary?.freeLimit;
   const freeUsedCount = slotSummary?.freeUsedCount;
-  const hasUsedFreeSlotToday = slotSummary?.hasUsedFreeSlotToday;
+  const canUseFreeSlotToday = slotSummary?.canUseFreeSlotToday;
+  const freeDailyLimit = slotSummary?.freeDailyLimit;
+  const activeFreeReservationCount = slotSummary?.activeFreeReservationCount;
   const freeSlotCaption = isSlotSummaryError
     ? "오늘 무료 슬롯 상태를 확인할 수 없습니다."
     : isSlotSummaryLoading
       ? "오늘 무료 슬롯 상태를 불러오는 중입니다."
-      : hasUsedFreeSlotToday
-        ? "오늘 무료 슬롯을 이미 사용했습니다"
-        : "오늘 무료 슬롯을 사용 가능합니다";
+      : canUseFreeSlotToday
+        ? freeDailyLimit && typeof activeFreeReservationCount === "number" && freeDailyLimit > 1
+          ? `오늘 무료 슬롯 ${activeFreeReservationCount}/${freeDailyLimit} 사용`
+          : "오늘 무료 슬롯을 사용 가능합니다"
+        : "오늘 무료 슬롯을 모두 사용했습니다";
 
   const handleFormSubmit = (data: CreateFormValues) => {
+    hasAutoRecoveredRef.current = false;
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.hash) {
+        url.hash = "";
+        window.history.replaceState(null, "", url);
+      }
+    }
     void start(data.prompt, { adRewardId: adRewardId ?? undefined });
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (hasAutoRecoveredRef.current) {
+      return;
+    }
+    const hash = window.location.hash.replace(/^#/, "").trim();
+    if (!hash) {
+      return;
+    }
+    const params = new URLSearchParams(hash);
+    const requestId = (params.get("requestId") ?? "").trim();
+    if (!requestId) {
+      return;
+    }
+
+    hasAutoRecoveredRef.current = true;
+    void recoverByRequestId(requestId);
+  }, [recoverByRequestId]);
+
+  useEffect(() => {
+    const requestId = state.requestId?.trim() ?? "";
+    if (!requestId) {
+      return;
+    }
+    if (typeof window === "undefined") {
+      return;
+    }
+    const url = new URL(window.location.href);
+    const current = new URLSearchParams(url.hash.replace(/^#/, "")).get("requestId") ?? "";
+    if (current === requestId) {
+      return;
+    }
+    url.hash = `requestId=${encodeURIComponent(requestId)}`;
+    window.history.replaceState(null, "", url);
+  }, [state.requestId]);
 
   useEffect(() => {
     if (!adRewardId) {
@@ -181,7 +232,7 @@ export default function CreateScreen() {
               errorMessage={state.errorMessage ?? undefined}
               steps={steps.length ? steps : fallbackSteps}
             />
-            <PreviewPanel imageUrl={state.imageUrl} />
+            <PreviewPanel imageUrl={state.imageUrl} isBlurred={state.step !== "done"} />
           </aside>
         </div>
       </main>

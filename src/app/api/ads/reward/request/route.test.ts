@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const getGuestUserId = vi.fn(async () => "guest");
+const getSessionMock = vi.fn(async () => ({ user: { id: "user" } }));
 const prisma = {
   adReward: {
     findFirst: vi.fn(),
@@ -9,7 +9,13 @@ const prisma = {
   },
 };
 
-vi.mock("@/lib/guest-user", () => ({ getGuestUserId }));
+vi.mock("@/lib/auth", () => ({
+  auth: {
+    api: {
+      getSession: getSessionMock,
+    },
+  },
+}));
 vi.mock("@/lib/prisma", () => ({ prisma }));
 
 describe("POST /api/ads/reward/request", () => {
@@ -33,7 +39,12 @@ describe("POST /api/ads/reward/request", () => {
       expiresAt: new Date("2026-02-01T00:00:00Z"),
     });
 
-    const response = await POST();
+    const response = await POST(
+      new Request("http://localhost/api/ads/reward/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
     const payload = await response.json();
 
     expect(payload.ok).toBe(true);

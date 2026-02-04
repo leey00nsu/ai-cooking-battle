@@ -14,6 +14,7 @@ model User {
   email                String?   @unique
   emailVerified        Boolean   @default(false)
   image                String?
+  freeDailyLimit       Int       @default(1)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   termsAcceptedAt      String?
@@ -23,6 +24,8 @@ model User {
   slotReservations     SlotReservation[]
   adRewards            AdReward[]
   createRequests       CreateRequest[]
+  dishes               Dish[]
+  openAiCallLogs       OpenAiCallLog[]
 
   @@map("user")
 }
@@ -81,6 +84,7 @@ enum SlotReservationStatus {
   CONFIRMED
   EXPIRED
   FAILED
+  CANCELLED
 }
 
 enum SlotType {
@@ -102,6 +106,11 @@ enum CreateRequestStatus {
   SAFETY
   DONE
   FAILED
+}
+
+enum OpenAiCallKind {
+  PROMPT_VALIDATE
+  IMAGE_SAFETY
 }
 
 model DailySlotCounter {
@@ -166,16 +175,84 @@ model CreateRequest {
   userId         String
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   idempotencyKey String
+  prompt         String?
+  promptEn       String?
   reservationId  String
   reservation    SlotReservation     @relation(fields: [reservationId], references: [id], onDelete: Restrict)
   status         CreateRequestStatus
+  dishId         String?
+  dish           Dish?               @relation(fields: [dishId], references: [id], onDelete: SetNull)
   imageUrl       String?
+  openAiCallLogs OpenAiCallLog[]
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
   @@unique([userId, idempotencyKey])
   @@index([userId])
   @@index([reservationId])
+  @@index([dishId])
   @@index([status])
   @@map("create_request")
+}
+
+model OpenAiCallLog {
+  id              String         @id @default(cuid())
+  kind            OpenAiCallKind
+  model           String
+  openAiResponseId String?
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createRequestId String?
+  createRequest   CreateRequest? @relation(fields: [createRequestId], references: [id], onDelete: SetNull)
+  inputPrompt     String
+  inputImageUrl   String?
+  outputText      String?
+  outputJson      Json?
+  decision        String?
+  category        String?
+  reason          String?
+  errorCode       String?
+  errorStatus     Int?
+  errorMessage    String?
+  createdAt       DateTime       @default(now())
+
+  @@index([userId])
+  @@index([createRequestId])
+  @@index([kind])
+  @@map("openai_call_log")
+}
+
+model Dish {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    String
+  promptEn  String?
+  imageUrl  String
+  isHidden  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createRequests CreateRequest[]
+  dayScores DishDayScore[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([isHidden])
+  @@map("dish")
+}
+
+model DishDayScore {
+  id         String   @id @default(cuid())
+  dishId     String
+  dish       Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  dayKey     String
+  totalScore Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([dishId, dayKey])
+  @@index([dishId])
+  @@index([dayKey])
+  @@map("dish_day_score")
 }

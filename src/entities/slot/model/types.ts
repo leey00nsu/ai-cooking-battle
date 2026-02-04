@@ -3,5 +3,7 @@ export type SlotSummary = {
   freeUsedCount: number;
   adLimit: number;
   adUsedCount: number;
-  hasUsedFreeSlotToday?: boolean;
+  freeDailyLimit: number;
+  activeFreeReservationCount: number;
+  canUseFreeSlotToday: boolean;
 };
