@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { validatePromptWithOpenAiWithRaw } from "@/lib/providers/openai-prompt-validator";
 import { ProviderError } from "@/lib/providers/provider-error";
 import { checkRateLimit } from "@/lib/rate-limit/user-rate-limit";
+import { formatDayKeyForKST } from "@/shared/lib/day-key";
+import { AD_SLOT_LIMIT, FREE_SLOT_LIMIT } from "@/shared/lib/slot-policy";
 
 export const runtime = "nodejs";
 
@@ -66,6 +68,105 @@ export async function POST(request: Request) {
           "Retry-After": String(rateLimit.retryAfterSeconds),
         },
       },
+    );
+  }
+
+  const dayKey = formatDayKeyForKST();
+  try {
+    const counter = await prisma.dailySlotCounter.upsert({
+      where: { dayKey },
+      update: {
+        updatedAt: new Date(),
+        freeLimit: FREE_SLOT_LIMIT,
+        adLimit: AD_SLOT_LIMIT,
+      },
+      create: { dayKey, freeLimit: FREE_SLOT_LIMIT, adLimit: AD_SLOT_LIMIT },
+    });
+
+    const freeRemaining = counter.freeLimit - counter.freeUsedCount;
+    const adRemaining = counter.adLimit - counter.adUsedCount;
+    const totalRemaining = freeRemaining + adRemaining;
+
+    if (totalRemaining <= 0) {
+      console.log("[create.validate] fail-fast", {
+        reason: "SLOT_SOLD_OUT",
+        dayKey,
+        freeRemaining,
+        adRemaining,
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "SLOT_SOLD_OUT",
+          message: "오늘의 생성 슬롯이 모두 소진되었습니다.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { freeDailyLimit: true },
+    });
+    const freeDailyLimit = user?.freeDailyLimit ?? 1;
+
+    const activeFreeReservationCount = await prisma.slotReservation.count({
+      where: {
+        userId,
+        dayKey,
+        slotType: "FREE",
+        status: { in: ["RESERVED", "CONFIRMED"] },
+      },
+    });
+
+    if (freeRemaining <= 0) {
+      console.log("[create.validate] fail-fast", {
+        reason: "FREE_SLOT_SOLD_OUT",
+        dayKey,
+        freeRemaining,
+        adRemaining,
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "FREE_SLOT_SOLD_OUT",
+          message: "오늘의 무료 슬롯이 모두 소진되었습니다.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (activeFreeReservationCount >= freeDailyLimit) {
+      console.log("[create.validate] fail-fast", {
+        reason: "FREE_SLOT_LIMIT_REACHED",
+        dayKey,
+        activeFreeReservationCount,
+        freeDailyLimit,
+      });
+      const limitMessage =
+        freeDailyLimit === 1
+          ? "무료 슬롯은 하루 1회만 가능합니다."
+          : `무료 슬롯은 하루 ${freeDailyLimit}회만 가능합니다.`;
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "FREE_SLOT_LIMIT_REACHED",
+          message: limitMessage,
+        },
+        { status: 429 },
+      );
+    }
+  } catch (error) {
+    console.warn("[create.validate] slot check failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "SLOT_CHECK_UNAVAILABLE",
+        message: "슬롯 정보를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+      },
+      { status: 503 },
     );
   }
 
