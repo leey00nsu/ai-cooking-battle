@@ -221,19 +221,23 @@ export function useCreateFlow() {
       const isActive = () =>
         mountedRef.current && runIdRef.current === runId && !controller.signal.aborted;
 
-      const handleError = (error: unknown, errorStep: CreateFlowState["errorStep"]) => {
+      const handleError = (
+        error: unknown,
+        errorStep: CreateFlowState["errorStep"],
+        options?: { keepRequestId?: string; keepImageUrl?: string | null },
+      ) => {
         if (!isActive()) {
           return;
         }
         const message =
           error instanceof Error ? error.message : "요청 처리 중 오류가 발생했습니다.";
-        setState({
+        setState((prev) => ({
           step: "error",
           errorMessage: message,
           errorStep,
-          requestId: null,
-          imageUrl: null,
-        });
+          requestId: options?.keepRequestId ?? null,
+          imageUrl: options?.keepImageUrl ?? prev.imageUrl ?? null,
+        }));
       };
 
       if (isActive()) {
@@ -343,7 +347,9 @@ export function useCreateFlow() {
         }
 
         if (!statusResponse.ok) {
-          handleError(new Error(statusResponse.message ?? "Status fetch failed."), "safety");
+          handleError(new Error(statusResponse.message ?? "Status fetch failed."), "safety", {
+            keepRequestId: generateResponse.requestId,
+          });
           return;
         }
 

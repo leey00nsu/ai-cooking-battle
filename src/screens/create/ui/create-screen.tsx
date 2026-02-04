@@ -232,7 +232,7 @@ export default function CreateScreen() {
               errorMessage={state.errorMessage ?? undefined}
               steps={steps.length ? steps : fallbackSteps}
             />
-            <PreviewPanel imageUrl={state.imageUrl} />
+            <PreviewPanel imageUrl={state.imageUrl} isBlurred={state.step !== "done"} />
           </aside>
         </div>
       </main>

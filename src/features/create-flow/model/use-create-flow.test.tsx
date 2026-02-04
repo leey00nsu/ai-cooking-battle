@@ -139,4 +139,59 @@ describe("useCreateFlow", () => {
     const validatePayload = JSON.parse(validateOptions.body ?? "{}") as { prompt?: string };
     expect(validatePayload.prompt).toBe("원본 프롬프트");
   });
+
+  it("keeps preview imageUrl on safety failure", async () => {
+    fetchJson
+      .mockResolvedValueOnce({
+        ok: true,
+        decision: "ALLOW",
+        normalizedPrompt: "원본 프롬프트",
+        translatedPromptEn: "translated",
+        validationId: "v",
+        warnings: null,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        slotType: "free",
+        reservationId: "res",
+        expiresInSeconds: 300,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        requestId: "req",
+        status: "PROCESSING",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: "SAFETY",
+        dishId: null,
+        imageUrl: "https://cdn.example/image.webp",
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        code: "GENERATE_FAILED",
+        message: "차단되었습니다.",
+        retryable: false,
+      });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    const { result } = renderHook(() => useCreateFlow(), { wrapper });
+    await result.current.start("원본 프롬프트");
+
+    await waitFor(() => {
+      expect(result.current.state.step).toBe("error");
+    });
+    expect(result.current.state.errorStep).toBe("safety");
+    expect(result.current.state.requestId).toBe("req");
+    expect(result.current.state.imageUrl).toBe("https://cdn.example/image.webp");
+  });
 });
