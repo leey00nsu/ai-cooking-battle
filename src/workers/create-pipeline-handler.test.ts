@@ -49,13 +49,14 @@ describe("processCreatePipelineRequest", () => {
 
   it("creates dish and marks request DONE (happy path)", async () => {
     const { processCreatePipelineRequest } = await import("./create-pipeline-handler");
-    const generationPrompt = `피자\n\n${getPlatedDishSuffixEn()}`;
+    const generationPrompt = `pizza\n\n${getPlatedDishSuffixEn()}`;
 
     prisma.createRequest.findUnique
       .mockResolvedValueOnce({
         id: "req",
         userId: "user",
         prompt: "피자",
+        promptEn: "pizza",
         reservationId: "res",
         status: "GENERATING",
         dishId: null,
@@ -71,6 +72,7 @@ describe("processCreatePipelineRequest", () => {
         id: "req",
         userId: "user",
         prompt: "피자",
+        promptEn: "pizza",
         reservationId: "res",
         status: "SAFETY",
         dishId: null,
@@ -121,6 +123,7 @@ describe("processCreatePipelineRequest", () => {
       data: {
         userId: "user",
         prompt: "피자",
+        promptEn: "pizza",
         imageUrl: "https://cdn.example/image.webp",
         isHidden: false,
       },

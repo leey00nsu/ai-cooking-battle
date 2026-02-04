@@ -221,11 +221,13 @@ export async function POST(request: Request) {
         decision: result.decision,
         normalizedPromptLength: result.normalizedPrompt.length,
         normalizedPromptPreview: sanitizePreview(result.normalizedPrompt),
+        translatedPromptEnLength: result.translatedPromptEn?.length ?? null,
         warnings,
       });
       return NextResponse.json({
         ok: true,
         normalizedPrompt: result.normalizedPrompt,
+        translatedPromptEn: result.translatedPromptEn,
         validationId,
       });
     }
@@ -248,6 +250,7 @@ export async function POST(request: Request) {
       category: result.category,
       fixGuide: result.fixGuide,
       normalizedPrompt: result.normalizedPrompt ?? null,
+      translatedPromptEn: result.translatedPromptEn,
       validationId,
     });
   } catch (error) {

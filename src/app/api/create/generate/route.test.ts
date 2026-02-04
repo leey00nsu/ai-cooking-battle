@@ -83,6 +83,7 @@ describe("POST /api/create/generate", () => {
       kind: "PROMPT_VALIDATE",
       decision: "ALLOW",
       inputPrompt: "p",
+      outputJson: { translatedPromptEn: "pizza" },
       reason: null,
     });
     prisma.createRequest.findUnique.mockResolvedValueOnce({
@@ -138,7 +139,8 @@ describe("POST /api/create/generate", () => {
       userId: "user",
       kind: "PROMPT_VALIDATE",
       decision: "ALLOW",
-      inputPrompt: "p",
+      inputPrompt: "피자",
+      outputJson: { translatedPromptEn: "pizza" },
       reason: null,
     });
     prisma.createRequest.findUnique.mockResolvedValueOnce(null);
@@ -167,6 +169,12 @@ describe("POST /api/create/generate", () => {
     const response = await POST(request);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true, requestId: "req", status: "PROCESSING" });
+    expect(prisma.createRequest.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        prompt: "피자",
+        promptEn: "pizza",
+      }),
+    });
     expect(enqueueCreatePipelineJob).toHaveBeenCalledWith({ requestId: "req" });
   });
 

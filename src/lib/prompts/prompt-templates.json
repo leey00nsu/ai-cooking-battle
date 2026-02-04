@@ -26,6 +26,7 @@
         "{",
         "  \"decision\": \"ALLOW\" | \"BLOCK\",",
         "  \"normalizedPrompt\": string,",
+        "  \"translatedPromptEn\": string,",
         "  \"category\": {{PROMPT_VALIDATION_CATEGORIES_JSON}},",
         "  \"fixGuide\": string,",
         "  \"isGray\": boolean",
@@ -37,7 +38,9 @@
         "When blocking or warning, the fixGuide should suggest a safe alternative that results in a single plated dish photo.",
         "The fixGuide should nudge users to include: dish name, ingredients, plating on a plate, camera angle, lighting, simple background.",
         "normalizedPrompt MUST be the user's input prompt with ONLY leading/trailing whitespace trimmed.",
-        "Do NOT rewrite, expand, translate, add ingredients, add plating/camera instructions, or add any new details.",
+        "translatedPromptEn MUST be an English translation of normalizedPrompt (translation-only).",
+        "Do NOT expand. Do NOT add camera/plating/lighting details. Do NOT add new ingredients. Keep it as short as possible.",
+        "Do NOT rewrite or expand normalizedPrompt. Do NOT add ingredients or plating/camera instructions. Do NOT add any new details.",
         "If you want to suggest improvements, put them in fixGuide (Korean) and keep normalizedPrompt as-is."
       ]
     },

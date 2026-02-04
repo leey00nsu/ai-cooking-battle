@@ -175,6 +175,7 @@ model CreateRequest {
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   idempotencyKey String
   prompt         String?
+  promptEn       String?
   reservationId  String
   reservation    SlotReservation     @relation(fields: [reservationId], references: [id], onDelete: Restrict)
   status         CreateRequestStatus
@@ -225,6 +226,7 @@ model Dish {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   prompt    String
+  promptEn  String?
   imageUrl  String
   isHidden  Boolean  @default(false)
   createdAt DateTime @default(now())

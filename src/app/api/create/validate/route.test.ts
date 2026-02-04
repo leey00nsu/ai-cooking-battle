@@ -129,12 +129,12 @@ describe("POST /api/create/validate", () => {
     const { POST } = await import("./route");
     getSessionMock.mockResolvedValueOnce({ user: { id: "user-allow" } });
     validatePromptWithOpenAiWithRaw.mockResolvedValueOnce({
-      result: { ok: true, decision: "ALLOW", normalizedPrompt: "ok" },
+      result: { ok: true, decision: "ALLOW", normalizedPrompt: "ok", translatedPromptEn: "ok" },
       raw: {
         model: "gpt-test",
         openAiResponseId: "resp",
-        outputText: '{"decision":"ALLOW","normalizedPrompt":"ok"}',
-        outputJson: { decision: "ALLOW", normalizedPrompt: "ok" },
+        outputText: '{"decision":"ALLOW","normalizedPrompt":"ok","translatedPromptEn":"ok"}',
+        outputJson: { decision: "ALLOW", normalizedPrompt: "ok", translatedPromptEn: "ok" },
       },
     });
     prisma.openAiCallLog.create.mockResolvedValueOnce({ id: "v" });
@@ -150,6 +150,7 @@ describe("POST /api/create/validate", () => {
     expect(await response.json()).toEqual({
       ok: true,
       normalizedPrompt: "ok",
+      translatedPromptEn: "ok",
       validationId: "v",
     });
     expect(prisma.openAiCallLog.create).toHaveBeenCalled();
@@ -165,6 +166,7 @@ describe("POST /api/create/validate", () => {
         category: "POLICY",
         fixGuide: "가이드를 따르세요.",
         normalizedPrompt: "normalized",
+        translatedPromptEn: "normalized",
       },
       raw: {
         model: "gpt-test",
@@ -190,6 +192,7 @@ describe("POST /api/create/validate", () => {
       category: "POLICY",
       fixGuide: "가이드를 따르세요.",
       normalizedPrompt: "normalized",
+      translatedPromptEn: "normalized",
       validationId: "v",
     });
     expect(prisma.openAiCallLog.create).toHaveBeenCalled();
@@ -224,7 +227,7 @@ describe("POST /api/create/validate", () => {
     const { POST } = await import("./route");
     getSessionMock.mockResolvedValue({ user: { id: "user-rate-limited" } });
     validatePromptWithOpenAiWithRaw.mockResolvedValue({
-      result: { ok: true, decision: "ALLOW", normalizedPrompt: "ok" },
+      result: { ok: true, decision: "ALLOW", normalizedPrompt: "ok", translatedPromptEn: "ok" },
       raw: {
         model: "gpt-test",
         openAiResponseId: "resp",

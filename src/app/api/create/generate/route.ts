@@ -16,6 +16,24 @@ type GeneratePayload = {
   validationId?: string;
 };
 
+function extractTranslatedPromptEn(originalPrompt: string, outputJson: unknown) {
+  if (!outputJson || typeof outputJson !== "object") {
+    return null;
+  }
+  const record = outputJson as Record<string, unknown>;
+  const candidate = String(record.translatedPromptEn ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!candidate) {
+    return null;
+  }
+  const maxLen = Math.min(240, Math.max(80, originalPrompt.length * 6));
+  if (candidate.length > maxLen) {
+    return null;
+  }
+  return candidate;
+}
+
 const isUniqueConstraintError = (error: unknown) => {
   if (!error || typeof error !== "object") {
     return false;
@@ -85,6 +103,7 @@ export async function POST(request: Request) {
   }
 
   const prompt = validationLog.inputPrompt.trim();
+  const promptEn = extractTranslatedPromptEn(prompt, validationLog.outputJson) ?? null;
   if (!prompt) {
     return NextResponse.json(
       {
@@ -117,10 +136,13 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!existingRequest.prompt) {
+    if (!existingRequest.prompt || (promptEn && !existingRequest.promptEn)) {
       await prisma.createRequest.update({
         where: { id: existingRequest.id },
-        data: { prompt },
+        data: {
+          ...(existingRequest.prompt ? {} : { prompt }),
+          ...(promptEn && !existingRequest.promptEn ? { promptEn } : {}),
+        },
       });
     }
 
@@ -205,6 +227,7 @@ export async function POST(request: Request) {
         userId,
         idempotencyKey,
         prompt,
+        promptEn,
         reservationId: reservation.id,
         status: "GENERATING",
       },

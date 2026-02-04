@@ -84,6 +84,7 @@ describe("useCreateFlow", () => {
         decision: "ALLOW",
         normalizedPrompt: "가공된 프롬프트",
         validationId: "v",
+        translatedPromptEn: "translated",
         warnings: null,
       })
       .mockResolvedValueOnce({

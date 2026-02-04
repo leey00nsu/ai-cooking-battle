@@ -58,13 +58,20 @@ export type PromptValidationWarning = {
 };
 
 export type PromptValidationResult =
-  | { ok: true; decision: "ALLOW"; normalizedPrompt: string; warnings?: PromptValidationWarning[] }
+  | {
+      ok: true;
+      decision: "ALLOW";
+      normalizedPrompt: string;
+      translatedPromptEn: string | null;
+      warnings?: PromptValidationWarning[];
+    }
   | {
       ok: false;
       decision: "BLOCK";
       category: string;
       fixGuide: string;
       normalizedPrompt?: string;
+      translatedPromptEn: string | null;
     };
 
 const PROMPT_VALIDATION_CATEGORIES: PromptValidationCategory[] = [
@@ -155,6 +162,19 @@ function toPromptValidationResult(
   const normalizedPromptCandidate = String(record.normalizedPrompt ?? "").trim() || trimmedPrompt;
   const normalizedPrompt =
     normalizedPromptCandidate === trimmedPrompt ? normalizedPromptCandidate : trimmedPrompt;
+  const translatedPromptEn = (() => {
+    const candidate = String(record.translatedPromptEn ?? "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!candidate) {
+      return null;
+    }
+    const maxLen = Math.min(240, Math.max(80, trimmedPrompt.length * 6));
+    if (candidate.length > maxLen) {
+      return null;
+    }
+    return candidate;
+  })();
   const category = String(record.category ?? "").trim() || "OTHER";
   const fixGuide = String(record.fixGuide ?? "").trim();
   const isGray = Boolean(record.isGray);
@@ -176,8 +196,8 @@ function toPromptValidationResult(
       });
     }
     return warnings.length
-      ? { ok: true, decision: "ALLOW", normalizedPrompt, warnings }
-      : { ok: true, decision: "ALLOW", normalizedPrompt };
+      ? { ok: true, decision: "ALLOW", normalizedPrompt, translatedPromptEn, warnings }
+      : { ok: true, decision: "ALLOW", normalizedPrompt, translatedPromptEn };
   }
 
   const safeCategory = PROMPT_VALIDATION_CATEGORIES.includes(category as PromptValidationCategory)
@@ -194,6 +214,7 @@ function toPromptValidationResult(
         ? "접시 위에 올라간 음식 사진이 나오도록, 요리/재료/플레이팅(접시), 촬영 각도/조명 등을 포함해 다시 작성해 주세요."
         : "접시 위에 올라간 음식 사진이 나오도록 안전하게 다시 작성해 주세요."),
     normalizedPrompt,
+    translatedPromptEn,
   };
 }
 
@@ -208,12 +229,13 @@ export async function validatePromptWithOpenAiWithRaw(
         decision: "BLOCK",
         category: "EMPTY",
         fixGuide: "프롬프트를 입력하세요.",
+        translatedPromptEn: null,
       },
       raw: {
         model: process.env.OPENAI_PROMPT_VALIDATION_MODEL?.trim() || "gpt-5.2-mini",
         openAiResponseId: null,
         outputText: "",
-        outputJson: { decision: "BLOCK", category: "EMPTY" },
+        outputJson: { decision: "BLOCK", category: "EMPTY", translatedPromptEn: "" },
       },
     };
   }
@@ -226,7 +248,13 @@ export async function validatePromptWithOpenAiWithRaw(
 export async function validatePromptWithOpenAi(prompt: string): Promise<PromptValidationResult> {
   const trimmed = prompt.trim();
   if (!trimmed) {
-    return { ok: false, decision: "BLOCK", category: "EMPTY", fixGuide: "프롬프트를 입력하세요." };
+    return {
+      ok: false,
+      decision: "BLOCK",
+      category: "EMPTY",
+      fixGuide: "프롬프트를 입력하세요.",
+      translatedPromptEn: null,
+    };
   }
 
   const { record } = await callOpenAiForPromptValidation(trimmed);

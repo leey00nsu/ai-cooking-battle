@@ -79,7 +79,9 @@ export async function processCreatePipelineRequest(requestId: string) {
   }
 
   const prompt = createRequest.prompt?.trim() ?? "";
-  if (!prompt) {
+  const promptEn = createRequest.promptEn?.trim() || null;
+  const basePrompt = promptEn || prompt;
+  if (!basePrompt) {
     await prisma.createRequest.update({
       where: { id },
       data: { status: "FAILED" },
@@ -89,7 +91,7 @@ export async function processCreatePipelineRequest(requestId: string) {
   }
 
   let latestImageUrlForLog: string | null = createRequest.imageUrl?.trim() || null;
-  const generationPrompt = buildGenerationPrompt(prompt);
+  const generationPrompt = buildGenerationPrompt(basePrompt);
 
   try {
     const imageUrl =
@@ -184,6 +186,7 @@ export async function processCreatePipelineRequest(requestId: string) {
         data: {
           userId: createRequest.userId,
           prompt,
+          promptEn,
           imageUrl,
           isHidden: false,
         },

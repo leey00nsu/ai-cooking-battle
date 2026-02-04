@@ -22,7 +22,12 @@ export type CreateFlowState = {
 };
 
 export type ValidateResponse =
-  | { ok: true; normalizedPrompt: string; validationId: string }
+  | {
+      ok: true;
+      normalizedPrompt: string;
+      translatedPromptEn: string | null;
+      validationId: string;
+    }
   | {
       ok: false;
       code: string;
@@ -30,6 +35,7 @@ export type ValidateResponse =
       category?: string;
       fixGuide?: string;
       validationId?: string;
+      translatedPromptEn?: string | null;
     };
 
 export type ReserveResponse =
