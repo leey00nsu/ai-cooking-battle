@@ -17,6 +17,7 @@ const tx = {
   adReward: {
     findFirst: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
   },
   user: {
     findUnique: vi.fn(),
@@ -72,6 +73,7 @@ describe("POST /api/create/reserve", () => {
       expiresAt: new Date(Date.now() + 60_000),
     });
     tx.dailySlotCounter.update.mockResolvedValue({});
+    tx.adReward.updateMany.mockResolvedValue({ count: 1 });
   });
 
   it("creates free reservation when under default daily limit", async () => {
@@ -183,6 +185,7 @@ describe("POST /api/create/reserve", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+    tx.adReward.updateMany.mockResolvedValueOnce({ count: 1 });
     tx.slotReservation.create.mockRejectedValueOnce({ code: "P2002" });
     prisma.slotReservation.findUnique.mockResolvedValueOnce({
       id: "existing-ad",
@@ -209,5 +212,9 @@ describe("POST /api/create/reserve", () => {
     expect(payload.ok).toBe(true);
     expect(payload.reservationId).toBe("existing-ad");
     expect(payload.slotType).toBe("ad");
+    expect(tx.adReward.updateMany).toHaveBeenCalledWith({
+      where: { id: "reward", status: "GRANTED" },
+      data: { status: "USED", usedAt: expect.any(Date) },
+    });
   });
 });

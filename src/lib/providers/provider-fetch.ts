@@ -25,8 +25,31 @@ export async function fetchJsonWithTimeout<T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+  const cleanupListeners: Array<() => void> = [];
+  let signal: AbortSignal = controller.signal;
+  if (init?.signal) {
+    const externalSignal = init.signal;
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.any === "function") {
+      signal = AbortSignal.any([externalSignal, controller.signal]);
+    } else {
+      const merged = new AbortController();
+      const abort = () => merged.abort();
+
+      if (externalSignal.aborted || controller.signal.aborted) {
+        abort();
+      } else {
+        externalSignal.addEventListener("abort", abort, { once: true });
+        controller.signal.addEventListener("abort", abort, { once: true });
+        cleanupListeners.push(() => externalSignal.removeEventListener("abort", abort));
+        cleanupListeners.push(() => controller.signal.removeEventListener("abort", abort));
+      }
+
+      signal = merged.signal;
+    }
+  }
+
   try {
-    const response = await fetch(input, { ...init, signal: controller.signal });
+    const response = await fetch(input, { ...init, signal });
     const payload = await parseResponseBody(response);
     if (!response.ok) {
       const message =
@@ -65,5 +88,8 @@ export async function fetchJsonWithTimeout<T>(
     });
   } finally {
     clearTimeout(timeoutId);
+    for (const cleanup of cleanupListeners) {
+      cleanup();
+    }
   }
 }

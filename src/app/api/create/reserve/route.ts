@@ -208,6 +208,26 @@ export async function POST(request: Request) {
       }
 
       try {
+        const claimed = await tx.adReward.updateMany({
+          where: {
+            id: reward.id,
+            status: "GRANTED",
+          },
+          data: {
+            status: "USED",
+            usedAt: reward.usedAt ?? now,
+          },
+        });
+
+        if (claimed.count === 0) {
+          return {
+            type: "error",
+            status: 409,
+            code: "AD_REWARD_INVALID",
+            message: "Ad reward is already used.",
+          };
+        }
+
         const reservation = await tx.slotReservation.create({
           data: {
             userId,
@@ -223,14 +243,6 @@ export async function POST(request: Request) {
         await tx.dailySlotCounter.update({
           where: { dayKey },
           data: { adUsedCount: { increment: 1 } },
-        });
-
-        await tx.adReward.update({
-          where: { id: reward.id },
-          data: {
-            status: "USED",
-            usedAt: reward.usedAt ?? now,
-          },
         });
 
         return {
