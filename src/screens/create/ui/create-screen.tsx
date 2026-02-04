@@ -72,14 +72,18 @@ export default function CreateScreen() {
   const isProcessing = ["validating", "reserving", "generating", "safety"].includes(state.step);
   const freeLimit = slotSummary?.freeLimit;
   const freeUsedCount = slotSummary?.freeUsedCount;
-  const hasUsedFreeSlotToday = slotSummary?.hasUsedFreeSlotToday;
+  const canUseFreeSlotToday = slotSummary?.canUseFreeSlotToday;
+  const freeDailyLimit = slotSummary?.freeDailyLimit;
+  const activeFreeReservationCount = slotSummary?.activeFreeReservationCount;
   const freeSlotCaption = isSlotSummaryError
     ? "오늘 무료 슬롯 상태를 확인할 수 없습니다."
     : isSlotSummaryLoading
       ? "오늘 무료 슬롯 상태를 불러오는 중입니다."
-      : hasUsedFreeSlotToday
-        ? "오늘 무료 슬롯을 이미 사용했습니다"
-        : "오늘 무료 슬롯을 사용 가능합니다";
+      : canUseFreeSlotToday
+        ? freeDailyLimit && typeof activeFreeReservationCount === "number" && freeDailyLimit > 1
+          ? `오늘 무료 슬롯 ${activeFreeReservationCount}/${freeDailyLimit} 사용`
+          : "오늘 무료 슬롯을 사용 가능합니다"
+        : "오늘 무료 슬롯을 모두 사용했습니다";
 
   const handleFormSubmit = (data: CreateFormValues) => {
     hasAutoRecoveredRef.current = false;

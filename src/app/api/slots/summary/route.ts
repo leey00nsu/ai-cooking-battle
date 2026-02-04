@@ -30,20 +30,31 @@ export async function GET(request: Request) {
     create: { dayKey, freeLimit: FREE_SLOT_LIMIT, adLimit: AD_SLOT_LIMIT },
   });
 
-  const freeReservation = await prisma.slotReservation.findFirst({
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { freeDailyLimit: true },
+  });
+  const freeDailyLimit = user?.freeDailyLimit ?? 1;
+
+  const activeFreeReservationCount = await prisma.slotReservation.count({
     where: {
       userId,
       dayKey,
       slotType: "FREE",
+      status: { in: ["RESERVED", "CONFIRMED"] },
     },
-    select: { id: true },
   });
+
+  const freeRemaining = counter.freeLimit - counter.freeUsedCount;
+  const canUseFreeSlotToday = freeRemaining > 0 && activeFreeReservationCount < freeDailyLimit;
 
   return NextResponse.json({
     freeLimit: counter.freeLimit,
     freeUsedCount: counter.freeUsedCount,
     adLimit: counter.adLimit,
     adUsedCount: counter.adUsedCount,
-    hasUsedFreeSlotToday: Boolean(freeReservation),
+    freeDailyLimit,
+    activeFreeReservationCount,
+    canUseFreeSlotToday,
   });
 }
