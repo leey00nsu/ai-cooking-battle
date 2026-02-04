@@ -2,9 +2,11 @@ export type Dish = {
   id: string;
   userId: string;
   prompt: string;
+  promptEn: string | null;
   imageUrl: string;
   isHidden: boolean;
   createdAt: string;
+  updatedAt: string;
 };
 
 export type DishDayScore = {
@@ -13,4 +15,5 @@ export type DishDayScore = {
   dayKey: string;
   totalScore: number;
   createdAt: string;
+  updatedAt: string;
 };

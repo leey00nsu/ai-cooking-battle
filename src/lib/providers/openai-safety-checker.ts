@@ -21,7 +21,7 @@ function getOpenAiConfig(): OpenAiConfig {
 
   return {
     apiKey,
-    model: process.env.OPENAI_SAFETY_CHECK_MODEL?.trim() || "gpt-5.2-mini",
+    model: process.env.OPENAI_SAFETY_CHECK_MODEL?.trim() || "gpt-5-mini",
   };
 }
 

@@ -21,7 +21,7 @@ import { validatePromptWithOpenAi } from "@/lib/providers/openai-prompt-validato
 describe("openai-prompt-validator", () => {
   it("parses allow response", async () => {
     vi.stubEnv("OPENAI_API_KEY", "key");
-    vi.stubEnv("OPENAI_PROMPT_VALIDATION_MODEL", "gpt-5.2-mini");
+    vi.stubEnv("OPENAI_PROMPT_VALIDATION_MODEL", "gpt-5-mini");
     responsesCreateMock.mockResolvedValueOnce({
       output_text:
         '{"decision":"ALLOW","normalizedPrompt":"test","translatedPromptEn":"test","category":"OK","fixGuide":"","isGray":false}',
@@ -37,7 +37,7 @@ describe("openai-prompt-validator", () => {
 
   it("parses non-food block response", async () => {
     vi.stubEnv("OPENAI_API_KEY", "key");
-    vi.stubEnv("OPENAI_PROMPT_VALIDATION_MODEL", "gpt-5.2-mini");
+    vi.stubEnv("OPENAI_PROMPT_VALIDATION_MODEL", "gpt-5-mini");
 
     responsesCreateMock.mockResolvedValueOnce({
       output_text:

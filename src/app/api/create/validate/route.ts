@@ -251,7 +251,7 @@ export async function POST(request: Request) {
         await prisma.openAiCallLog.create({
           data: {
             kind: "PROMPT_VALIDATE",
-            model: process.env.OPENAI_PROMPT_VALIDATION_MODEL?.trim() || "gpt-5.2-mini",
+            model: process.env.OPENAI_PROMPT_VALIDATION_MODEL?.trim() || "gpt-5-mini",
             userId,
             inputPrompt: prompt,
             errorCode: error.code,

@@ -229,7 +229,7 @@ export async function processCreatePipelineRequest(requestId: string) {
         await prisma.openAiCallLog.create({
           data: {
             kind: "IMAGE_SAFETY",
-            model: process.env.OPENAI_SAFETY_CHECK_MODEL?.trim() || "gpt-5.2-mini",
+            model: process.env.OPENAI_SAFETY_CHECK_MODEL?.trim() || "gpt-5-mini",
             userId: createRequest.userId,
             createRequestId: id,
             inputPrompt: generationPrompt,

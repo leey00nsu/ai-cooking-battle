@@ -21,7 +21,7 @@ function getOpenAiConfig(): OpenAiConfig {
 
   return {
     apiKey,
-    model: process.env.OPENAI_PROMPT_VALIDATION_MODEL?.trim() || "gpt-5.2-mini",
+    model: process.env.OPENAI_PROMPT_VALIDATION_MODEL?.trim() || "gpt-5-mini",
   };
 }
 
@@ -232,7 +232,7 @@ export async function validatePromptWithOpenAiWithRaw(
         translatedPromptEn: null,
       },
       raw: {
-        model: process.env.OPENAI_PROMPT_VALIDATION_MODEL?.trim() || "gpt-5.2-mini",
+        model: process.env.OPENAI_PROMPT_VALIDATION_MODEL?.trim() || "gpt-5-mini",
         openAiResponseId: null,
         outputText: "",
         outputJson: { decision: "BLOCK", category: "EMPTY", translatedPromptEn: "" },

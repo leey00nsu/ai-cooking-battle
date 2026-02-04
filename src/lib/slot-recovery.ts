@@ -12,7 +12,6 @@ export async function cancelSlotReservation(reservation: SlotReservation) {
   const updatedReservation = await prisma.$transaction(async (tx) => {
     const latest = await tx.slotReservation.findUnique({
       where: { id: reservation.id },
-      select: { id: true, status: true, slotType: true, dayKey: true, adRewardId: true },
     });
 
     if (!latest || latest.status !== "RESERVED") {
