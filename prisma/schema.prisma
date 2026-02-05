@@ -113,6 +113,18 @@ enum OpenAiCallKind {
   IMAGE_SAFETY
 }
 
+model DayTheme {
+  dayKey       String   @id
+  themeText    String
+  themeTextEn  String
+  themeImageUrl String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([createdAt])
+  @@map("day_theme")
+}
+
 model DailySlotCounter {
   dayKey        String   @id
   freeLimit     Int      @default(60)
