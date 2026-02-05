@@ -1,9 +1,16 @@
+import { getOrCreateDayTheme } from "@/lib/day-theme/get-or-create-day-theme";
 import {
   CREATE_PIPELINE_JOB_NAME,
   CREATE_PIPELINE_QUEUE_OPTIONS,
   type CreatePipelineJobPayload,
 } from "@/lib/queue/create-pipeline-job";
+import {
+  DAY_THEME_PRECREATE_JOB_NAME,
+  type DayThemePrecreateJobPayload,
+  ensureDayThemePrecreateSchedule,
+} from "@/lib/queue/day-theme-precreate-job";
 import { startPgBoss, stopPgBoss } from "@/lib/queue/pg-boss";
+import { formatDayKeyForKST } from "@/shared/lib/day-key";
 import { processCreatePipelineRequest } from "@/workers/create-pipeline-handler";
 
 function safeDbInfo(url: string) {
@@ -26,6 +33,7 @@ async function main() {
 
   const boss = await startPgBoss();
   await boss.createQueue(CREATE_PIPELINE_JOB_NAME, CREATE_PIPELINE_QUEUE_OPTIONS);
+  await ensureDayThemePrecreateSchedule(boss);
 
   await boss.work<CreatePipelineJobPayload>(
     CREATE_PIPELINE_JOB_NAME,
@@ -44,6 +52,19 @@ async function main() {
     },
   );
 
+  await boss.work<DayThemePrecreateJobPayload>(
+    DAY_THEME_PRECREATE_JOB_NAME,
+    { batchSize: 1 },
+    async (jobs) => {
+      for (const job of jobs) {
+        const dayKey = job.data?.dayKey?.toString().trim() || formatDayKeyForKST();
+        console.log("[day-theme-precreate] job received", { dayKey, jobId: job.id });
+        await getOrCreateDayTheme(dayKey, { userId: null });
+        console.log("[day-theme-precreate] job processed", { dayKey, jobId: job.id });
+      }
+    },
+  );
+
   const shutdown = async () => {
     await stopPgBoss({ graceful: true, timeout: 30_000 });
     process.exit(0);
@@ -55,6 +76,7 @@ async function main() {
   console.log(`[create-pipeline-worker] started. queue=${CREATE_PIPELINE_JOB_NAME}`, {
     bossDbSource: process.env.BOSS_DATABASE_URL ? "BOSS_DATABASE_URL" : "DATABASE_URL",
     dbInfo,
+    schedules: [{ queue: DAY_THEME_PRECREATE_JOB_NAME, tz: "Asia/Seoul", cron: "0 0 * * *" }],
   });
 }
 
