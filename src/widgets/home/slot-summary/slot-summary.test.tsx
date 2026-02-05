@@ -11,6 +11,9 @@ describe("SlotSummaryPanel", () => {
           freeUsedCount: 0,
           adLimit: 10,
           adUsedCount: 0,
+          freeDailyLimit: 1,
+          activeFreeReservationCount: 0,
+          canUseFreeSlotToday: true,
         }}
       />,
     );
