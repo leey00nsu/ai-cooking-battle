@@ -26,6 +26,14 @@ export function getOpenAiImageSafetyInstructions() {
   return promptTemplates.openai.imageSafety.instructions.join("\n");
 }
 
+export function getOpenAiDayThemeInstructions(variables: { RECENT_THEMES_KO_JSON: string }) {
+  return renderTemplateLines(promptTemplates.openai.dayTheme.instructions, variables).join("\n");
+}
+
 export function getPlatedDishSuffixEn() {
   return promptTemplates.generation.platedDishSuffixEn;
+}
+
+export function getDayThemeImagePrefixEn() {
+  return promptTemplates.generation.dayThemeImagePrefixEn;
 }

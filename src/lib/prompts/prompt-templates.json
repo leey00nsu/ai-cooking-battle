@@ -1,8 +1,34 @@
 {
   "generation": {
-    "platedDishSuffixEn": "A realistic food photography shot of this dish plated on a clean plate, close-up, natural lighting, sharp focus, simple background."
+    "platedDishSuffixEn": "A realistic food photography shot of this dish plated on a clean plate, close-up, natural lighting, sharp focus, simple background.",
+    "dayThemeImagePrefixEn": "A realistic food photography shot representing today's cooking theme:"
   },
   "openai": {
+    "dayTheme": {
+      "instructions": [
+        "You generate a daily theme for an AI cooking battle app.",
+        "You MUST output ONLY a JSON object.",
+        "",
+        "Goal:",
+        "- Generate a Korean themeText in this exact format:",
+        "  \"{상황/장소/분위기}에 어울리는 {음식종류 또는 특정 재료/조리법을 강조한} 음식\"",
+        "- Also generate themeTextEn which is an English translation of themeText (translation-only, no expansion).",
+        "",
+        "Constraints:",
+        "- themeText MUST include the phrase \"에 어울리는\".",
+        "- themeText MUST be a single line, no quotes, no markdown.",
+        "- Keep themeText concise (roughly 15~45 Korean characters if possible).",
+        "- It must be a food/dish theme. Do NOT mention real people, politics, brands, or copyrighted characters.",
+        "- Avoid repeating recent themes listed below:",
+        "{{RECENT_THEMES_KO_JSON}}",
+        "",
+        "Return ONLY this JSON schema:",
+        "{",
+        "  \"themeText\": string,",
+        "  \"themeTextEn\": string",
+        "}"
+      ]
+    },
     "promptValidation": {
       "instructions": [
         "You validate user prompts for an AI cooking image generation app.",

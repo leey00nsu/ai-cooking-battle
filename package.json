@@ -19,6 +19,8 @@
     "prepare": "husky",
     "test": "vitest run",
     "test:run": "vitest run",
+    "dev:day-theme:create-today": "tsx scripts/dev/day-theme.ts create-today",
+    "dev:day-theme:enqueue-precreate": "tsx scripts/dev/day-theme.ts enqueue-precreate --wait",
     "worker:create-pipeline": "tsx src/workers/create-pipeline-worker.ts",
     "smoke:create-pipeline": "tsx src/workers/create-pipeline-smoke.ts"
   },

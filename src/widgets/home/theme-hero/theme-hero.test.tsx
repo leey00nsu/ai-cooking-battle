@@ -5,6 +5,7 @@ import ThemeHero from "./theme-hero";
 const theme = {
   dayKey: "2026-01-26",
   themeText: "Cyberpunk Ramen",
+  themeTextEn: "Cyberpunk Ramen",
   themeImageUrl: "https://example.com/theme.jpg",
 };
 
