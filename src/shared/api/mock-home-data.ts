@@ -21,6 +21,7 @@ export function getMockTheme(dayKey = formatDayKey()): Theme {
   return {
     dayKey,
     themeText: "Neon Street Food Remix",
+    themeTextEn: "Neon Street Food Remix",
     themeImageUrl: dishImage(`theme-${dayKey}`),
   };
 }
