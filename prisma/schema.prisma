@@ -111,6 +111,7 @@ enum CreateRequestStatus {
 enum OpenAiCallKind {
   PROMPT_VALIDATE
   IMAGE_SAFETY
+  DAY_THEME
 }
 
 model DayTheme {
@@ -212,8 +213,8 @@ model OpenAiCallLog {
   kind            OpenAiCallKind
   model           String
   openAiResponseId String?
-  userId          String
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
   createRequestId String?
   createRequest   CreateRequest? @relation(fields: [createRequestId], references: [id], onDelete: SetNull)
   inputPrompt     String
