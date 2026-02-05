@@ -1,6 +1,7 @@
 {
   "generation": {
-    "platedDishSuffixEn": "A realistic food photography shot of this dish plated on a clean plate, close-up, natural lighting, sharp focus, simple background."
+    "platedDishSuffixEn": "A realistic food photography shot of this dish plated on a clean plate, close-up, natural lighting, sharp focus, simple background.",
+    "dayThemeImagePrefixEn": "A realistic food photography shot representing today's cooking theme:"
   },
   "openai": {
     "dayTheme": {

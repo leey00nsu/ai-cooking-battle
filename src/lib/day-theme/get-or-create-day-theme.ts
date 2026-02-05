@@ -77,7 +77,6 @@ export async function getOrCreateDayTheme(dayKey: string, opts?: { userId?: stri
 
   const recentThemesKo = await listRecentThemeTexts(14);
   const fallback = getFallbackTheme(dayKey, recentThemesKo);
-  const themeImageUrl = `https://picsum.photos/seed/day-theme-${dayKey}/800/800`;
 
   const shouldAttemptOpenAi = Boolean(process.env.OPENAI_API_KEY?.trim());
 
@@ -157,7 +156,7 @@ export async function getOrCreateDayTheme(dayKey: string, opts?: { userId?: stri
         dayKey,
         themeText,
         themeTextEn,
-        themeImageUrl,
+        themeImageUrl: null,
       },
     });
   } catch (error) {

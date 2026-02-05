@@ -14,6 +14,7 @@ const prisma = {
 };
 
 const generateDayThemeWithOpenAiWithRaw = vi.fn();
+const enqueueDayThemePrecreateJob = vi.fn(async () => "job");
 
 vi.mock("@/lib/auth", () => ({
   auth: {
@@ -27,6 +28,10 @@ vi.mock("@/lib/prisma", () => ({ prisma }));
 
 vi.mock("@/lib/providers/openai-day-theme-generator", () => ({
   generateDayThemeWithOpenAiWithRaw,
+}));
+
+vi.mock("@/lib/queue/day-theme-precreate-job", () => ({
+  enqueueDayThemePrecreateJob,
 }));
 
 describe("GET /api/theme/today", () => {
@@ -58,6 +63,7 @@ describe("GET /api/theme/today", () => {
       themeImageUrl: "https://example.com/theme.jpg",
     });
     expect(prisma.dayTheme.create).not.toHaveBeenCalled();
+    expect(enqueueDayThemePrecreateJob).not.toHaveBeenCalled();
   });
 
   it("creates DayTheme and returns it; second call returns the same theme", async () => {
@@ -65,14 +71,14 @@ describe("GET /api/theme/today", () => {
       dayKey: "2026-02-05",
       themeText: "봄 소풍, 공원에 어울리는 딸기와 요거트가 들어간 디저트",
       themeTextEn: "A strawberry-and-yogurt dessert for a spring picnic in the park",
-      themeImageUrl: "https://picsum.photos/seed/day-theme-2026-02-05/800/800",
+      themeImageUrl: null,
     });
 
     prisma.dayTheme.create.mockResolvedValueOnce({
       dayKey: "2026-02-05",
       themeText: "봄 소풍, 공원에 어울리는 딸기와 요거트가 들어간 디저트",
       themeTextEn: "A strawberry-and-yogurt dessert for a spring picnic in the park",
-      themeImageUrl: "https://picsum.photos/seed/day-theme-2026-02-05/800/800",
+      themeImageUrl: null,
     });
 
     const { GET } = await import("./route");
@@ -83,6 +89,7 @@ describe("GET /api/theme/today", () => {
       themeTextEn: expect.any(String),
       themeText: expect.stringContaining("에 어울리는"),
     });
+    expect(enqueueDayThemePrecreateJob).toHaveBeenCalledWith({ dayKey: "2026-02-05" });
 
     const second = await GET(new Request("http://localhost/api/theme/today"));
     expect(second.status).toBe(200);
@@ -95,7 +102,7 @@ describe("GET /api/theme/today", () => {
       dayKey: "2026-02-05",
       themeText: "한여름 해변, 바다에 어울리는 라임이 들어간 새우 타코",
       themeTextEn: "Shrimp tacos with lime for a midsummer beach day",
-      themeImageUrl: "https://picsum.photos/seed/day-theme-2026-02-05/800/800",
+      themeImageUrl: null,
     });
     prisma.dayTheme.create.mockRejectedValueOnce({ code: "P2002" });
 
@@ -107,6 +114,7 @@ describe("GET /api/theme/today", () => {
       themeTextEn: expect.any(String),
       themeText: expect.stringContaining("에 어울리는"),
     });
+    expect(enqueueDayThemePrecreateJob).toHaveBeenCalledWith({ dayKey: "2026-02-05" });
   });
 
   it("falls back when OpenAI provider fails", async () => {

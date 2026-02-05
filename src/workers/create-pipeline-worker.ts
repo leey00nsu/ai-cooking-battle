@@ -1,4 +1,9 @@
+import {
+  generateDayThemeImageUrl,
+  shouldReplaceDayThemeImageUrl,
+} from "@/lib/day-theme/day-theme-image";
 import { getOrCreateDayTheme } from "@/lib/day-theme/get-or-create-day-theme";
+import { prisma } from "@/lib/prisma";
 import {
   CREATE_PIPELINE_JOB_NAME,
   CREATE_PIPELINE_QUEUE_OPTIONS,
@@ -59,7 +64,32 @@ async function main() {
       for (const job of jobs) {
         const dayKey = job.data?.dayKey?.toString().trim() || formatDayKeyForKST();
         console.log("[day-theme-precreate] job received", { dayKey, jobId: job.id });
-        await getOrCreateDayTheme(dayKey, { userId: null });
+        const theme = await getOrCreateDayTheme(dayKey, { userId: null });
+
+        if (!shouldReplaceDayThemeImageUrl(theme.themeImageUrl)) {
+          console.log("[day-theme-precreate] image already exists", {
+            dayKey,
+            imageHost: new URL(theme.themeImageUrl ?? "").host,
+          });
+          continue;
+        }
+
+        try {
+          const url = await generateDayThemeImageUrl({ themeTextEn: theme.themeTextEn });
+          await prisma.dayTheme.update({
+            where: { dayKey },
+            data: { themeImageUrl: url },
+          });
+          console.log("[day-theme-precreate] image generated", {
+            dayKey,
+            imageHost: new URL(url).host,
+          });
+        } catch (error) {
+          console.warn("[day-theme-precreate] failed to generate image", {
+            dayKey,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
         console.log("[day-theme-precreate] job processed", { dayKey, jobId: job.id });
       }
     },
