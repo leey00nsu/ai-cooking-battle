@@ -33,9 +33,12 @@ async function getBaseUrl() {
 
 async function getJson<T>(path: string): Promise<FetchResult<T>> {
   const baseUrl = await getBaseUrl();
+  const headerList = await headers();
+  const cookie = headerList.get("cookie");
   try {
     const response = await fetch(`${baseUrl}${path}`, {
       cache: "no-store",
+      headers: cookie ? { cookie } : undefined,
     });
     if (!response.ok) {
       return { data: null, error: true };
