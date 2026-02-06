@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { computeUserStatus } from "@/lib/user-status/compute-user-status";
 
 export const runtime = "nodejs";
 
@@ -9,5 +10,6 @@ export async function GET(request: Request) {
   if (!userId) {
     return NextResponse.json({ status: "GUEST" });
   }
-  return NextResponse.json({ status: "AUTH" });
+  const status = await computeUserStatus(userId);
+  return NextResponse.json({ status });
 }
