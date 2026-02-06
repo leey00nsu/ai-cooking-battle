@@ -6,16 +6,18 @@ export const runtime = "nodejs";
 
 type Payload = {
   dishId?: string;
+  clear?: boolean;
 };
 
 type Result =
-  | { type: "ok"; representativeDishId: string }
+  | { type: "ok"; representativeDishId: string | null }
   | { type: "error"; status: number; code: string; message: string };
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as Payload;
+  const clearRepresentative = body.clear === true;
   const dishId = body.dishId?.trim() ?? "";
-  if (!dishId) {
+  if (!clearRepresentative && !dishId) {
     return NextResponse.json(
       { ok: false, code: "MISSING_DISH_ID", message: "dishId is required." },
       { status: 400 },
@@ -36,6 +38,20 @@ export async function POST(request: Request) {
   }
 
   const result = await prisma.$transaction<Result>(async (tx) => {
+    if (clearRepresentative) {
+      const user = await tx.user.update({
+        where: { id: userId },
+        data: { representativeDishId: null },
+        select: { representativeDishId: true },
+      });
+
+      await tx.activeEntry.deleteMany({
+        where: { userId },
+      });
+
+      return { type: "ok", representativeDishId: user.representativeDishId };
+    }
+
     const dish = await tx.dish.findFirst({
       where: { id: dishId, userId },
       select: { id: true },

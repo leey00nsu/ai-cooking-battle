@@ -79,7 +79,7 @@ export default function SocialLoginButtons({
             <Button
               key={provider.id}
               type="button"
-              intent="ghost"
+              variant="ghost"
               className={cn(
                 "flex h-14 w-full items-center justify-between gap-4 rounded-2xl px-4 text-left font-semibold transition",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70",

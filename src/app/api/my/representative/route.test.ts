@@ -13,6 +13,7 @@ const prisma = {
   activeEntry: {
     findUnique: vi.fn(),
     update: vi.fn(),
+    deleteMany: vi.fn(),
   },
 };
 
@@ -38,6 +39,7 @@ describe("POST /api/my/representative", () => {
     prisma.user.update.mockResolvedValue({ representativeDishId: "dish" });
     prisma.activeEntry.findUnique.mockResolvedValue(null);
     prisma.activeEntry.update.mockResolvedValue({ userId: "user" });
+    prisma.activeEntry.deleteMany.mockResolvedValue({ count: 1 });
   });
 
   it("returns 400 when dishId missing", async () => {
@@ -94,6 +96,31 @@ describe("POST /api/my/representative", () => {
       expect.objectContaining({
         where: { userId: "user" },
         data: { dishId: "dish" },
+      }),
+    );
+  });
+
+  it("clears representative dish and removes active entry", async () => {
+    const { POST } = await import("./route");
+    prisma.user.update.mockResolvedValueOnce({ representativeDishId: null });
+
+    const response = await POST(
+      new Request("http://localhost/api/my/representative", {
+        method: "POST",
+        body: JSON.stringify({ clear: true }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true, representativeDishId: null });
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { representativeDishId: null },
+      }),
+    );
+    expect(prisma.activeEntry.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "user" },
       }),
     );
   });

@@ -197,7 +197,7 @@ export default function CreateScreen() {
                     })}
                     maxLength={500}
                     placeholder="Describe a legendary dish..."
-                    intent="panel"
+                    variant="panel"
                     aria-invalid={!!promptError}
                     className={cn(
                       promptError
@@ -214,7 +214,7 @@ export default function CreateScreen() {
               </Card>
 
               <Button
-                intent="cta"
+                variant="cta"
                 type="submit"
                 className="h-14 text-base"
                 disabled={isProcessing}
