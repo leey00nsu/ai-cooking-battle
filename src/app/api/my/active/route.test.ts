@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getSessionMock = vi.fn();
 
+type TransactionCallback = (tx: typeof prisma) => Promise<unknown>;
+
 const prisma = {
   $transaction: vi.fn(),
   user: {
@@ -27,7 +29,7 @@ describe("POST /api/my/active", () => {
     vi.clearAllMocks();
     getSessionMock.mockReset();
     getSessionMock.mockResolvedValue({ user: { id: "user" } });
-    prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+    prisma.$transaction.mockImplementation(async (fn: TransactionCallback) => fn(prisma));
     prisma.user.findUnique.mockResolvedValue({ representativeDishId: "dish" });
     prisma.activeEntry.upsert.mockResolvedValue({ isActive: true, dishId: "dish" });
   });

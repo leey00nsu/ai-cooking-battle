@@ -16,6 +16,8 @@ const prisma = {
   },
 };
 
+type TransactionCallback = (tx: typeof prisma) => Promise<unknown>;
+
 vi.mock("@/lib/auth", () => ({
   auth: {
     api: {
@@ -31,7 +33,7 @@ describe("POST /api/my/representative", () => {
     vi.clearAllMocks();
     getSessionMock.mockReset();
     getSessionMock.mockResolvedValue({ user: { id: "user" } });
-    prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+    prisma.$transaction.mockImplementation(async (fn: TransactionCallback) => fn(prisma));
     prisma.dish.findFirst.mockResolvedValue({ id: "dish" });
     prisma.user.update.mockResolvedValue({ representativeDishId: "dish" });
     prisma.activeEntry.findUnique.mockResolvedValue(null);
