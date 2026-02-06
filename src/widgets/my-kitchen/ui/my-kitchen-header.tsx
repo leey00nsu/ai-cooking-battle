@@ -55,7 +55,7 @@ function MyKitchenHeader({
           </div>
           <Switch
             checked={isActive}
-            className="h-8 w-14 data-[state=checked]:bg-primary data-[state=unchecked]:bg-white/20"
+            className="h-8 w-14 data-[state=checked]:bg-primary data-[state=unchecked]:bg-white/20 [&_[data-slot=switch-thumb]]:data-[state=checked]:translate-x-8"
             aria-label={hasRepresentative ? "배틀 모드 전환" : "대표작을 먼저 지정하세요"}
             disabled={!hasRepresentative || isTogglingActive}
             aria-busy={isTogglingActive}
