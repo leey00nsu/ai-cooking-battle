@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRight, Eye, Trophy } from "lucide-react";
 import type { SnapshotEntry, SnapshotTop } from "@/entities/snapshot/model/types";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
@@ -7,7 +8,6 @@ import { Badge } from "@/shared/ui/badge";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { RestrictedState } from "@/shared/ui/restricted-state";
-import { ArrowRight, Eye, Trophy } from "lucide-react";
 
 type HighlightsProps = {
   snapshotTop: SnapshotTop | null;
@@ -53,7 +53,7 @@ function HighlightCard({
   dayKey: string;
   onClick?: () => void;
 }) {
-  const winnerIsLeft = entry.leftScore >= entry.rightScore;
+  const winnerIsLeft = entry.leftScore > entry.rightScore;
   const winnerLabel = winnerIsLeft ? "Left" : "Right";
   const chefHandle = `@chef-${String(entry.rank).padStart(2, "0")}`;
   const title = `Rank #${entry.rank} Showdown`;
@@ -124,7 +124,10 @@ export default function Highlights({ snapshotTop, isError, isRestricted }: Highl
       <section className="flex flex-col gap-6">
         <HighlightsHeader />
         <div className="mt-4">
-          <RestrictedState title="하이라이트 제한" description="현재 하이라이트를 볼 수 없습니다." />
+          <RestrictedState
+            title="하이라이트 제한"
+            description="현재 하이라이트를 볼 수 없습니다."
+          />
         </div>
       </section>
     );

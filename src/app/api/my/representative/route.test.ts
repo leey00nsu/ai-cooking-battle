@@ -100,6 +100,21 @@ describe("POST /api/my/representative", () => {
     );
   });
 
+  it("sets representative dish without updating active entry when entry is missing", async () => {
+    const { POST } = await import("./route");
+    prisma.activeEntry.findUnique.mockResolvedValueOnce(null);
+
+    const response = await POST(
+      new Request("http://localhost/api/my/representative", {
+        method: "POST",
+        body: JSON.stringify({ dishId: "dish" }),
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true, representativeDishId: "dish" });
+    expect(prisma.activeEntry.update).not.toHaveBeenCalled();
+  });
+
   it("clears representative dish and removes active entry", async () => {
     const { POST } = await import("./route");
     prisma.user.update.mockResolvedValueOnce({ representativeDishId: null });
@@ -123,5 +138,24 @@ describe("POST /api/my/representative", () => {
         where: { userId: "user" },
       }),
     );
+  });
+
+  it("returns 500 when transaction throws", async () => {
+    const { POST } = await import("./route");
+    prisma.$transaction.mockRejectedValueOnce(new Error("db failed"));
+
+    const response = await POST(
+      new Request("http://localhost/api/my/representative", {
+        method: "POST",
+        body: JSON.stringify({ dishId: "dish" }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      ok: false,
+      code: "INTERNAL_ERROR",
+      message: "서버 오류가 발생했습니다.",
+    });
   });
 });

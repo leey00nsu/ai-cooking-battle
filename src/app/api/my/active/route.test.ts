@@ -43,6 +43,8 @@ describe("POST /api/my/active", () => {
       }),
     );
     expect(response.status).toBe(400);
+    const payload = await response.json();
+    expect(payload.code).toBe("INVALID_IS_ACTIVE");
   });
 
   it("returns 401 when unauthenticated", async () => {

@@ -10,6 +10,11 @@ export async function GET(request: Request) {
   if (!userId) {
     return NextResponse.json({ status: "GUEST" });
   }
-  const status = await computeUserStatus(userId);
-  return NextResponse.json({ status });
+  try {
+    const status = await computeUserStatus(userId);
+    return NextResponse.json({ status });
+  } catch (error) {
+    console.error("[api/me] failed to compute user status", error);
+    return NextResponse.json({ status: "AUTH" }, { status: 500 });
+  }
 }

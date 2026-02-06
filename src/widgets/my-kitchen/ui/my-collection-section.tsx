@@ -1,6 +1,7 @@
 import { Flame, ShieldAlert, Star } from "lucide-react";
 import Link from "next/link";
 import type { MyKitchenDish } from "@/entities/kitchen/model/types";
+import { getKoreanObjectParticle } from "@/shared/lib/get-korean-object-particle";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
@@ -174,7 +175,7 @@ function MyCollectionCard({
                 type="button"
                 variant="cta"
                 className="h-10 px-4 text-xs font-bold uppercase tracking-[0.08em]"
-                aria-label={`${dish.prompt}을 대표작으로 설정`}
+                aria-label={`${dish.prompt}${getKoreanObjectParticle(dish.prompt)} 대표작으로 설정`}
                 disabled={isSettingRepresentative}
                 aria-busy={isSettingRepresentative}
                 onClick={() => onSetRepresentative(dish.id)}

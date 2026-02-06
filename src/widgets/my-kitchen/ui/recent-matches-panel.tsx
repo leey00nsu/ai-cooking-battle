@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { MatchSummary } from "@/entities/match/model/types";
-import { cn } from "@/shared/lib/utils";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { SectionHeading } from "@/shared/ui/section-heading";
@@ -47,11 +46,13 @@ function RecentMatchesPanel({ matches, isPending, isError }: RecentMatchesPanelP
           </div>
         ) : (
           <ul className="mt-4 space-y-3">
-            {matches.map((match, index) => {
-              const isWin = match.leftScore >= match.rightScore;
+            {matches.map((match) => {
+              const isWin = match.leftScore > match.rightScore;
               const pointDiff = Math.round(Math.abs(match.leftScore - match.rightScore) * 10);
               const pointLabel = `${isWin ? "+" : "-"}${pointDiff}`;
-              const opponentLabel = `Chef_${String(index + 1).padStart(2, "0")}`;
+              const matchResult = isWin ? "WIN" : "LOSS";
+              const resultToneClass = isWin ? "text-emerald-300" : "text-rose-300";
+              const opponentLabel = "Mock Opponent";
               return (
                 <li key={match.id}>
                   <Surface asChild tone="soft" radius="lg" interactive="borderAndBackground">
@@ -65,7 +66,7 @@ function RecentMatchesPanel({ matches, isPending, isError }: RecentMatchesPanelP
                           radius="full"
                           className="flex h-9 w-9 items-center justify-center text-xs font-bold text-white/80"
                         >
-                          {opponentLabel.slice(-2)}
+                          MO
                         </Surface>
                         <div>
                           <p className="text-sm font-semibold text-white">vs. {opponentLabel}</p>
@@ -73,22 +74,8 @@ function RecentMatchesPanel({ matches, isPending, isError }: RecentMatchesPanelP
                         </div>
                       </div>
                       <div className="text-right">
-                        <p
-                          className={cn(
-                            "text-xs font-bold",
-                            isWin ? "text-emerald-300" : "text-rose-300",
-                          )}
-                        >
-                          {isWin ? "WIN" : "LOSS"}
-                        </p>
-                        <p
-                          className={cn(
-                            "text-sm font-semibold",
-                            isWin ? "text-emerald-300" : "text-rose-300",
-                          )}
-                        >
-                          {pointLabel}
-                        </p>
+                        <p className={`text-xs font-bold ${resultToneClass}`}>{matchResult}</p>
+                        <p className={`text-sm font-semibold ${resultToneClass}`}>{pointLabel}</p>
                       </div>
                     </Link>
                   </Surface>

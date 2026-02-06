@@ -37,49 +37,58 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await prisma.$transaction<Result>(async (tx) => {
-    if (clearRepresentative) {
+  let result: Result;
+  try {
+    result = await prisma.$transaction<Result>(async (tx) => {
+      if (clearRepresentative) {
+        const user = await tx.user.update({
+          where: { id: userId },
+          data: { representativeDishId: null },
+          select: { representativeDishId: true },
+        });
+
+        await tx.activeEntry.deleteMany({
+          where: { userId },
+        });
+
+        return { type: "ok", representativeDishId: user.representativeDishId };
+      }
+
+      const dish = await tx.dish.findFirst({
+        where: { id: dishId, userId },
+        select: { id: true },
+      });
+      if (!dish) {
+        return { type: "error", status: 404, code: "DISH_NOT_FOUND", message: "Dish not found." };
+      }
+
       const user = await tx.user.update({
         where: { id: userId },
-        data: { representativeDishId: null },
+        data: { representativeDishId: dish.id },
         select: { representativeDishId: true },
       });
 
-      await tx.activeEntry.deleteMany({
+      const existingEntry = await tx.activeEntry.findUnique({
         where: { userId },
-      });
-
-      return { type: "ok", representativeDishId: user.representativeDishId };
-    }
-
-    const dish = await tx.dish.findFirst({
-      where: { id: dishId, userId },
-      select: { id: true },
-    });
-    if (!dish) {
-      return { type: "error", status: 404, code: "DISH_NOT_FOUND", message: "Dish not found." };
-    }
-
-    const user = await tx.user.update({
-      where: { id: userId },
-      data: { representativeDishId: dish.id },
-      select: { representativeDishId: true },
-    });
-
-    const existingEntry = await tx.activeEntry.findUnique({
-      where: { userId },
-      select: { userId: true },
-    });
-    if (existingEntry) {
-      await tx.activeEntry.update({
-        where: { userId },
-        data: { dishId: dish.id },
         select: { userId: true },
       });
-    }
+      if (existingEntry) {
+        await tx.activeEntry.update({
+          where: { userId },
+          data: { dishId: dish.id },
+          select: { userId: true },
+        });
+      }
 
-    return { type: "ok", representativeDishId: user.representativeDishId ?? dish.id };
-  });
+      return { type: "ok", representativeDishId: user.representativeDishId ?? dish.id };
+    });
+  } catch (error) {
+    console.error("[my-representative] transaction failed", error);
+    return NextResponse.json(
+      { ok: false, code: "INTERNAL_ERROR", message: "서버 오류가 발생했습니다." },
+      { status: 500 },
+    );
+  }
 
   if (result.type === "error") {
     return NextResponse.json(

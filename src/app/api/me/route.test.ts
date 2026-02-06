@@ -50,4 +50,14 @@ describe("GET /api/me", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "ELIGIBLE" });
   });
+
+  it("returns AUTH fallback when computeUserStatus throws", async () => {
+    const { GET } = await import("./route");
+    getSessionMock.mockResolvedValueOnce({ user: { id: "user" } });
+    computeUserStatusMock.mockRejectedValueOnce(new Error("db failed"));
+
+    const response = await GET(new Request("http://localhost/api/me"));
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ status: "AUTH" });
+  });
 });

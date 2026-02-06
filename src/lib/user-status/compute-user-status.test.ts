@@ -32,13 +32,33 @@ describe("computeUserStatus", () => {
     prisma.dishDayScore.findUnique.mockResolvedValue({ id: "score" });
   });
 
+  it("returns AUTH when userId is empty", async () => {
+    await expect(computeUserStatus("")).resolves.toBe("AUTH");
+    await expect(computeUserStatus("   ")).resolves.toBe("AUTH");
+  });
+
+  it("returns AUTH when user not found", async () => {
+    prisma.user.findUnique.mockResolvedValueOnce(null);
+    await expect(computeUserStatus("user")).resolves.toBe("AUTH");
+  });
+
   it("returns AUTH when representative dish missing", async () => {
     prisma.user.findUnique.mockResolvedValueOnce({ representativeDishId: null });
     await expect(computeUserStatus("user")).resolves.toBe("AUTH");
   });
 
+  it("returns AUTH when active entry not found", async () => {
+    prisma.activeEntry.findUnique.mockResolvedValueOnce(null);
+    await expect(computeUserStatus("user")).resolves.toBe("AUTH");
+  });
+
   it("returns AUTH when active entry is inactive", async () => {
     prisma.activeEntry.findUnique.mockResolvedValueOnce({ isActive: false });
+    await expect(computeUserStatus("user")).resolves.toBe("AUTH");
+  });
+
+  it("returns AUTH when representative dish not found", async () => {
+    prisma.dish.findFirst.mockResolvedValueOnce(null);
     await expect(computeUserStatus("user")).resolves.toBe("AUTH");
   });
 

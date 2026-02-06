@@ -49,6 +49,21 @@ export async function POST(request: Request) {
       };
     }
 
+    // Revalidate representative dish in the same transaction to reduce
+    // interleaving issues with concurrent "clear representative" requests.
+    const latestUser = await tx.user.findUnique({
+      where: { id: userId },
+      select: { representativeDishId: true },
+    });
+    if (latestUser?.representativeDishId !== representativeDishId) {
+      return {
+        type: "error",
+        status: 400,
+        code: "REPRESENTATIVE_REQUIRED",
+        message: "대표작이 필요합니다.",
+      };
+    }
+
     const entry = await tx.activeEntry.upsert({
       where: { userId },
       update: {

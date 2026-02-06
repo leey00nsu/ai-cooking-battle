@@ -10,10 +10,7 @@ import {
   MyKitchenLoadingState,
 } from "@/widgets/my-kitchen/ui/my-kitchen-fetch-states";
 
-type SetRepresentativePayload = {
-  dishId?: string;
-  clear?: boolean;
-};
+type SetRepresentativePayload = { dishId: string; clear?: never } | { clear: true; dishId?: never };
 
 type SetRepresentativeResponse =
   | { ok: true; representativeDishId: string | null }
@@ -46,6 +43,7 @@ export default function MyKitchenScreen() {
     mutationFn: (payload: SetRepresentativePayload) =>
       fetchJson<SetRepresentativeResponse>("/api/my/representative", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       }),
     onSuccess: () => {
@@ -57,6 +55,7 @@ export default function MyKitchenScreen() {
     mutationFn: (payload: ToggleActivePayload) =>
       fetchJson<ToggleActiveResponse>("/api/my/active", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       }),
     onSuccess: () => {
@@ -78,8 +77,8 @@ export default function MyKitchenScreen() {
       recentMatches={recentMatches?.items ?? []}
       isRecentMatchesPending={isRecentMatchesPending}
       isRecentMatchesError={isRecentMatchesError}
-      isSettingRepresentative={setRepresentative.isPending}
-      isClearingRepresentative={setRepresentative.isPending}
+      isSettingRepresentative={setRepresentative.isPending && !setRepresentative.variables?.clear}
+      isClearingRepresentative={setRepresentative.isPending && !!setRepresentative.variables?.clear}
       isTogglingActive={toggleActive.isPending}
       onSetRepresentative={(dishId) => {
         setRepresentative.mutate({ dishId });
