@@ -54,7 +54,7 @@ export default function AdRewardRequest({
 
         <div className="flex flex-col gap-3">
           <Button
-            intent="cta"
+            variant="cta"
             className="h-12 w-full text-base"
             onClick={onPrimary}
             disabled={isPrimaryDisabled}
@@ -71,7 +71,7 @@ export default function AdRewardRequest({
             </div>
           ) : null}
           {onSecondary ? (
-            <Button intent="ghost" size="sm" onClick={onSecondary} className="w-fit">
+            <Button variant="ghost" size="sm" onClick={onSecondary} className="w-fit">
               나중에 보기
             </Button>
           ) : null}

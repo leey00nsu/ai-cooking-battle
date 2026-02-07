@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
-import type { ReactNode } from "react";
 
 type StartCreateButtonProps = {
   href: string;
@@ -36,7 +36,7 @@ export default function StartCreateButton({
   const baseClassName = "w-full justify-between";
 
   return (
-    <Button asChild className={cn(baseClassName, className)} intent="cta">
+    <Button asChild className={cn(baseClassName, className)} variant="cta">
       <Link href={href} onClick={handleClick}>
         {children ?? "Start Creating"}
       </Link>

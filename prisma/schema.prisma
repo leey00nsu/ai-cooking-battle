@@ -15,6 +15,8 @@ model User {
   emailVerified        Boolean   @default(false)
   image                String?
   freeDailyLimit       Int       @default(1)
+  representativeDishId String?   @unique
+  representativeDish   Dish?     @relation("RepresentativeDish", fields: [representativeDishId], references: [id], onDelete: SetNull)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   termsAcceptedAt      String?
@@ -24,6 +26,7 @@ model User {
   slotReservations     SlotReservation[]
   adRewards            AdReward[]
   createRequests       CreateRequest[]
+  activeEntry          ActiveEntry?
   dishes               Dish[]
   openAiCallLogs       OpenAiCallLog[]
 
@@ -248,11 +251,28 @@ model Dish {
 
   createRequests CreateRequest[]
   dayScores DishDayScore[]
+  representativeUsers User[] @relation("RepresentativeDish")
+  activeEntries ActiveEntry[]
 
   @@index([userId])
   @@index([createdAt])
   @@index([isHidden])
   @@map("dish")
+}
+
+model ActiveEntry {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dishId    String
+  dish      Dish     @relation(fields: [dishId], references: [id], onDelete: Restrict)
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dishId])
+  @@index([isActive])
+  @@map("active_entry")
 }
 
 model DishDayScore {

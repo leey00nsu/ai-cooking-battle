@@ -10,9 +10,16 @@ vi.mock("@/lib/auth", () => ({
   },
 }));
 
+const computeUserStatusMock = vi.fn();
+
+vi.mock("@/lib/user-status/compute-user-status", () => ({
+  computeUserStatus: (userId: string) => computeUserStatusMock(userId),
+}));
+
 describe("GET /api/me", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    computeUserStatusMock.mockResolvedValue("AUTH");
   });
 
   it("returns GUEST when unauthenticated", async () => {
@@ -27,9 +34,30 @@ describe("GET /api/me", () => {
   it("returns AUTH when authenticated", async () => {
     const { GET } = await import("./route");
     getSessionMock.mockResolvedValueOnce({ user: { id: "user" } });
+    computeUserStatusMock.mockResolvedValueOnce("AUTH");
 
     const response = await GET(new Request("http://localhost/api/me"));
     expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "AUTH" });
+  });
+
+  it("returns ELIGIBLE when computeUserStatus says so", async () => {
+    const { GET } = await import("./route");
+    getSessionMock.mockResolvedValueOnce({ user: { id: "user" } });
+    computeUserStatusMock.mockResolvedValueOnce("ELIGIBLE");
+
+    const response = await GET(new Request("http://localhost/api/me"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "ELIGIBLE" });
+  });
+
+  it("returns AUTH fallback when computeUserStatus throws", async () => {
+    const { GET } = await import("./route");
+    getSessionMock.mockResolvedValueOnce({ user: { id: "user" } });
+    computeUserStatusMock.mockRejectedValueOnce(new Error("db failed"));
+
+    const response = await GET(new Request("http://localhost/api/me"));
+    expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ status: "AUTH" });
   });
 });

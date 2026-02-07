@@ -97,10 +97,10 @@ export default function MockRewardedModal({ isOpen, onClose, onGrant }: MockRewa
         </div>
 
         <div className="mt-4 flex gap-2">
-          <Button intent="outline" className="h-11 flex-1" onClick={onClose}>
+          <Button variant="outline" className="h-11 flex-1" onClick={onClose}>
             나중에 보기
           </Button>
-          <Button intent="cta" className="h-11 flex-1" onClick={onGrant} disabled={!canGrant}>
+          <Button variant="cta" className="h-11 flex-1" onClick={onGrant} disabled={!canGrant}>
             보상 받기
           </Button>
         </div>

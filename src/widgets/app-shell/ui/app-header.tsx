@@ -62,7 +62,7 @@ export default function AppHeader({ userType, active }: AppHeaderProps) {
 
         <div className="flex items-center gap-3">
           {userType === "guest" ? (
-            <Button asChild className="hidden min-w-[84px] sm:inline-flex" intent="nav" size="sm">
+            <Button asChild className="hidden min-w-[84px] sm:inline-flex" variant="nav" size="sm">
               <Link href="/start">Log In</Link>
             </Button>
           ) : null}
@@ -73,7 +73,7 @@ export default function AppHeader({ userType, active }: AppHeaderProps) {
           </Avatar>
           <Button
             className="md:hidden"
-            intent="outline"
+            variant="outline"
             size="icon"
             type="button"
             aria-label="모바일 메뉴 열기"

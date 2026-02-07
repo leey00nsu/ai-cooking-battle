@@ -32,11 +32,11 @@ export default function AdRewardSuccess({ onPrimary, onSecondary }: AdRewardSucc
         </div>
 
         <div className="flex w-full flex-col gap-3">
-          <Button intent="cta" className="h-12 w-full text-base" onClick={onPrimary}>
+          <Button variant="cta" className="h-12 w-full text-base" onClick={onPrimary}>
             지금 요리 시작하기
           </Button>
           {onSecondary ? (
-            <Button intent="ghost" size="sm" onClick={onSecondary}>
+            <Button variant="ghost" size="sm" onClick={onSecondary}>
               나중에 보기
             </Button>
           ) : null}
