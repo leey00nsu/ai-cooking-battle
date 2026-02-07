@@ -6,8 +6,11 @@ describe("getKoreanObjectParticle", () => {
     expect(getKoreanObjectParticle("밥")).toBe("을");
   });
 
-  it("returns 를 when final consonant missing", () => {
+  it("returns 을 when final consonant exists (multi-char)", () => {
     expect(getKoreanObjectParticle("라면")).toBe("을");
+  });
+
+  it("returns 를 when final consonant missing", () => {
     expect(getKoreanObjectParticle("피자")).toBe("를");
   });
 

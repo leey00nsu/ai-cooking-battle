@@ -169,7 +169,7 @@ function MyCollectionCard({
             </Pill>
           )}
 
-          <div className="absolute inset-x-3 bottom-3 z-20 flex flex-col gap-2 md:translate-y-2 md:opacity-0 md:transition md:group-hover:translate-y-0 md:group-hover:opacity-100">
+          <div className="absolute inset-x-3 bottom-3 z-20 flex flex-col gap-2 md:translate-y-2 md:opacity-0 md:transition md:group-hover:translate-y-0 md:group-hover:opacity-100 md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100">
             {!isRepresentative ? (
               <Button
                 type="button"
