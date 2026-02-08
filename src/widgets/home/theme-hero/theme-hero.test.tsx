@@ -32,4 +32,21 @@ describe("ThemeHero", () => {
     expect(screen.getByText("오늘의 주제")).toBeInTheDocument();
     expect(screen.getByText("----")).toBeInTheDocument();
   });
+
+  it("renders pending message while day theme is being generated", () => {
+    render(
+      <ThemeHero
+        theme={{
+          dayKey: "2026-02-09",
+          themeText: "",
+          themeTextEn: "",
+          themeImageUrl: null,
+          isPending: true,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("오늘의 주제를 생성중입니다.")).toBeInTheDocument();
+    expect(screen.getByText("2026-02-09")).toBeInTheDocument();
+  });
 });

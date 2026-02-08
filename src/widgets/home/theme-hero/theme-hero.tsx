@@ -10,7 +10,9 @@ type ThemeHeroProps = {
 };
 
 export default function ThemeHero({ theme, isRestricted, isError, cta }: ThemeHeroProps) {
-  const title = theme?.themeText ?? "오늘의 주제";
+  const isPending =
+    theme?.isPending === true || (theme ? theme.themeText.trim().length === 0 : false);
+  const title = isPending ? "오늘의 주제를 생성중입니다." : theme?.themeText || "오늘의 주제";
   const dayKey = theme?.dayKey ?? "----";
   const backgroundUrl = theme?.themeImageUrl ?? "";
   const tintClass = isRestricted ? "bg-primary/20" : isError ? "bg-rose-500/20" : "";
