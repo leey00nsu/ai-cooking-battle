@@ -11,6 +11,10 @@ export type BotSeedJobPayload = {
   triggerType?: BotSeedTriggerType;
 };
 
+type EnqueueBotSeedJobOptions = {
+  singleton?: boolean;
+};
+
 export const BOT_SEED_QUEUE_OPTIONS = {
   retryLimit: 3,
   retryDelay: 30,
@@ -22,12 +26,16 @@ export async function ensureBotSeedQueue(boss: PgBoss) {
   await boss.createQueue(BOT_SEED_JOB_NAME, BOT_SEED_QUEUE_OPTIONS);
 }
 
-export async function enqueueBotSeedJob(payload: BotSeedJobPayload) {
+export async function enqueueBotSeedJob(
+  payload: BotSeedJobPayload,
+  options: EnqueueBotSeedJobOptions = {},
+) {
   const boss = await startPgBoss();
   await ensureBotSeedQueue(boss);
 
   const dayKey = payload.dayKey?.toString().trim() ?? "";
   const triggerType: BotSeedTriggerType = payload.triggerType === "ADMIN" ? "ADMIN" : "SCHEDULE";
+  const singleton = options.singleton ?? true;
 
   return await boss.send(
     BOT_SEED_JOB_NAME,
@@ -35,6 +43,6 @@ export async function enqueueBotSeedJob(payload: BotSeedJobPayload) {
       ...(dayKey ? { dayKey } : {}),
       triggerType,
     },
-    dayKey ? { singletonKey: dayKey, singletonSeconds: 24 * 60 * 60 } : undefined,
+    singleton && dayKey ? { singletonKey: dayKey, singletonSeconds: 24 * 60 * 60 } : undefined,
   );
 }

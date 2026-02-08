@@ -59,4 +59,20 @@ describe("bot-seed-job", () => {
       { singletonKey: "2026-02-08", singletonSeconds: 24 * 60 * 60 },
     );
   });
+
+  it("can enqueue without singleton lock", async () => {
+    const boss = {
+      createQueue: vi.fn(),
+      send: vi.fn(),
+    };
+    startPgBoss.mockResolvedValueOnce(boss);
+
+    await enqueueBotSeedJob({ dayKey: "2026-02-08", triggerType: "ADMIN" }, { singleton: false });
+
+    expect(boss.send).toHaveBeenCalledWith(
+      BOT_SEED_JOB_NAME,
+      { dayKey: "2026-02-08", triggerType: "ADMIN" },
+      undefined,
+    );
+  });
 });
