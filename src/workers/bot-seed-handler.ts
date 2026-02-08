@@ -1,7 +1,14 @@
 import type { BotSeedRunStatus, BotSeedTriggerType } from "@prisma/client";
 import { selectDailyPersonas } from "@/entities/bot-persona/model/select-daily-personas";
+import { getOrCreateDayTheme } from "@/lib/day-theme/get-or-create-day-theme";
 import { prisma } from "@/lib/prisma";
+import { ProviderError } from "@/lib/providers/provider-error";
 import { formatDayKeyForKST } from "@/shared/lib/day-key";
+import { runDishGeneration } from "@/workers/services/run-dish-generation";
+
+const TARGET_BOT_PERSONA_COUNT = 5;
+const BOT_SYSTEM_USER_ID = "bot-system-user";
+const BOT_SYSTEM_USER_NAME = "AI Chef Bot";
 
 type ProcessBotSeedJobArgs = {
   dayKey?: string;
@@ -14,6 +21,14 @@ type ProcessBotSeedJobResult = {
   status: BotSeedRunStatus;
 };
 
+type PersonaProfile = {
+  personaKey: string;
+  displayName: string;
+  stylePrompt: string;
+  styleGroup: string;
+  isActive: boolean;
+};
+
 function normalizeDayKey(dayKey?: string) {
   const trimmed = dayKey?.toString().trim();
   return trimmed || formatDayKeyForKST();
@@ -23,82 +38,258 @@ function normalizeTriggerType(triggerType?: BotSeedTriggerType) {
   return triggerType === "ADMIN" ? "ADMIN" : "SCHEDULE";
 }
 
+function normalizeErrorCode(error: unknown) {
+  if (error instanceof ProviderError) {
+    return `${error.provider}:${error.code}`;
+  }
+  return "UNKNOWN_ERROR";
+}
+
+function normalizeErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function buildBotPrompt(args: {
+  themeText: string;
+  themeTextEn: string;
+  persona: Pick<PersonaProfile, "displayName" | "stylePrompt">;
+}) {
+  return {
+    prompt: `${args.themeText} (${args.persona.displayName})`,
+    promptEn: `${args.themeTextEn}, ${args.persona.stylePrompt}`,
+  };
+}
+
+async function ensureBotSystemUser() {
+  await prisma.user.upsert({
+    where: { id: BOT_SYSTEM_USER_ID },
+    update: { name: BOT_SYSTEM_USER_NAME },
+    create: {
+      id: BOT_SYSTEM_USER_ID,
+      name: BOT_SYSTEM_USER_NAME,
+      email: null,
+      image: null,
+      emailVerified: false,
+    },
+  });
+}
+
 export async function processBotSeedJob(
   args: ProcessBotSeedJobArgs = {},
 ): Promise<ProcessBotSeedJobResult> {
   const dayKey = normalizeDayKey(args.dayKey);
   const triggerType = normalizeTriggerType(args.triggerType);
 
+  const theme = await getOrCreateDayTheme(dayKey, { userId: null });
   const personas = await prisma.botPersona.findMany({
     where: { isActive: true },
     orderBy: { personaKey: "asc" },
     select: {
       personaKey: true,
+      displayName: true,
+      stylePrompt: true,
       styleGroup: true,
       isActive: true,
     },
   });
 
-  const { selected } = selectDailyPersonas({
+  const personaByKey = new Map(personas.map((persona) => [persona.personaKey, persona]));
+  const { selected, fallback } = selectDailyPersonas({
     dayKey,
     personas,
+    pickCount: TARGET_BOT_PERSONA_COUNT,
   });
 
-  const selectedCount = selected.length;
-  const selectedStatus: BotSeedRunStatus = selectedCount > 0 ? "PENDING" : "FAILED";
+  const selectedProfiles = selected
+    .map((entry) => personaByKey.get(entry.personaKey))
+    .filter((entry): entry is PersonaProfile => Boolean(entry));
+  const fallbackProfiles = fallback
+    .map((entry) => personaByKey.get(entry.personaKey))
+    .filter((entry): entry is PersonaProfile => Boolean(entry));
 
-  await prisma.$transaction(async (tx) => {
-    const now = new Date();
+  const selectedCount = selectedProfiles.length;
+  const now = new Date();
 
-    const seedRun = await tx.botSeedRun.upsert({
-      where: { dayKey },
-      update: {
-        triggerType,
-        status: "RUNNING",
-        selectedCount,
-        successCount: 0,
-        startedAt: now,
-        finishedAt: null,
-      },
-      create: {
-        dayKey,
-        triggerType,
-        status: "RUNNING",
-        selectedCount,
-        successCount: 0,
-        startedAt: now,
-      },
-      select: { id: true },
-    });
+  const seedRun = await prisma.botSeedRun.upsert({
+    where: { dayKey },
+    update: {
+      triggerType,
+      status: "RUNNING",
+      selectedCount,
+      successCount: 0,
+      startedAt: now,
+      finishedAt: null,
+    },
+    create: {
+      dayKey,
+      triggerType,
+      status: "RUNNING",
+      selectedCount,
+      successCount: 0,
+      startedAt: now,
+    },
+    select: { id: true },
+  });
 
-    await tx.botSeedItem.deleteMany({
-      where: { seedRunId: seedRun.id },
-    });
+  await prisma.botSeedItem.deleteMany({
+    where: { seedRunId: seedRun.id },
+  });
 
-    if (selectedCount > 0) {
-      await tx.botSeedItem.createMany({
-        data: selected.map((persona, index) => ({
-          seedRunId: seedRun.id,
-          personaKey: persona.personaKey,
-          selectedOrder: index + 1,
-          attempt: 1,
-          status: "SELECTED",
-        })),
+  await ensureBotSystemUser();
+
+  let successCount = 0;
+  let fallbackCursor = 0;
+
+  const runPersonaGeneration = async (args: {
+    persona: PersonaProfile;
+    selectedOrder: number;
+    attemptStart: number;
+  }) => {
+    let attempt = args.attemptStart;
+
+    for (let retry = 0; retry < 2; retry += 1) {
+      const { prompt, promptEn } = buildBotPrompt({
+        themeText: theme.themeText,
+        themeTextEn: theme.themeTextEn,
+        persona: args.persona,
       });
+
+      try {
+        const generationResult = await runDishGeneration({
+          userId: BOT_SYSTEM_USER_ID,
+          prompt,
+          promptEn,
+        });
+
+        if (generationResult.status === "BLOCK") {
+          await prisma.botSeedItem.create({
+            data: {
+              seedRunId: seedRun.id,
+              personaKey: args.persona.personaKey,
+              selectedOrder: args.selectedOrder,
+              attempt,
+              status: "FAILED",
+              errorCode: generationResult.category || "SAFETY_BLOCKED",
+              errorMessage: generationResult.reason || "Blocked by safety policy",
+            },
+          });
+          attempt += 1;
+          continue;
+        }
+
+        await prisma.$transaction(async (tx) => {
+          const dish = await tx.dish.create({
+            data: {
+              userId: BOT_SYSTEM_USER_ID,
+              prompt,
+              promptEn,
+              imageUrl: generationResult.imageUrl,
+              isHidden: false,
+            },
+          });
+
+          await tx.dishDayScore.create({
+            data: {
+              dishId: dish.id,
+              dayKey,
+              totalScore: 0,
+            },
+          });
+
+          await tx.dishBotMeta.create({
+            data: {
+              dishId: dish.id,
+              dayKey,
+              personaKey: args.persona.personaKey,
+              seedRunId: seedRun.id,
+            },
+          });
+
+          await tx.botSeedItem.create({
+            data: {
+              seedRunId: seedRun.id,
+              personaKey: args.persona.personaKey,
+              selectedOrder: args.selectedOrder,
+              attempt,
+              status: "SUCCEEDED",
+              dishId: dish.id,
+            },
+          });
+        });
+
+        return { success: true as const, nextAttempt: attempt + 1 };
+      } catch (error) {
+        await prisma.botSeedItem.create({
+          data: {
+            seedRunId: seedRun.id,
+            personaKey: args.persona.personaKey,
+            selectedOrder: args.selectedOrder,
+            attempt,
+            status: "FAILED",
+            errorCode: normalizeErrorCode(error),
+            errorMessage: normalizeErrorMessage(error),
+          },
+        });
+        attempt += 1;
+      }
     }
 
-    await tx.botSeedRun.update({
-      where: { id: seedRun.id },
-      data: {
-        status: selectedStatus,
-        finishedAt: selectedStatus === "FAILED" ? now : null,
-      },
+    return { success: false as const, nextAttempt: attempt };
+  };
+
+  for (let slotIndex = 0; slotIndex < selectedCount; slotIndex += 1) {
+    const selectedOrder = slotIndex + 1;
+    const selectedPersona = selectedProfiles[slotIndex];
+
+    let attemptStart = 1;
+    const primaryResult = await runPersonaGeneration({
+      persona: selectedPersona,
+      selectedOrder,
+      attemptStart,
     });
+
+    if (primaryResult.success) {
+      successCount += 1;
+      continue;
+    }
+
+    attemptStart = primaryResult.nextAttempt;
+    const fallbackPersona = fallbackProfiles[fallbackCursor];
+    if (!fallbackPersona) {
+      continue;
+    }
+    fallbackCursor += 1;
+
+    const fallbackResult = await runPersonaGeneration({
+      persona: fallbackPersona,
+      selectedOrder,
+      attemptStart,
+    });
+
+    if (fallbackResult.success) {
+      successCount += 1;
+    }
+  }
+
+  const status: BotSeedRunStatus =
+    successCount === selectedCount && selectedCount > 0
+      ? "SUCCEEDED"
+      : successCount > 0
+        ? "FAILED_PARTIAL"
+        : "FAILED";
+
+  await prisma.botSeedRun.update({
+    where: { id: seedRun.id },
+    data: {
+      status,
+      successCount,
+      finishedAt: new Date(),
+    },
   });
 
   return {
     dayKey,
     selectedCount,
-    status: selectedStatus,
+    status,
   };
 }

@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ProviderError } from "@/lib/providers/provider-error";
 
 const tx = vi.hoisted(() => ({
-  botSeedRun: {
-    upsert: vi.fn(),
-    update: vi.fn(),
+  dish: {
+    create: vi.fn(),
+  },
+  dishDayScore: {
+    create: vi.fn(),
+  },
+  dishBotMeta: {
+    create: vi.fn(),
   },
   botSeedItem: {
-    deleteMany: vi.fn(),
-    createMany: vi.fn(),
+    create: vi.fn(),
   },
 }));
 
@@ -15,14 +20,29 @@ const prisma = vi.hoisted(() => ({
   botPersona: {
     findMany: vi.fn(),
   },
+  botSeedRun: {
+    upsert: vi.fn(),
+    update: vi.fn(),
+  },
+  botSeedItem: {
+    deleteMany: vi.fn(),
+    create: vi.fn(),
+  },
+  user: {
+    upsert: vi.fn(),
+  },
   $transaction: vi.fn(),
 }));
 
 const selectDailyPersonas = vi.hoisted(() => vi.fn());
+const getOrCreateDayTheme = vi.hoisted(() => vi.fn());
+const runDishGeneration = vi.hoisted(() => vi.fn());
 const formatDayKeyForKST = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/prisma", () => ({ prisma }));
 vi.mock("@/entities/bot-persona/model/select-daily-personas", () => ({ selectDailyPersonas }));
+vi.mock("@/lib/day-theme/get-or-create-day-theme", () => ({ getOrCreateDayTheme }));
+vi.mock("@/workers/services/run-dish-generation", () => ({ runDishGeneration }));
 vi.mock("@/shared/lib/day-key", () => ({ formatDayKeyForKST }));
 
 import { processBotSeedJob } from "@/workers/bot-seed-handler";
@@ -32,97 +52,144 @@ describe("processBotSeedJob", () => {
     vi.clearAllMocks();
 
     formatDayKeyForKST.mockReturnValue("2026-02-08");
+    getOrCreateDayTheme.mockResolvedValue({
+      dayKey: "2026-02-08",
+      themeText: "한식",
+      themeTextEn: "Korean cuisine",
+    });
     prisma.botPersona.findMany.mockResolvedValue([
-      { personaKey: "p1", styleGroup: "a", isActive: true },
-      { personaKey: "p2", styleGroup: "b", isActive: true },
+      {
+        personaKey: "p1",
+        displayName: "P1",
+        stylePrompt: "style one",
+        styleGroup: "g1",
+        isActive: true,
+      },
+      {
+        personaKey: "p2",
+        displayName: "P2",
+        stylePrompt: "style two",
+        styleGroup: "g2",
+        isActive: true,
+      },
     ]);
-    tx.botSeedRun.upsert.mockResolvedValue({ id: "run-1" });
-    tx.botSeedRun.update.mockResolvedValue({ id: "run-1" });
-    tx.botSeedItem.deleteMany.mockResolvedValue({ count: 2 });
-    tx.botSeedItem.createMany.mockResolvedValue({ count: 2 });
+    prisma.botSeedRun.upsert.mockResolvedValue({ id: "run-1" });
+    prisma.botSeedRun.update.mockResolvedValue({ id: "run-1" });
+    prisma.botSeedItem.deleteMany.mockResolvedValue({ count: 0 });
+    prisma.botSeedItem.create.mockResolvedValue({ id: "item" });
+    prisma.user.upsert.mockResolvedValue({ id: "bot-system-user" });
+
+    tx.dish.create.mockResolvedValue({ id: "dish-1" });
+    tx.dishDayScore.create.mockResolvedValue({ id: "score-1" });
+    tx.dishBotMeta.create.mockResolvedValue({ id: "meta-1" });
+    tx.botSeedItem.create.mockResolvedValue({ id: "seed-item-1" });
     prisma.$transaction.mockImplementation(async (runner: (txArg: typeof tx) => Promise<unknown>) =>
       runner(tx),
     );
   });
 
-  it("stores selected seed items and keeps run status as PENDING", async () => {
+  it("records success path and marks run SUCCEEDED", async () => {
     selectDailyPersonas.mockReturnValue({
-      selected: [
-        { personaKey: "p1", styleGroup: "a", isActive: true },
-        { personaKey: "p2", styleGroup: "b", isActive: true },
-      ],
-      fallback: [],
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [{ personaKey: "p2", styleGroup: "g2" }],
+    });
+    runDishGeneration.mockResolvedValue({
+      status: "ALLOW",
+      imageUrl: "https://cdn.example/a.webp",
+      generationPrompt: "prompt",
     });
 
     const result = await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" });
 
-    expect(prisma.botPersona.findMany).toHaveBeenCalledWith(
+    expect(runDishGeneration).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { isActive: true },
+        userId: "bot-system-user",
+        promptEn: expect.stringContaining("style one"),
       }),
     );
-    expect(selectDailyPersonas).toHaveBeenCalledWith(
+    expect(tx.dish.create).toHaveBeenCalled();
+    expect(tx.dishBotMeta.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        dayKey: "2026-02-09",
-      }),
-    );
-    expect(tx.botSeedRun.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { dayKey: "2026-02-09" },
-        update: expect.objectContaining({
-          status: "RUNNING",
-          selectedCount: 2,
-        }),
-        create: expect.objectContaining({
+        data: expect.objectContaining({
           dayKey: "2026-02-09",
-          triggerType: "SCHEDULE",
+          personaKey: "p1",
+          seedRunId: "run-1",
         }),
       }),
     );
-    expect(tx.botSeedItem.deleteMany).toHaveBeenCalledWith({ where: { seedRunId: "run-1" } });
-    expect(tx.botSeedItem.createMany).toHaveBeenCalledWith(
+    expect(prisma.botSeedRun.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: [
-          expect.objectContaining({ personaKey: "p1", selectedOrder: 1, status: "SELECTED" }),
-          expect.objectContaining({ personaKey: "p2", selectedOrder: 2, status: "SELECTED" }),
-        ],
-      }),
-    );
-    expect(tx.botSeedRun.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "run-1" },
-        data: expect.objectContaining({ status: "PENDING", finishedAt: null }),
+        data: expect.objectContaining({
+          status: "SUCCEEDED",
+          successCount: 1,
+        }),
       }),
     );
     expect(result).toEqual({
       dayKey: "2026-02-09",
-      selectedCount: 2,
-      status: "PENDING",
+      selectedCount: 1,
+      status: "SUCCEEDED",
     });
   });
 
-  it("marks run as FAILED when no selectable personas exist", async () => {
+  it("retries selected persona once and then uses fallback persona", async () => {
     selectDailyPersonas.mockReturnValue({
-      selected: [],
-      fallback: [],
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [{ personaKey: "p2", styleGroup: "g2" }],
     });
+    runDishGeneration
+      .mockResolvedValueOnce({
+        status: "BLOCK",
+        imageUrl: "https://cdn.example/block.webp",
+        generationPrompt: "prompt",
+        category: "POLICY",
+        reason: "blocked",
+      })
+      .mockRejectedValueOnce(
+        new ProviderError({ provider: "leesfield", code: "TIMEOUT", message: "timeout" }),
+      )
+      .mockResolvedValueOnce({
+        status: "ALLOW",
+        imageUrl: "https://cdn.example/ok.webp",
+        generationPrompt: "prompt",
+      });
 
-    const result = await processBotSeedJob({ triggerType: "ADMIN" });
+    const result = await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "ADMIN" });
 
-    expect(formatDayKeyForKST).toHaveBeenCalled();
-    expect(tx.botSeedItem.createMany).not.toHaveBeenCalled();
-    expect(tx.botSeedRun.update).toHaveBeenCalledWith(
+    expect(prisma.botSeedItem.create).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         data: expect.objectContaining({
+          personaKey: "p1",
+          selectedOrder: 1,
+          attempt: 1,
           status: "FAILED",
-          finishedAt: expect.any(Date),
+          errorCode: "POLICY",
         }),
       }),
     );
-    expect(result).toEqual({
-      dayKey: "2026-02-08",
-      selectedCount: 0,
-      status: "FAILED",
-    });
+    expect(prisma.botSeedItem.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          personaKey: "p1",
+          selectedOrder: 1,
+          attempt: 2,
+          status: "FAILED",
+          errorCode: "leesfield:TIMEOUT",
+        }),
+      }),
+    );
+    expect(tx.botSeedItem.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          personaKey: "p2",
+          selectedOrder: 1,
+          attempt: 3,
+          status: "SUCCEEDED",
+        }),
+      }),
+    );
+    expect(result.status).toBe("SUCCEEDED");
   });
 });
