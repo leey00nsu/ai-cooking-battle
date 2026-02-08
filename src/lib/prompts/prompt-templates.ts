@@ -30,6 +30,10 @@ export function getOpenAiDayThemeInstructions(variables: { RECENT_THEMES_KO_JSON
   return renderTemplateLines(promptTemplates.openai.dayTheme.instructions, variables).join("\n");
 }
 
+export function getOpenAiBotDishPromptInstructions() {
+  return promptTemplates.openai.botDishPrompt.instructions.join("\n");
+}
+
 export function getPlatedDishSuffixEn() {
   return promptTemplates.generation.platedDishSuffixEn;
 }

@@ -36,12 +36,16 @@ const prisma = vi.hoisted(() => ({
 
 const selectDailyPersonas = vi.hoisted(() => vi.fn());
 const getOrCreateDayTheme = vi.hoisted(() => vi.fn());
+const generateBotDishPromptWithOpenAi = vi.hoisted(() => vi.fn());
 const runDishGeneration = vi.hoisted(() => vi.fn());
 const formatDayKeyForKST = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/prisma", () => ({ prisma }));
 vi.mock("@/entities/bot-persona/model/select-daily-personas", () => ({ selectDailyPersonas }));
 vi.mock("@/lib/day-theme/get-or-create-day-theme", () => ({ getOrCreateDayTheme }));
+vi.mock("@/lib/providers/openai-bot-dish-prompt-generator", () => ({
+  generateBotDishPromptWithOpenAi,
+}));
 vi.mock("@/workers/services/run-dish-generation", () => ({ runDishGeneration }));
 vi.mock("@/shared/lib/day-key", () => ({ formatDayKeyForKST }));
 
@@ -56,6 +60,10 @@ describe("processBotSeedJob", () => {
       dayKey: "2026-02-08",
       themeText: "한식",
       themeTextEn: "Korean cuisine",
+    });
+    generateBotDishPromptWithOpenAi.mockResolvedValue({
+      ok: true,
+      dishPromptEn: "generated prompt from theme and persona with style one",
     });
     prisma.botPersona.findMany.mockResolvedValue([
       {
@@ -104,7 +112,7 @@ describe("processBotSeedJob", () => {
     expect(runDishGeneration).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "bot-system-user",
-        promptEn: expect.stringContaining("style one"),
+        promptEn: "generated prompt from theme and persona with style one",
       }),
     );
     expect(tx.dish.create).toHaveBeenCalled();
@@ -191,5 +199,52 @@ describe("processBotSeedJob", () => {
       }),
     );
     expect(result.status).toBe("SUCCEEDED");
+  });
+
+  it("falls back to theme+style prompt when openai prompt generation fails", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [],
+    });
+    generateBotDishPromptWithOpenAi.mockRejectedValueOnce(
+      new ProviderError({ provider: "openai", code: "TIMEOUT", message: "timeout" }),
+    );
+    runDishGeneration.mockResolvedValueOnce({
+      status: "ALLOW",
+      imageUrl: "https://cdn.example/ok.webp",
+      generationPrompt: "prompt",
+    });
+
+    await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "ADMIN" });
+
+    expect(runDishGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptEn: "Korean cuisine, style one",
+      }),
+    );
+  });
+
+  it("uses openai dish prompt as-is when response type is valid", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [],
+    });
+    generateBotDishPromptWithOpenAi.mockResolvedValueOnce({
+      ok: true,
+      dishPromptEn: "Charcoal-grilled dishes suitable for a winter campfire",
+    });
+    runDishGeneration.mockResolvedValueOnce({
+      status: "ALLOW",
+      imageUrl: "https://cdn.example/ok.webp",
+      generationPrompt: "prompt",
+    });
+
+    await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "ADMIN" });
+
+    expect(runDishGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptEn: "Charcoal-grilled dishes suitable for a winter campfire",
+      }),
+    );
   });
 });

@@ -1,6 +1,6 @@
 {
   "generation": {
-    "platedDishSuffixEn": "A realistic food photography shot of this dish plated on a clean plate, close-up, natural lighting, sharp focus, simple background.",
+    "platedDishSuffixEn": "close-up, natural lighting, sharp focus, simple background.",
     "dayThemeImagePrefixEn": "A realistic food photography shot representing today's cooking theme:"
   },
   "openai": {
@@ -26,6 +26,34 @@
         "{",
         "  \"themeText\": string,",
         "  \"themeTextEn\": string",
+        "}"
+      ]
+    },
+    "botDishPrompt": {
+      "instructions": [
+        "You generate an image prompt for a cooking battle bot.",
+        "You MUST output ONLY a JSON object.",
+        "",
+        "Input fields:",
+        "- themeTextKo: today's Korean theme text",
+        "- themeTextEn: English translation of the theme",
+        "- personaDisplayName: bot persona display name",
+        "- personaStylePrompt: visual style guidance for this persona",
+        "",
+        "Goal:",
+        "- Create one concise English prompt for a SINGLE plated dish image.",
+        "- The prompt must reflect both today's theme and persona style.",
+        "- Do NOT include camera suffix keywords such as \"close-up\", \"natural lighting\", \"sharp focus\", \"simple background\".",
+        "",
+        "Constraints:",
+        "- One line only.",
+        "- No markdown, no quotes around the whole sentence.",
+        "- Keep it practical and image-generation-friendly.",
+        "- Avoid real person names, political content, logos, or copyrighted characters.",
+        "",
+        "Return ONLY this JSON schema:",
+        "{",
+        "  \"dishPromptEn\": string",
         "}"
       ]
     },

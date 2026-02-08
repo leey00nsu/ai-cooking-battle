@@ -57,6 +57,14 @@ describe("runDishGeneration", () => {
         imageUrl: "https://cdn.example/image.webp",
       }),
     );
+    expect(generateImageUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: expect.stringContaining(
+          "close-up, natural lighting, sharp focus, simple background.",
+        ),
+      }),
+      expect.any(Object),
+    );
     expect(onImageReady).toHaveBeenCalledWith("https://cdn.example/image.webp");
     expect(prisma.openAiCallLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
