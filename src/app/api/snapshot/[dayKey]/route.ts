@@ -1,5 +1,5 @@
-import { getMockSnapshotTop } from "@/shared/api/mock-home-data";
 import { NextResponse } from "next/server";
+import { getHomeDataSource } from "@/shared/api/home-data-source";
 
 export const runtime = "nodejs";
 
@@ -10,5 +10,6 @@ export async function GET(
   },
 ) {
   const { dayKey } = await context.params;
-  return NextResponse.json(getMockSnapshotTop(dayKey));
+  const source = getHomeDataSource();
+  return NextResponse.json(await source.getSnapshotTop({ dayKey, count: 4 }));
 }
