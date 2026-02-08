@@ -31,7 +31,7 @@ function printUsage() {
     `
 Usage:
   pnpm dev:day-theme:create-today
-  pnpm dev:day-theme:enqueue-precreate [--dayKey YYYY-MM-DD] [--wait] [--timeoutMs 10000]
+  pnpm dev:day-theme:enqueue-precreate [--dayKey YYYY-MM-DD] [--wait] [--timeoutMs 10000] [--force]
 
 Notes:
   - enqueue-precreate requires the worker to be running to complete.
@@ -87,16 +87,21 @@ async function main() {
   if (command === "enqueue-precreate") {
     const dayKey = parseArgValue("--dayKey") ?? formatDayKeyForKST();
     const wait = hasFlag("--wait") || hasFlag("--waitForCompletion");
+    const force = hasFlag("--force");
     const timeoutMs = Number.parseInt(parseArgValue("--timeoutMs") ?? "10000", 10);
 
     const boss = await startPgBoss();
     await ensureDayThemePrecreateSchedule(boss);
 
-    const jobId = await boss.send(DAY_THEME_PRECREATE_JOB_NAME, { dayKey });
+    const jobId = await boss.send(
+      DAY_THEME_PRECREATE_JOB_NAME,
+      { dayKey, ...(force ? { force: true } : {}) },
+      force ? undefined : { singletonKey: dayKey, singletonSeconds: 24 * 60 * 60 },
+    );
     if (!jobId) {
       throw new Error("[day-theme] failed to enqueue precreate job");
     }
-    console.log("[day-theme] enqueued", { jobId, dayKey });
+    console.log("[day-theme] enqueued", { jobId, dayKey, force });
 
     if (wait) {
       await waitForJobCompletion(jobId, Number.isFinite(timeoutMs) ? timeoutMs : 10_000);

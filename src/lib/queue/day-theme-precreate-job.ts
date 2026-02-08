@@ -9,6 +9,11 @@ export const DAY_THEME_PRECREATE_TZ = "Asia/Seoul" as const;
 
 export type DayThemePrecreateJobPayload = {
   dayKey?: string;
+  force?: boolean;
+};
+
+type EnqueueDayThemePrecreateJobOptions = {
+  singleton?: boolean;
 };
 
 export const DAY_THEME_PRECREATE_QUEUE_OPTIONS = {
@@ -31,14 +36,19 @@ export async function ensureDayThemePrecreateSchedule(boss: PgBoss) {
   );
 }
 
-export async function enqueueDayThemePrecreateJob(payload: DayThemePrecreateJobPayload) {
+export async function enqueueDayThemePrecreateJob(
+  payload: DayThemePrecreateJobPayload,
+  options: EnqueueDayThemePrecreateJobOptions = {},
+) {
   const boss = await startPgBoss();
   await boss.createQueue(DAY_THEME_PRECREATE_JOB_NAME, DAY_THEME_PRECREATE_QUEUE_OPTIONS);
   const dayKey = payload.dayKey?.toString().trim() ?? "";
+  const force = payload.force === true;
+  const singleton = options.singleton ?? true;
 
   return await boss.send(
     DAY_THEME_PRECREATE_JOB_NAME,
-    { ...(dayKey ? { dayKey } : {}) },
-    dayKey ? { singletonKey: dayKey, singletonSeconds: 24 * 60 * 60 } : undefined,
+    { ...(dayKey ? { dayKey } : {}), ...(force ? { force: true } : {}) },
+    singleton && dayKey ? { singletonKey: dayKey, singletonSeconds: 24 * 60 * 60 } : undefined,
   );
 }

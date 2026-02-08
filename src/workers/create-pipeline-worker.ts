@@ -71,10 +71,28 @@ async function main() {
     async (jobs) => {
       for (const job of jobs) {
         const dayKey = job.data?.dayKey?.toString().trim() || formatDayKeyForKST();
-        console.log("[day-theme-precreate] job received", { dayKey, jobId: job.id });
+        const force = job.data?.force === true;
+        console.log("[day-theme-precreate] job received", { dayKey, force, jobId: job.id });
+
+        if (force) {
+          await prisma.dayTheme
+            .delete({
+              where: { dayKey },
+            })
+            .catch((error: unknown) => {
+              if (!error || typeof error !== "object") {
+                throw error;
+              }
+              const code = "code" in error ? (error as { code?: string }).code : null;
+              if (code !== "P2025") {
+                throw error;
+              }
+            });
+        }
+
         const theme = await getOrCreateDayTheme(dayKey, { userId: null });
 
-        if (!shouldReplaceDayThemeImageUrl(theme.themeImageUrl)) {
+        if (!force && !shouldReplaceDayThemeImageUrl(theme.themeImageUrl)) {
           console.log("[day-theme-precreate] image already exists", {
             dayKey,
             imageHost: new URL(theme.themeImageUrl ?? "").host,
@@ -99,16 +117,20 @@ async function main() {
         }
 
         try {
-          await enqueueBotSeedJob({ dayKey, triggerType: "SCHEDULE" });
-          console.log("[day-theme-precreate] bot-seed enqueued", { dayKey });
+          await enqueueBotSeedJob(
+            { dayKey, triggerType: force ? "ADMIN" : "SCHEDULE" },
+            force ? { singleton: false } : undefined,
+          );
+          console.log("[day-theme-precreate] bot-seed enqueued", { dayKey, force });
         } catch (error) {
           console.warn("[day-theme-precreate] failed to enqueue bot-seed", {
             dayKey,
+            force,
             error: error instanceof Error ? error.message : String(error),
           });
         }
 
-        console.log("[day-theme-precreate] job processed", { dayKey, jobId: job.id });
+        console.log("[day-theme-precreate] job processed", { dayKey, force, jobId: job.id });
       }
     },
   );
