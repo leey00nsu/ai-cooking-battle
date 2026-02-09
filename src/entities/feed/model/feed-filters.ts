@@ -1,6 +1,7 @@
 import type { DishFeedSort } from "@/entities/feed/model/types";
 
 const DEFAULT_SORT: DishFeedSort = "latest";
+const FEED_SORT_VALUES: DishFeedSort[] = ["latest", "oldest", "title_asc", "title_desc"];
 
 type QueryValue = string | string[] | undefined;
 
@@ -28,10 +29,14 @@ function toSearch(value: QueryValue) {
 
 function toSort(value: QueryValue): DishFeedSort {
   const raw = getFirstValue(value)?.trim();
-  if (raw === "latest" || raw === "oldest" || raw === "title_asc" || raw === "title_desc") {
+  if (raw && isDishFeedSort(raw)) {
     return raw;
   }
   return DEFAULT_SORT;
+}
+
+export function isDishFeedSort(value: string): value is DishFeedSort {
+  return FEED_SORT_VALUES.includes(value as DishFeedSort);
 }
 
 export function parseFeedFilters(params: Record<string, QueryValue> | undefined): FeedFilters {

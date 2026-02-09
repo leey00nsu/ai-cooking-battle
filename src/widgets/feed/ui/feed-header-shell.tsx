@@ -1,5 +1,14 @@
+"use client";
+
 import Link from "next/link";
-import { type FeedFilters, toFeedPageSearchParams } from "@/entities/feed/model/feed-filters";
+import {
+  type FeedFilters,
+  isDishFeedSort,
+  toFeedPageSearchParams,
+} from "@/entities/feed/model/feed-filters";
+import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
+import { trackEvent } from "@/shared/analytics/track-event";
+import { formatDayKeyForKST } from "@/shared/lib/day-key";
 import { Button } from "@/shared/ui/button";
 import { SectionHeading } from "@/shared/ui/section-heading";
 import { Surface } from "@/shared/ui/surface";
@@ -12,6 +21,18 @@ type FeedHeaderShellProps = {
 function toFeedHref(filters: FeedFilters) {
   const query = toFeedPageSearchParams(filters).toString();
   return `/feed${query ? `?${query}` : ""}`;
+}
+
+function trackFilterChanged(nextFilters: FeedFilters, source: string) {
+  trackEvent(ANALYTICS_EVENTS.FEED_FILTER_CHANGED, {
+    screen: "feed",
+    dayKey: formatDayKeyForKST(),
+    source,
+    mine: nextFilters.mine,
+    excludeBots: nextFilters.excludeBots,
+    hasSearch: nextFilters.search.length > 0,
+    sort: nextFilters.sort,
+  });
 }
 
 const SORT_OPTIONS: Array<{ value: FeedFilters["sort"]; label: string }> = [
@@ -55,21 +76,30 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
           className="h-9 px-4 text-xs font-bold uppercase tracking-[0.08em]"
           variant={isAllActive ? "cta" : "outline"}
         >
-          <Link href={allHref}>All Dishes</Link>
+          <Link href={allHref} onClick={() => trackFilterChanged(allFilters, "all_dishes")}>
+            All Dishes
+          </Link>
         </Button>
         <Button
           asChild
           className="h-9 px-4 text-xs font-bold uppercase tracking-[0.08em]"
           variant={filters.mine ? "cta" : "outline"}
         >
-          <Link href={mineHref}>My Dishes</Link>
+          <Link href={mineHref} onClick={() => trackFilterChanged(mineFilters, "my_dishes")}>
+            My Dishes
+          </Link>
         </Button>
         <Button
           asChild
           className="h-9 px-4 text-xs font-bold uppercase tracking-[0.08em]"
           variant={filters.excludeBots ? "cta" : "outline"}
         >
-          <Link href={excludeBotsHref}>Exclude Bots</Link>
+          <Link
+            href={excludeBotsHref}
+            onClick={() => trackFilterChanged(excludeBotsFilters, "exclude_bots")}
+          >
+            Exclude Bots
+          </Link>
         </Button>
       </Surface>
       <Surface className="p-3" radius="2xl" tone="soft">
@@ -77,6 +107,17 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
           action="/feed"
           className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px_auto]"
           method="get"
+          onSubmit={(event) => {
+            const formData = new FormData(event.currentTarget);
+            const rawSort = formData.get("sort")?.toString().trim() ?? "latest";
+            const nextFilters: FeedFilters = {
+              mine: formData.get("mine")?.toString() === "true",
+              excludeBots: formData.get("excludeBots")?.toString() === "true",
+              search: formData.get("search")?.toString().trim() ?? "",
+              sort: isDishFeedSort(rawSort) ? rawSort : "latest",
+            };
+            trackFilterChanged(nextFilters, "apply");
+          }}
         >
           {filters.mine ? <input name="mine" type="hidden" value="true" /> : null}
           {filters.excludeBots ? <input name="excludeBots" type="hidden" value="true" /> : null}
@@ -120,7 +161,22 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
               className="h-10 px-4 text-xs font-bold uppercase tracking-[0.08em]"
               variant="outline"
             >
-              <Link href={resetHref}>Reset</Link>
+              <Link
+                href={resetHref}
+                onClick={() =>
+                  trackFilterChanged(
+                    {
+                      mine: false,
+                      excludeBots: false,
+                      search: "",
+                      sort: "latest",
+                    },
+                    "reset",
+                  )
+                }
+              >
+                Reset
+              </Link>
             </Button>
           </div>
         </form>

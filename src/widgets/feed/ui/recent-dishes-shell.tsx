@@ -1,5 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import type { DishFeedItem } from "@/entities/feed/model/types";
+import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
+import { trackEvent } from "@/shared/analytics/track-event";
+import { formatDayKeyForKST } from "@/shared/lib/day-key";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { MediaDimmer } from "@/shared/ui/media-dimmer";
 import { SectionHeading } from "@/shared/ui/section-heading";
@@ -48,7 +53,19 @@ function RecentDishesShell({ items }: RecentDishesShellProps) {
               radius="2xl"
               tone="cardMuted"
             >
-              <Link href={`/dishes/${item.id}`} aria-label={`${item.prompt} detail page`}>
+              <Link
+                href={`/dishes/${item.id}`}
+                aria-label={`${item.prompt} detail page`}
+                onClick={() =>
+                  trackEvent(ANALYTICS_EVENTS.FEED_ITEM_CLICKED, {
+                    screen: "feed",
+                    section: "recent",
+                    dayKey: formatDayKeyForKST(),
+                    dishId: item.id,
+                    authorType: item.authorType,
+                  })
+                }
+              >
                 <article>
                   <div className="relative h-44 overflow-hidden">
                     <img
