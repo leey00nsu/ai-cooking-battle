@@ -102,6 +102,7 @@ describe("listDishFeed", () => {
     prisma.dish.findMany.mockResolvedValueOnce([]);
     const cursor = Buffer.from(
       JSON.stringify({
+        sort: "latest",
         createdAt: "2026-02-09T10:00:00.000Z",
         id: "dish-100",
       }),
@@ -118,6 +119,86 @@ describe("listDishFeed", () => {
             { createdAt: { lt: new Date("2026-02-09T10:00:00.000Z") } },
             { createdAt: new Date("2026-02-09T10:00:00.000Z"), id: { lt: "dish-100" } },
           ],
+        }),
+      }),
+    );
+  });
+
+  it("applies mine and excludeBots filters together", async () => {
+    prisma.dish.findMany.mockResolvedValueOnce([]);
+
+    const { listDishFeed } = await import("./list-dish-feed");
+    await listDishFeed({
+      limit: 2,
+      mine: true,
+      excludeBots: true,
+      userId: "user-123",
+    });
+
+    expect(prisma.dish.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          isHidden: false,
+          userId: "user-123",
+          botMeta: { is: null },
+        }),
+      }),
+    );
+  });
+
+  it("returns empty list when mine=true but userId is missing", async () => {
+    const { listDishFeed } = await import("./list-dish-feed");
+    const result = await listDishFeed({
+      mine: true,
+      userId: "",
+    });
+
+    expect(result).toEqual({
+      items: [],
+      nextCursor: null,
+    });
+    expect(prisma.dish.findMany).not.toHaveBeenCalled();
+  });
+
+  it("applies search and title sort when provided", async () => {
+    prisma.dish.findMany.mockResolvedValueOnce([]);
+
+    const { listDishFeed } = await import("./list-dish-feed");
+    await listDishFeed({
+      search: "ramen",
+      sort: "title_asc",
+      limit: 10,
+    });
+
+    expect(prisma.dish.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          prompt: { contains: "ramen", mode: "insensitive" },
+        }),
+        orderBy: [{ prompt: "asc" }, { id: "asc" }],
+        take: 11,
+      }),
+    );
+  });
+
+  it("ignores cursor when sort in cursor does not match request sort", async () => {
+    prisma.dish.findMany.mockResolvedValueOnce([]);
+    const cursor = Buffer.from(
+      JSON.stringify({
+        sort: "latest",
+        createdAt: "2026-02-09T10:00:00.000Z",
+        id: "dish-100",
+      }),
+      "utf8",
+    ).toString("base64url");
+
+    const { listDishFeed } = await import("./list-dish-feed");
+    await listDishFeed({ sort: "title_desc", cursor });
+
+    expect(prisma.dish.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.not.objectContaining({
+          OR: expect.anything(),
         }),
       }),
     );

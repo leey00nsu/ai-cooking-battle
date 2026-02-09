@@ -16,3 +16,5 @@ export type DishFeedCursor = {
   createdAt: Date;
   id: string;
 };
+
+export type DishFeedSort = "latest" | "oldest" | "title_asc" | "title_desc";
