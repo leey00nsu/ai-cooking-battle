@@ -26,7 +26,8 @@ function getBooleanParam(url: string, key: string) {
 
 function getStringParam(url: string, key: string) {
   const { searchParams } = new URL(url);
-  return searchParams.get(key)?.trim() ?? null;
+  const raw = searchParams.get(key)?.trim();
+  return raw ? raw : null;
 }
 
 export async function GET(request: Request) {

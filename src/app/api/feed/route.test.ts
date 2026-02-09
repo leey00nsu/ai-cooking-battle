@@ -46,6 +46,28 @@ describe("GET /api/feed", () => {
     expect(await response.json()).toEqual({ items: [], nextCursor: null });
   });
 
+  it("does not call session API when mine filter is not enabled", async () => {
+    listDishFeed.mockResolvedValueOnce({
+      items: [],
+      nextCursor: null,
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/feed?excludeBots=true"));
+
+    expect(response.status).toBe(200);
+    expect(getSessionMock).not.toHaveBeenCalled();
+    expect(listDishFeed).toHaveBeenCalledWith({
+      limit: undefined,
+      cursor: null,
+      mine: false,
+      excludeBots: true,
+      userId: "",
+      search: null,
+      sort: null,
+    });
+  });
+
   it("passes filter params when mine and excludeBots are enabled", async () => {
     listDishFeed.mockResolvedValueOnce({
       items: [],
@@ -100,6 +122,29 @@ describe("GET /api/feed", () => {
       ok: false,
       code: "INTERNAL_ERROR",
       message: "피드 조회 중 오류가 발생했습니다.",
+    });
+  });
+
+  it("normalizes blank cursor/search/sort params to null", async () => {
+    listDishFeed.mockResolvedValueOnce({
+      items: [],
+      nextCursor: null,
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/feed?cursor=%20%20&search=%20%20&sort=%20%20"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(listDishFeed).toHaveBeenCalledWith({
+      limit: undefined,
+      cursor: null,
+      mine: false,
+      excludeBots: false,
+      userId: "",
+      search: null,
+      sort: null,
     });
   });
 });

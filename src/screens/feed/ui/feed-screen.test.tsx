@@ -45,6 +45,26 @@ describe("FeedScreen", () => {
     expect(screen.getByText("오늘의 요리를 생성중입니다.")).toBeInTheDocument();
   });
 
+  it("renders guest mine warning when mine filter fallback is active", () => {
+    render(
+      <FeedScreen
+        feed={{
+          items: [],
+          nextCursor: null,
+        }}
+        filters={{
+          ...baseFilters,
+          mine: true,
+        }}
+        mineUnauthorized
+      />,
+    );
+
+    expect(
+      screen.getByText("Mine 필터는 로그인 후 사용할 수 있습니다. 현재 전체 요리를 표시합니다."),
+    ).toBeInTheDocument();
+  });
+
   it("renders spotlight and recent dishes when feed has items", () => {
     render(
       <FeedScreen
