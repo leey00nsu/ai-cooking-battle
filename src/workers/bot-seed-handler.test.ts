@@ -83,7 +83,6 @@ describe("processBotSeedJob", () => {
     prisma.botSeedRun.update.mockResolvedValue({ id: "run-1" });
     prisma.botSeedItem.findMany.mockResolvedValue([]);
     prisma.botSeedItem.deleteMany.mockResolvedValue({ count: 0 });
-    prisma.botSeedItem.create.mockResolvedValue({ id: "item" });
     prisma.user.upsert.mockResolvedValue({ id: "bot-system-user" });
 
     prisma.dish.create.mockResolvedValue({ id: "dish-1" });
@@ -298,19 +297,21 @@ describe("processBotSeedJob", () => {
     });
   });
 
-  it("finalizes seed run as FAILED even when unexpected error is thrown", async () => {
+  it("marks run FAILED when all retries fail even if first failure write also fails", async () => {
     selectDailyPersonas.mockReturnValue({
       selected: [{ personaKey: "p1", styleGroup: "g1" }],
       fallback: [],
     });
-    runDishGeneration.mockRejectedValueOnce(
-      new ProviderError({ provider: "leesfield", code: "TIMEOUT", message: "timeout" }),
-    );
+    runDishGeneration
+      .mockRejectedValueOnce(
+        new ProviderError({ provider: "leesfield", code: "TIMEOUT", message: "timeout" }),
+      )
+      .mockRejectedValueOnce(
+        new ProviderError({ provider: "leesfield", code: "TIMEOUT", message: "timeout" }),
+      );
     prisma.botSeedItem.create.mockRejectedValueOnce(new Error("seed-item write failed"));
 
-    await expect(
-      processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" }),
-    ).rejects.toThrow("seed-item write failed");
+    const result = await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" });
 
     expect(prisma.botSeedRun.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -322,6 +323,11 @@ describe("processBotSeedJob", () => {
         }),
       }),
     );
+    expect(result).toEqual({
+      dayKey: "2026-02-09",
+      selectedCount: 1,
+      status: "FAILED",
+    });
   });
 
   it("does not start seed run when ensureBotSystemUser fails", async () => {
@@ -368,5 +374,27 @@ describe("processBotSeedJob", () => {
 
     expect(hasUnknownErrorCodeWrite).toBe(false);
     expect(result.status).toBe("SUCCEEDED");
+  });
+
+  it("continues persona processing when failed seed-item write fails", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [],
+    });
+    runDishGeneration
+      .mockRejectedValueOnce(
+        new ProviderError({ provider: "leesfield", code: "TIMEOUT", message: "timeout" }),
+      )
+      .mockResolvedValueOnce({
+        status: "ALLOW",
+        imageUrl: "https://cdn.example/ok.webp",
+        generationPrompt: "prompt",
+      });
+    prisma.botSeedItem.create.mockRejectedValueOnce(new Error("seed-item write failed"));
+
+    const result = await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" });
+
+    expect(result.status).toBe("SUCCEEDED");
+    expect(runDishGeneration).toHaveBeenCalledTimes(2);
   });
 });

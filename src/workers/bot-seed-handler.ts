@@ -31,7 +31,7 @@ type PersonaProfile = {
 };
 
 function normalizeDayKey(dayKey?: string) {
-  const trimmed = dayKey?.toString().trim();
+  const trimmed = dayKey?.trim();
   return trimmed || formatDayKeyForKST();
 }
 
@@ -310,17 +310,24 @@ export async function processBotSeedJob(
 
         return { success: true as const, nextAttempt: attempt + 1 };
       } catch (error) {
-        await prisma.botSeedItem.create({
-          data: {
-            seedRunId: seedRun.id,
+        try {
+          await prisma.botSeedItem.create({
+            data: {
+              seedRunId: seedRun.id,
+              personaKey: args.persona.personaKey,
+              selectedOrder: args.selectedOrder,
+              attempt,
+              status: "FAILED",
+              errorCode: normalizeErrorCode(error),
+              errorMessage: normalizeErrorMessage(error),
+            },
+          });
+        } catch (writeError) {
+          console.warn("[bot-seed] failed to persist error seed item.", {
             personaKey: args.persona.personaKey,
-            selectedOrder: args.selectedOrder,
-            attempt,
-            status: "FAILED",
-            errorCode: normalizeErrorCode(error),
-            errorMessage: normalizeErrorMessage(error),
-          },
-        });
+            error: normalizeErrorMessage(writeError),
+          });
+        }
         attempt += 1;
       }
     }
