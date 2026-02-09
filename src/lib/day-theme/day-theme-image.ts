@@ -1,4 +1,3 @@
-import { getDayThemeImagePrefixEn, getPlatedDishSuffixEn } from "@/lib/prompts/prompt-templates";
 import { generateImageUrl } from "@/lib/providers/leesfield-image-generator";
 
 const PLACEHOLDER_THEME_IMAGE_HOST = "picsum.photos";
@@ -21,10 +20,7 @@ export function shouldReplaceDayThemeImageUrl(themeImageUrl?: string | null) {
 }
 
 export function buildDayThemeImagePromptEn(themeTextEn: string) {
-  const base = themeTextEn.replace(/\s+/g, " ").trim();
-  const prefix = getDayThemeImagePrefixEn();
-  const suffix = getPlatedDishSuffixEn();
-  return `${prefix} ${base}, ${suffix}`;
+  return themeTextEn.replace(/\s+/g, " ").trim();
 }
 
 export async function generateDayThemeImageUrl(args: { themeTextEn: string }) {

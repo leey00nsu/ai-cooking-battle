@@ -1,27 +1,7 @@
-import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getPlatedDishSuffixEn } from "@/lib/prompts/prompt-templates";
-import { generateImageUrl } from "@/lib/providers/leesfield-image-generator";
-import { checkImageSafetyWithOpenAiWithRaw } from "@/lib/providers/openai-safety-checker";
 import { ProviderError } from "@/lib/providers/provider-error";
 import { markReservationFailed } from "@/lib/slot-recovery";
-import { formatDayKeyForKST } from "@/shared/lib/day-key";
-
-function safeUrlHost(url: string) {
-  try {
-    return new URL(url).host;
-  } catch {
-    return "";
-  }
-}
-
-function buildGenerationPrompt(userPrompt: string) {
-  const trimmed = userPrompt.trim();
-  if (!trimmed) {
-    return "";
-  }
-  return `${trimmed}, ${getPlatedDishSuffixEn()}`;
-}
+import { runDishGeneration } from "@/workers/services/run-dish-generation";
 
 function isRetryableError(error: unknown) {
   if (error instanceof ProviderError) {
@@ -90,86 +70,41 @@ export async function processCreatePipelineRequest(requestId: string) {
     return;
   }
 
-  let latestImageUrlForLog: string | null = createRequest.imageUrl?.trim() || null;
-  const generationPrompt = buildGenerationPrompt(basePrompt);
-
   try {
-    const imageUrl =
-      createRequest.imageUrl?.trim() ||
-      (await (async () => {
-        await prisma.createRequest.update({
-          where: { id },
-          data: { status: "GENERATING" },
-        });
-
-        console.log("[create-pipeline] leesfield start", { requestId: id });
-        const generated = await generateImageUrl(
-          { prompt: generationPrompt },
-          { timeoutMs: 180_000, pollIntervalMs: 1200 },
-        );
-        console.log("[create-pipeline] leesfield done", {
-          requestId: id,
-          imageHost: safeUrlHost(generated.url),
-        });
-
-        await prisma.createRequest.update({
-          where: { id },
-          data: { imageUrl: generated.url },
-        });
-
-        return generated.url;
-      })());
-
-    latestImageUrlForLog = imageUrl;
-
-    await prisma.createRequest.update({
-      where: { id },
-      data: { status: "SAFETY" },
-    });
-
-    console.log("[create-pipeline] safety start", { requestId: id });
-    const safetyChecked = await checkImageSafetyWithOpenAiWithRaw({
-      prompt: generationPrompt,
-      imageUrl,
-    });
-    const safety = safetyChecked.result;
-    console.log("[create-pipeline] safety done", { requestId: id, ok: safety.ok });
-
-    try {
-      await prisma.openAiCallLog.create({
-        data: {
-          kind: "IMAGE_SAFETY",
-          model: safetyChecked.raw.model,
-          openAiResponseId: safetyChecked.raw.openAiResponseId,
-          userId: createRequest.userId,
-          createRequestId: id,
-          inputPrompt: generationPrompt || prompt,
-          inputImageUrl: imageUrl,
-          outputText: safetyChecked.raw.outputText,
-          outputJson: safetyChecked.raw.outputJson as Prisma.InputJsonValue,
-          decision: safety.ok ? "ALLOW" : "BLOCK",
-          category: safety.ok ? "OK" : safety.category,
-          reason: safety.ok ? null : safety.reason,
-        },
-      });
-    } catch (logError) {
-      console.warn("[create-pipeline] failed to persist openai safety log", {
-        requestId: id,
-        error: logError instanceof Error ? logError.message : String(logError),
+    if (!createRequest.imageUrl?.trim()) {
+      await prisma.createRequest.update({
+        where: { id },
+        data: { status: "GENERATING" },
       });
     }
 
-    if (!safety.ok) {
+    const result = await runDishGeneration({
+      userId: createRequest.userId,
+      prompt,
+      promptEn,
+      imageUrl: createRequest.imageUrl,
+      createRequestId: id,
+      onImageReady: async (imageUrl) => {
+        await prisma.createRequest.update({
+          where: { id },
+          data: { imageUrl, status: "SAFETY" },
+        });
+      },
+    });
+
+    if (result.status === "BLOCK") {
       await prisma.createRequest.update({
         where: { id },
         data: { status: "FAILED" },
       });
       console.warn("[create-pipeline] safety check blocked", {
         requestId: id,
-        category: safety.category,
+        category: result.category,
       });
       return;
     }
+
+    const imageUrl = result.imageUrl;
 
     await prisma.$transaction(async (tx) => {
       const latest = await tx.createRequest.findUnique({ where: { id } });
@@ -194,7 +129,7 @@ export async function processCreatePipelineRequest(requestId: string) {
       await tx.dishDayScore.create({
         data: {
           dishId: dish.id,
-          dayKey: formatDayKeyForKST(),
+          dayKey: createRequest.reservation.dayKey,
           totalScore: 0,
         },
       });
@@ -223,29 +158,6 @@ export async function processCreatePipelineRequest(requestId: string) {
       requestId: id,
       error: error instanceof Error ? error.message : String(error),
     });
-
-    if (error instanceof ProviderError && error.provider === "openai") {
-      try {
-        await prisma.openAiCallLog.create({
-          data: {
-            kind: "IMAGE_SAFETY",
-            model: process.env.OPENAI_SAFETY_CHECK_MODEL?.trim() || "gpt-5-mini",
-            userId: createRequest.userId,
-            createRequestId: id,
-            inputPrompt: generationPrompt,
-            inputImageUrl: latestImageUrlForLog,
-            errorCode: error.code,
-            errorStatus: error.status ?? null,
-            errorMessage: error.message,
-          },
-        });
-      } catch (logError) {
-        console.warn("[create-pipeline] failed to persist openai safety error log", {
-          requestId: id,
-          error: logError instanceof Error ? logError.message : String(logError),
-        });
-      }
-    }
 
     await prisma.createRequest.update({
       where: { id },

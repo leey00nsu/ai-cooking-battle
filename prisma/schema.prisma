@@ -117,6 +117,26 @@ enum OpenAiCallKind {
   DAY_THEME
 }
 
+enum BotSeedTriggerType {
+  SCHEDULE
+  ADMIN
+}
+
+enum BotSeedRunStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED_PARTIAL
+  FAILED
+}
+
+enum BotSeedItemStatus {
+  SELECTED
+  GENERATING
+  SUCCEEDED
+  FAILED
+}
+
 model DayTheme {
   dayKey       String   @id
   themeText    String
@@ -238,6 +258,84 @@ model OpenAiCallLog {
   @@map("openai_call_log")
 }
 
+model BotPersona {
+  personaKey  String @id
+  displayName String
+  stylePrompt String
+  styleGroup  String
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  seedItems BotSeedItem[]
+  dishMetas DishBotMeta[]
+
+  @@index([isActive])
+  @@map("bot_persona")
+}
+
+model BotSeedRun {
+  id           String           @id @default(cuid())
+  dayKey        String           @unique
+  triggerType   BotSeedTriggerType
+  status        BotSeedRunStatus @default(PENDING)
+  selectedCount Int              @default(0)
+  successCount  Int              @default(0)
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  seedItems BotSeedItem[]
+  dishMetas DishBotMeta[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("bot_seed_run")
+}
+
+model BotSeedItem {
+  id            String            @id @default(cuid())
+  seedRunId     String
+  seedRun       BotSeedRun        @relation(fields: [seedRunId], references: [id], onDelete: Cascade)
+  personaKey    String
+  persona       BotPersona        @relation(fields: [personaKey], references: [personaKey], onDelete: Restrict)
+  selectedOrder Int
+  attempt       Int               @default(1)
+  status        BotSeedItemStatus @default(SELECTED)
+  dishId        String?
+  dish          Dish?             @relation(fields: [dishId], references: [id], onDelete: SetNull)
+  errorCode     String?
+  errorMessage  String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@unique([seedRunId, selectedOrder, attempt])
+  @@index([seedRunId])
+  @@index([personaKey])
+  @@index([status])
+  @@index([dishId])
+  @@map("bot_seed_item")
+}
+
+model DishBotMeta {
+  id         String     @id @default(cuid())
+  dishId     String     @unique
+  dish       Dish       @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  dayKey     String
+  personaKey String
+  persona    BotPersona @relation(fields: [personaKey], references: [personaKey], onDelete: Restrict)
+  seedRunId  String
+  seedRun    BotSeedRun @relation(fields: [seedRunId], references: [id], onDelete: Cascade)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([dayKey])
+  @@index([personaKey])
+  @@index([seedRunId])
+  @@map("dish_bot_meta")
+}
+
 model Dish {
   id        String   @id @default(cuid())
   userId    String
@@ -253,6 +351,8 @@ model Dish {
   dayScores DishDayScore[]
   representativeUsers User[] @relation("RepresentativeDish")
   activeEntries ActiveEntry[]
+  seedItems BotSeedItem[]
+  botMeta DishBotMeta?
 
   @@index([userId])
   @@index([createdAt])

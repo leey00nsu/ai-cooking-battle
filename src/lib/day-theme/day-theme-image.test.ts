@@ -15,12 +15,9 @@ import {
 } from "@/lib/day-theme/day-theme-image";
 
 describe("day-theme-image", () => {
-  it("builds prompt with prefix and suffix", () => {
+  it("builds prompt with normalized theme text only", () => {
     const prompt = buildDayThemeImagePromptEn("Shrimp tacos with lime for a beach day");
-    expect(prompt).toContain("representing today's cooking theme");
-    expect(prompt).toContain("Shrimp tacos with lime");
-    expect(prompt).toContain("food photography");
-    expect(prompt).toContain(", ");
+    expect(prompt).toBe("Shrimp tacos with lime for a beach day");
   });
 
   it("detects placeholder theme image url", () => {

@@ -3,4 +3,5 @@ export type Theme = {
   themeText: string;
   themeTextEn: string;
   themeImageUrl?: string | null;
+  isPending?: boolean;
 };

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getMockMatchFeed } from "@/shared/api/mock-home-data";
+import { getHomeDataSource } from "@/shared/api/home-data-source";
 import { formatDayKeyForKST } from "@/shared/lib/day-key";
 
 export const runtime = "nodejs";
@@ -16,5 +16,6 @@ function getLimit(url: string) {
 export async function GET(request: Request) {
   const dayKey = formatDayKeyForKST();
   const limit = getLimit(request.url);
-  return NextResponse.json(getMockMatchFeed(dayKey, limit));
+  const source = getHomeDataSource();
+  return NextResponse.json(await source.getMatchFeed({ dayKey, limit }));
 }
