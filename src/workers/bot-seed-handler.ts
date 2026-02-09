@@ -81,7 +81,10 @@ async function resolveBotGenerationPromptEn(args: {
       personaDisplayName: args.persona.displayName,
       personaStylePrompt: args.persona.stylePrompt,
     });
-    return generated.dishPromptEn;
+    if (generated.ok && generated.dishPromptEn) {
+      return generated.dishPromptEn;
+    }
+    return fallback;
   } catch (error) {
     console.warn("[bot-seed] failed to generate bot dish prompt with openai. fallback applied.", {
       personaKey: args.persona.personaKey,
@@ -341,12 +344,15 @@ export async function processBotSeedJob(
     }
   }
 
+  // 활성 페르소나가 0개면 당일 시드 구성이 불가능하므로 실패로 기록한다.
   const status: BotSeedRunStatus =
-    successCount === selectedCount && selectedCount > 0
-      ? "SUCCEEDED"
-      : successCount > 0
-        ? "FAILED_PARTIAL"
-        : "FAILED";
+    selectedCount === 0
+      ? "FAILED"
+      : successCount === selectedCount
+        ? "SUCCEEDED"
+        : successCount > 0
+          ? "FAILED_PARTIAL"
+          : "FAILED";
 
   await prisma.botSeedRun.update({
     where: { id: seedRun.id },

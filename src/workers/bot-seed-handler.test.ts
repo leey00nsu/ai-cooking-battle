@@ -249,4 +249,52 @@ describe("processBotSeedJob", () => {
       }),
     );
   });
+
+  it("falls back to theme+style prompt when openai response is not ok", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [],
+    });
+    generateBotDishPromptWithOpenAi.mockResolvedValueOnce({
+      ok: false,
+      dishPromptEn: undefined,
+    });
+    runDishGeneration.mockResolvedValueOnce({
+      status: "ALLOW",
+      imageUrl: "https://cdn.example/ok.webp",
+      generationPrompt: "prompt",
+    });
+
+    await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "ADMIN" });
+
+    expect(runDishGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptEn: "Korean cuisine, style one",
+      }),
+    );
+  });
+
+  it("marks run FAILED when no active persona is selected", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [],
+      fallback: [],
+    });
+
+    const result = await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" });
+
+    expect(runDishGeneration).not.toHaveBeenCalled();
+    expect(prisma.botSeedRun.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "FAILED",
+          successCount: 0,
+        }),
+      }),
+    );
+    expect(result).toEqual({
+      dayKey: "2026-02-09",
+      selectedCount: 0,
+      status: "FAILED",
+    });
+  });
 });

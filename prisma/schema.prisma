@@ -326,7 +326,7 @@ model DishBotMeta {
   personaKey String
   persona    BotPersona @relation(fields: [personaKey], references: [personaKey], onDelete: Restrict)
   seedRunId  String
-  seedRun    BotSeedRun @relation(fields: [seedRunId], references: [id], onDelete: Restrict)
+  seedRun    BotSeedRun @relation(fields: [seedRunId], references: [id], onDelete: Cascade)
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 
