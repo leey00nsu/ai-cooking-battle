@@ -7,7 +7,6 @@ import { Surface } from "@/shared/ui/surface";
 
 type FeedSpotlightShellProps = {
   item: DishFeedItem | null;
-  isError?: boolean;
 };
 
 function formatCreatedAt(iso: string) {
@@ -23,24 +22,13 @@ function formatCreatedAt(iso: string) {
   }).format(date);
 }
 
-function FeedSpotlightShell({ item, isError }: FeedSpotlightShellProps) {
-  if (isError) {
-    return (
-      <Surface className="p-6 md:p-8" radius="3xl" tone="card">
-        <EmptyState
-          title="Failed to load spotlight dish"
-          description="Please refresh and try again."
-        />
-      </Surface>
-    );
-  }
-
+function FeedSpotlightShell({ item }: FeedSpotlightShellProps) {
   if (!item) {
     return (
       <Surface className="p-6 md:p-8" radius="3xl" tone="card">
         <EmptyState
-          title="Spotlight dish is not ready yet"
-          description="Today's dishes are still being generated."
+          title="스포트라이트 요리를 준비 중입니다."
+          description="잠시 후 다시 확인해주세요."
         />
       </Surface>
     );
