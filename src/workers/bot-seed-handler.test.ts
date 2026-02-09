@@ -61,6 +61,7 @@ describe("processBotSeedJob", () => {
     });
     generateBotDishPromptWithOpenAi.mockResolvedValue({
       ok: true,
+      dishPrompt: "생성된 한식 요리",
       dishPromptEn: "generated prompt from theme and persona with style one",
     });
     prisma.botPersona.findMany.mockResolvedValue([
@@ -113,10 +114,17 @@ describe("processBotSeedJob", () => {
     expect(runDishGeneration).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "bot-system-user",
+        prompt: "생성된 한식 요리",
         promptEn: "generated prompt from theme and persona with style one",
       }),
     );
-    expect(prisma.dish.create).toHaveBeenCalled();
+    expect(prisma.dish.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          prompt: "생성된 한식 요리",
+        }),
+      }),
+    );
     expect(prisma.dishBotMeta.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -220,6 +228,7 @@ describe("processBotSeedJob", () => {
 
     expect(runDishGeneration).toHaveBeenCalledWith(
       expect.objectContaining({
+        prompt: "한식",
         promptEn: "Korean cuisine, style one",
       }),
     );
@@ -232,6 +241,7 @@ describe("processBotSeedJob", () => {
     });
     generateBotDishPromptWithOpenAi.mockResolvedValueOnce({
       ok: true,
+      dishPrompt: "겨울 캠핑 숯불 요리",
       dishPromptEn: "Charcoal-grilled dishes suitable for a winter campfire",
     });
     runDishGeneration.mockResolvedValueOnce({
@@ -244,6 +254,7 @@ describe("processBotSeedJob", () => {
 
     expect(runDishGeneration).toHaveBeenCalledWith(
       expect.objectContaining({
+        prompt: "겨울 캠핑 숯불 요리",
         promptEn: "Charcoal-grilled dishes suitable for a winter campfire",
       }),
     );
@@ -256,6 +267,7 @@ describe("processBotSeedJob", () => {
     });
     generateBotDishPromptWithOpenAi.mockResolvedValueOnce({
       ok: false,
+      dishPrompt: undefined,
       dishPromptEn: undefined,
     });
     runDishGeneration.mockResolvedValueOnce({
@@ -268,6 +280,7 @@ describe("processBotSeedJob", () => {
 
     expect(runDishGeneration).toHaveBeenCalledWith(
       expect.objectContaining({
+        prompt: "한식",
         promptEn: "Korean cuisine, style one",
       }),
     );

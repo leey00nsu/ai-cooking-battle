@@ -60,13 +60,6 @@ function computeSeedRunStatus(selectedCount: number, successCount: number): BotS
         : "FAILED";
 }
 
-function buildBotPrompt(args: { themeText: string; persona: Pick<PersonaProfile, "displayName"> }) {
-  return {
-    // 운영/이력에서 당일 주제와 페르소나를 식별하기 위한 저장용 프롬프트
-    prompt: `${args.themeText} (${args.persona.displayName})`,
-  };
-}
-
 function buildFallbackGenerationPromptEn(args: {
   themeTextEn: string;
   personaStylePrompt: string;
@@ -74,15 +67,18 @@ function buildFallbackGenerationPromptEn(args: {
   return `${args.themeTextEn}, ${args.personaStylePrompt}`.replace(/\s+/g, " ").trim();
 }
 
-async function resolveBotGenerationPromptEn(args: {
+async function resolveBotGenerationPrompts(args: {
   themeText: string;
   themeTextEn: string;
   persona: Pick<PersonaProfile, "displayName" | "stylePrompt" | "personaKey">;
 }) {
-  const fallback = buildFallbackGenerationPromptEn({
-    themeTextEn: args.themeTextEn,
-    personaStylePrompt: args.persona.stylePrompt,
-  });
+  const fallback = {
+    dishPrompt: args.themeText.trim(),
+    dishPromptEn: buildFallbackGenerationPromptEn({
+      themeTextEn: args.themeTextEn,
+      personaStylePrompt: args.persona.stylePrompt,
+    }),
+  };
 
   try {
     const generated = await generateBotDishPromptWithOpenAi({
@@ -91,8 +87,11 @@ async function resolveBotGenerationPromptEn(args: {
       personaDisplayName: args.persona.displayName,
       personaStylePrompt: args.persona.stylePrompt,
     });
-    if (generated.ok && generated.dishPromptEn) {
-      return generated.dishPromptEn;
+    if (generated.ok && generated.dishPrompt && generated.dishPromptEn) {
+      return {
+        dishPrompt: generated.dishPrompt,
+        dishPromptEn: generated.dishPromptEn,
+      };
     }
     return fallback;
   } catch (error) {
@@ -228,11 +227,7 @@ export async function processBotSeedJob(
     let attempt = args.attemptStart;
 
     for (let retry = 0; retry < 2; retry += 1) {
-      const storagePrompt = buildBotPrompt({
-        themeText: theme.themeText,
-        persona: args.persona,
-      });
-      const promptEn = await resolveBotGenerationPromptEn({
+      const botPrompts = await resolveBotGenerationPrompts({
         themeText: theme.themeText,
         themeTextEn: theme.themeTextEn,
         persona: args.persona,
@@ -241,8 +236,8 @@ export async function processBotSeedJob(
       try {
         const generationResult = await runDishGeneration({
           userId: BOT_SYSTEM_USER_ID,
-          prompt: storagePrompt.prompt,
-          promptEn,
+          prompt: botPrompts.dishPrompt,
+          promptEn: botPrompts.dishPromptEn,
         });
 
         if (generationResult.status === "BLOCK") {
@@ -272,8 +267,8 @@ export async function processBotSeedJob(
           const dish = await tx.dish.create({
             data: {
               userId: BOT_SYSTEM_USER_ID,
-              prompt: storagePrompt.prompt,
-              promptEn,
+              prompt: botPrompts.dishPrompt,
+              promptEn: botPrompts.dishPromptEn,
               imageUrl: generationResult.imageUrl,
               isHidden: false,
             },

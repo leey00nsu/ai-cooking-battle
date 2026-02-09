@@ -65,11 +65,14 @@ describe("listDishFeed", () => {
       },
       {
         id: "dish-2",
-        prompt: "dish 2",
+        prompt: "dish 2 (트리플 실루엣)",
         imageUrl: "https://cdn.example/dish-2.webp",
         createdAt: new Date("2026-02-09T10:02:00.000Z"),
         user: { name: "Chef B" },
-        botMeta: { id: "meta-2" },
+        botMeta: {
+          id: "meta-2",
+          persona: { displayName: "트리플 실루엣" },
+        },
       },
       {
         id: "dish-1",
@@ -92,8 +95,9 @@ describe("listDishFeed", () => {
     expect(result.items).toHaveLength(2);
     expect(result.items[1]).toMatchObject({
       id: "dish-2",
+      prompt: "dish 2",
       authorType: "bot",
-      authorLabel: "AI Chef",
+      authorLabel: "트리플 실루엣",
     });
     expect(result.nextCursor).toEqual(expect.any(String));
   });

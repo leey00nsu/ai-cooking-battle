@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 const DEFAULT_LIMIT = 12;
 const MAX_LIMIT = 24;
 const DEFAULT_SORT: DishFeedSort = "latest";
+const BOT_AUTHOR_LABEL_FALLBACK = "AI Chef Bot";
 
 type CursorPayload = {
   sort: DishFeedSort;
@@ -38,6 +39,18 @@ function toSafeSort(sort: string | null | undefined): DishFeedSort {
 function toSafeSearch(search: string | null | undefined): string | null {
   const trimmed = search?.trim();
   return trimmed ? trimmed : null;
+}
+
+function normalizeBotPrompt(prompt: string, personaDisplayName?: string | null) {
+  const personaName = personaDisplayName?.trim();
+  if (!personaName) {
+    return prompt;
+  }
+  const suffix = ` (${personaName})`;
+  if (!prompt.endsWith(suffix)) {
+    return prompt;
+  }
+  return prompt.slice(0, -suffix.length).trimEnd();
 }
 
 function decodeCursor(
@@ -182,6 +195,11 @@ export async function listDishFeed(args: {
       botMeta: {
         select: {
           id: true,
+          persona: {
+            select: {
+              displayName: true,
+            },
+          },
         },
       },
     },
@@ -194,11 +212,15 @@ export async function listDishFeed(args: {
   return {
     items: visible.map((item) => ({
       id: item.id,
-      prompt: item.prompt,
+      prompt: item.botMeta
+        ? normalizeBotPrompt(item.prompt, item.botMeta.persona.displayName)
+        : item.prompt,
       imageUrl: item.imageUrl,
       createdAt: item.createdAt.toISOString(),
       authorType: item.botMeta ? "bot" : "user",
-      authorLabel: item.botMeta ? "AI Chef" : item.user.name,
+      authorLabel:
+        item.botMeta?.persona.displayName ||
+        (item.botMeta ? BOT_AUTHOR_LABEL_FALLBACK : item.user.name),
     })),
     nextCursor:
       hasMore && last

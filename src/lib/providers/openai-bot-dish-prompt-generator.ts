@@ -46,6 +46,36 @@ function validateDishPromptEn(value: string) {
   return candidate;
 }
 
+function validateDishPrompt(value: string, personaDisplayName: string) {
+  const candidate = normalizeSingleLine(value);
+  if (!candidate) {
+    return null;
+  }
+  if (candidate.length < 2 || candidate.length > 40) {
+    return null;
+  }
+  if (/[,:.;!?()[\]{}]/.test(candidate)) {
+    return null;
+  }
+  if (/\d/.test(candidate)) {
+    return null;
+  }
+  const lower = candidate.toLowerCase();
+  if (
+    lower.includes("close-up") ||
+    lower.includes("natural lighting") ||
+    lower.includes("sharp focus") ||
+    lower.includes("simple background")
+  ) {
+    return null;
+  }
+  const normalizedPersona = normalizeSingleLine(personaDisplayName);
+  if (normalizedPersona && lower.includes(normalizedPersona.toLowerCase())) {
+    return null;
+  }
+  return candidate;
+}
+
 export type BotDishPromptRaw = {
   model: string;
   openAiResponseId: string | null;
@@ -55,6 +85,7 @@ export type BotDishPromptRaw = {
 
 export type BotDishPromptResult = {
   ok: true;
+  dishPrompt: string;
   dishPromptEn: string;
 };
 
@@ -108,8 +139,9 @@ export async function generateBotDishPromptWithOpenAiWithRaw(args: {
   }
 
   const record = parsed as Record<string, unknown>;
+  const dishPrompt = validateDishPrompt(String(record.dishPrompt ?? ""), args.personaDisplayName);
   const dishPromptEn = validateDishPromptEn(String(record.dishPromptEn ?? ""));
-  if (!dishPromptEn) {
+  if (!dishPrompt || !dishPromptEn) {
     throw new ProviderError({
       provider: PROVIDER,
       code: "INVALID_RESPONSE",
@@ -118,7 +150,7 @@ export async function generateBotDishPromptWithOpenAiWithRaw(args: {
   }
 
   return {
-    result: { ok: true, dishPromptEn },
+    result: { ok: true, dishPrompt, dishPromptEn },
     raw: {
       model: config.model,
       openAiResponseId: response.id?.toString() ?? null,
