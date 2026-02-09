@@ -26,15 +26,13 @@ function createRandom(values: number[], fallback = 0.5) {
 }
 
 describe("selectDailyPersonas", () => {
-  it("can produce different results on repeated runs for same dayKey", () => {
+  it("can produce different results when random sequence changes", () => {
     const first = selectDailyPersonas({
-      dayKey: "2026-02-08",
       personas: [...CANDIDATES],
       maxPerStyleGroup: 8,
       random: createRandom([0, 0, 0, 0, 0, 0, 0]),
     });
     const second = selectDailyPersonas({
-      dayKey: "2026-02-08",
       personas: [...CANDIDATES],
       maxPerStyleGroup: 8,
       random: createRandom([0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99]),
@@ -45,7 +43,6 @@ describe("selectDailyPersonas", () => {
 
   it("limits styleGroup concentration when enough candidates exist", () => {
     const result = selectDailyPersonas({
-      dayKey: "2026-02-08",
       personas: [...CANDIDATES],
       pickCount: 5,
       maxPerStyleGroup: 2,
@@ -63,7 +60,6 @@ describe("selectDailyPersonas", () => {
 
   it("returns fallback as remaining active candidates excluding selected", () => {
     const result = selectDailyPersonas({
-      dayKey: "2026-02-08",
       personas: [...CANDIDATES],
       pickCount: 5,
       random: createRandom([0.5, 0.2, 0.8, 0.1, 0.7, 0.3, 0.9]),

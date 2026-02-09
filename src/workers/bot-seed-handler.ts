@@ -126,7 +126,6 @@ export async function processBotSeedJob(
 
   const personaByKey = new Map(personas.map((persona) => [persona.personaKey, persona]));
   const { selected, fallback } = selectDailyPersonas({
-    dayKey,
     personas,
     pickCount: TARGET_BOT_PERSONA_COUNT,
   });
@@ -141,29 +140,65 @@ export async function processBotSeedJob(
   const selectedCount = selectedProfiles.length;
   const now = new Date();
 
-  const seedRun = await prisma.botSeedRun.upsert({
-    where: { dayKey },
-    update: {
-      triggerType,
-      status: "RUNNING",
-      selectedCount,
-      successCount: 0,
-      startedAt: now,
-      finishedAt: null,
-    },
-    create: {
-      dayKey,
-      triggerType,
-      status: "RUNNING",
-      selectedCount,
-      successCount: 0,
-      startedAt: now,
-    },
-    select: { id: true },
-  });
+  const seedRun = await prisma.$transaction(async (tx) => {
+    const run = await tx.botSeedRun.upsert({
+      where: { dayKey },
+      update: {
+        triggerType,
+        status: "RUNNING",
+        selectedCount,
+        successCount: 0,
+        startedAt: now,
+        finishedAt: null,
+      },
+      create: {
+        dayKey,
+        triggerType,
+        status: "RUNNING",
+        selectedCount,
+        successCount: 0,
+        startedAt: now,
+      },
+      select: { id: true },
+    });
 
-  await prisma.botSeedItem.deleteMany({
-    where: { seedRunId: seedRun.id },
+    const previousItems = await tx.botSeedItem.findMany({
+      where: {
+        seedRunId: run.id,
+        dishId: { not: null },
+      },
+      select: { dishId: true },
+    });
+    const previousDishIds = Array.from(
+      new Set(previousItems.map((item) => item.dishId).filter((id): id is string => Boolean(id))),
+    );
+
+    await tx.botSeedItem.deleteMany({
+      where: { seedRunId: run.id },
+    });
+    if (previousDishIds.length > 0) {
+      await tx.dishBotMeta.deleteMany({
+        where: {
+          seedRunId: run.id,
+          dishId: { in: previousDishIds },
+        },
+      });
+      await tx.dishDayScore.deleteMany({
+        where: {
+          dayKey,
+          dishId: { in: previousDishIds },
+        },
+      });
+      await tx.dish.updateMany({
+        where: {
+          id: { in: previousDishIds },
+          userId: BOT_SYSTEM_USER_ID,
+        },
+        data: { isHidden: true },
+      });
+    }
+
+    return run;
   });
 
   await ensureBotSystemUser();

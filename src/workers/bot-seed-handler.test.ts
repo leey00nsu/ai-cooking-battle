@@ -1,21 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProviderError } from "@/lib/providers/provider-error";
 
-const tx = vi.hoisted(() => ({
-  dish: {
-    create: vi.fn(),
-  },
-  dishDayScore: {
-    create: vi.fn(),
-  },
-  dishBotMeta: {
-    create: vi.fn(),
-  },
-  botSeedItem: {
-    create: vi.fn(),
-  },
-}));
-
 const prisma = vi.hoisted(() => ({
   botPersona: {
     findMany: vi.fn(),
@@ -24,7 +9,20 @@ const prisma = vi.hoisted(() => ({
     upsert: vi.fn(),
     update: vi.fn(),
   },
+  dish: {
+    create: vi.fn(),
+    updateMany: vi.fn(),
+  },
+  dishDayScore: {
+    create: vi.fn(),
+    deleteMany: vi.fn(),
+  },
+  dishBotMeta: {
+    create: vi.fn(),
+    deleteMany: vi.fn(),
+  },
   botSeedItem: {
+    findMany: vi.fn(),
     deleteMany: vi.fn(),
     create: vi.fn(),
   },
@@ -83,16 +81,20 @@ describe("processBotSeedJob", () => {
     ]);
     prisma.botSeedRun.upsert.mockResolvedValue({ id: "run-1" });
     prisma.botSeedRun.update.mockResolvedValue({ id: "run-1" });
+    prisma.botSeedItem.findMany.mockResolvedValue([]);
     prisma.botSeedItem.deleteMany.mockResolvedValue({ count: 0 });
     prisma.botSeedItem.create.mockResolvedValue({ id: "item" });
     prisma.user.upsert.mockResolvedValue({ id: "bot-system-user" });
 
-    tx.dish.create.mockResolvedValue({ id: "dish-1" });
-    tx.dishDayScore.create.mockResolvedValue({ id: "score-1" });
-    tx.dishBotMeta.create.mockResolvedValue({ id: "meta-1" });
-    tx.botSeedItem.create.mockResolvedValue({ id: "seed-item-1" });
-    prisma.$transaction.mockImplementation(async (runner: (txArg: typeof tx) => Promise<unknown>) =>
-      runner(tx),
+    prisma.dish.create.mockResolvedValue({ id: "dish-1" });
+    prisma.dish.updateMany.mockResolvedValue({ count: 0 });
+    prisma.dishDayScore.create.mockResolvedValue({ id: "score-1" });
+    prisma.dishDayScore.deleteMany.mockResolvedValue({ count: 0 });
+    prisma.dishBotMeta.create.mockResolvedValue({ id: "meta-1" });
+    prisma.dishBotMeta.deleteMany.mockResolvedValue({ count: 0 });
+    prisma.botSeedItem.create.mockResolvedValue({ id: "seed-item-1" });
+    prisma.$transaction.mockImplementation(
+      async (runner: (txArg: typeof prisma) => Promise<unknown>) => runner(prisma),
     );
   });
 
@@ -115,8 +117,8 @@ describe("processBotSeedJob", () => {
         promptEn: "generated prompt from theme and persona with style one",
       }),
     );
-    expect(tx.dish.create).toHaveBeenCalled();
-    expect(tx.dishBotMeta.create).toHaveBeenCalledWith(
+    expect(prisma.dish.create).toHaveBeenCalled();
+    expect(prisma.dishBotMeta.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           dayKey: "2026-02-09",
@@ -188,7 +190,7 @@ describe("processBotSeedJob", () => {
         }),
       }),
     );
-    expect(tx.botSeedItem.create).toHaveBeenCalledWith(
+    expect(prisma.botSeedItem.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           personaKey: "p2",

@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ProviderError } from "@/lib/providers/provider-error";
 import { markReservationFailed } from "@/lib/slot-recovery";
-import { formatDayKeyForKST } from "@/shared/lib/day-key";
 import { runDishGeneration } from "@/workers/services/run-dish-generation";
 
 function isRetryableError(error: unknown) {
@@ -130,7 +129,7 @@ export async function processCreatePipelineRequest(requestId: string) {
       await tx.dishDayScore.create({
         data: {
           dishId: dish.id,
-          dayKey: formatDayKeyForKST(),
+          dayKey: createRequest.reservation.dayKey,
           totalScore: 0,
         },
       });

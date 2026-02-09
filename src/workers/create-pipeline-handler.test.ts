@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProviderError } from "@/lib/providers/provider-error";
 
 const markReservationFailed = vi.fn();
-const formatDayKeyForKST = vi.fn(() => "2026-02-03");
 const runDishGeneration = vi.fn();
 
 const prisma = {
@@ -25,10 +24,6 @@ vi.mock("@/workers/services/run-dish-generation", () => ({
 
 vi.mock("@/lib/slot-recovery", () => ({
   markReservationFailed,
-}));
-
-vi.mock("@/shared/lib/day-key", () => ({
-  formatDayKeyForKST,
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma }));

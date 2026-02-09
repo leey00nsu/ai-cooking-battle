@@ -8,7 +8,6 @@ export type BotPersonaCandidate = {
 };
 
 export type SelectDailyPersonasInput = {
-  dayKey: string;
   personas: BotPersonaCandidate[];
   pickCount?: number;
   maxPerStyleGroup?: number;

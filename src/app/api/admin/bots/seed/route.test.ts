@@ -187,6 +187,27 @@ describe("/api/admin/bots/seed", () => {
     });
   });
 
+  it("POST returns 409 when same dayKey seed run is already RUNNING", async () => {
+    vi.stubEnv("ADMIN_USER_IDS", "user-1");
+    prisma.botSeedRun.findUnique.mockResolvedValueOnce({ status: "RUNNING" });
+    const { POST } = await import("./route");
+
+    const response = await POST(
+      new Request("http://localhost/api/admin/bots/seed", {
+        method: "POST",
+        body: JSON.stringify({ dayKey: "2026-02-08" }),
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    expect(enqueueBotSeedJobMock).not.toHaveBeenCalled();
+    expect(await response.json()).toEqual({
+      ok: false,
+      code: "SEED_RUN_IN_PROGRESS",
+      message: "같은 dayKey의 bot-seed 작업이 이미 실행 중입니다.",
+    });
+  });
+
   it("POST uses KST dayKey when payload dayKey is omitted", async () => {
     vi.stubEnv("ADMIN_USER_IDS", "user-1");
     const { POST } = await import("./route");

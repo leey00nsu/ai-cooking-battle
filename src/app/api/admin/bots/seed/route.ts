@@ -177,6 +177,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const current = await prisma.botSeedRun.findUnique({
+    where: { dayKey },
+    select: { status: true },
+  });
+  if (current?.status === "RUNNING") {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "SEED_RUN_IN_PROGRESS",
+        message: "같은 dayKey의 bot-seed 작업이 이미 실행 중입니다.",
+      },
+      { status: 409 },
+    );
+  }
+
   const jobId = await enqueueBotSeedJob({ dayKey, triggerType: "ADMIN" }, { singleton: false });
   console.info("[admin.bots.seed] enqueue", {
     actorUserId: admin.userId,

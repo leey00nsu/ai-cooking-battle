@@ -121,7 +121,7 @@ export async function generateBotDishPromptWithOpenAiWithRaw(args: {
     result: { ok: true, dishPromptEn },
     raw: {
       model: config.model,
-      openAiResponseId: (response as { id?: string | null })?.id?.toString() ?? null,
+      openAiResponseId: response.id?.toString() ?? null,
       outputText,
       outputJson: parsed,
     },
