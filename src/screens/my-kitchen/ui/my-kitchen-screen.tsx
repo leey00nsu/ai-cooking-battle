@@ -24,6 +24,9 @@ type ToggleActiveResponse =
   | { ok: true; isActive: boolean; dishId: string }
   | { ok: false; code: string; message: string };
 
+const RECENT_MATCHES_LIMIT = 5;
+const RECENT_MATCHES_API_PATH = `/api/home/matches?limit=${RECENT_MATCHES_LIMIT}`;
+
 export default function MyKitchenScreen() {
   const queryClient = useQueryClient();
   const { data, isPending, isError, refetch } = useQuery<MyKitchenResponse>({
@@ -36,7 +39,7 @@ export default function MyKitchenScreen() {
     isError: isRecentMatchesError,
   } = useQuery<MatchFeed>({
     queryKey: ["my", "recent-matches"],
-    queryFn: () => fetchJson<MatchFeed>("/api/feed?limit=5"),
+    queryFn: () => fetchJson<MatchFeed>(RECENT_MATCHES_API_PATH),
   });
 
   const setRepresentative = useMutation({
