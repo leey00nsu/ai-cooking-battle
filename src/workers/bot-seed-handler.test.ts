@@ -323,4 +323,50 @@ describe("processBotSeedJob", () => {
       }),
     );
   });
+
+  it("does not start seed run when ensureBotSystemUser fails", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [],
+    });
+    prisma.user.upsert.mockRejectedValueOnce(new Error("user upsert failed"));
+
+    await expect(
+      processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" }),
+    ).rejects.toThrow("user upsert failed");
+
+    expect(prisma.botSeedRun.upsert).not.toHaveBeenCalled();
+    expect(prisma.botSeedRun.update).not.toHaveBeenCalled();
+  });
+
+  it("keeps BLOCK reason even when BLOCK seed-item write fails", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [],
+    });
+    runDishGeneration
+      .mockResolvedValueOnce({
+        status: "BLOCK",
+        imageUrl: "https://cdn.example/block.webp",
+        generationPrompt: "prompt",
+        category: "POLICY",
+        reason: "blocked",
+      })
+      .mockResolvedValueOnce({
+        status: "ALLOW",
+        imageUrl: "https://cdn.example/ok.webp",
+        generationPrompt: "prompt",
+      });
+    prisma.botSeedItem.create.mockRejectedValueOnce(new Error("seed-item write failed"));
+
+    const result = await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" });
+
+    const hasUnknownErrorCodeWrite = prisma.botSeedItem.create.mock.calls.some(([arg]) => {
+      const payload = arg as { data?: { errorCode?: string } };
+      return payload.data?.errorCode === "UNKNOWN_ERROR";
+    });
+
+    expect(hasUnknownErrorCodeWrite).toBe(false);
+    expect(result.status).toBe("SUCCEEDED");
+  });
 });

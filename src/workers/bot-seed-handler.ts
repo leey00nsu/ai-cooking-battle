@@ -150,6 +150,8 @@ export async function processBotSeedJob(
     .map((entry) => personaByKey.get(entry.personaKey))
     .filter((entry): entry is PersonaProfile => Boolean(entry));
 
+  await ensureBotSystemUser();
+
   const selectedCount = selectedProfiles.length;
   const now = new Date();
 
@@ -214,8 +216,6 @@ export async function processBotSeedJob(
     return run;
   });
 
-  await ensureBotSystemUser();
-
   let successCount = 0;
   let fallbackCursor = 0;
   let processingError: unknown = null;
@@ -246,17 +246,24 @@ export async function processBotSeedJob(
         });
 
         if (generationResult.status === "BLOCK") {
-          await prisma.botSeedItem.create({
-            data: {
-              seedRunId: seedRun.id,
+          try {
+            await prisma.botSeedItem.create({
+              data: {
+                seedRunId: seedRun.id,
+                personaKey: args.persona.personaKey,
+                selectedOrder: args.selectedOrder,
+                attempt,
+                status: "FAILED",
+                errorCode: generationResult.category || "SAFETY_BLOCKED",
+                errorMessage: generationResult.reason || "Blocked by safety policy",
+              },
+            });
+          } catch (writeError) {
+            console.warn("[bot-seed] failed to persist BLOCK seed item.", {
               personaKey: args.persona.personaKey,
-              selectedOrder: args.selectedOrder,
-              attempt,
-              status: "FAILED",
-              errorCode: generationResult.category || "SAFETY_BLOCKED",
-              errorMessage: generationResult.reason || "Blocked by safety policy",
-            },
-          });
+              error: normalizeErrorMessage(writeError),
+            });
+          }
           attempt += 1;
           continue;
         }
