@@ -50,6 +50,16 @@ function normalizeErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
+function computeSeedRunStatus(selectedCount: number, successCount: number): BotSeedRunStatus {
+  return selectedCount === 0
+    ? "FAILED"
+    : successCount === selectedCount
+      ? "SUCCEEDED"
+      : successCount > 0
+        ? "FAILED_PARTIAL"
+        : "FAILED";
+}
+
 function buildBotPrompt(args: { themeText: string; persona: Pick<PersonaProfile, "displayName"> }) {
   return {
     // 운영/이력에서 당일 주제와 페르소나를 식별하기 위한 저장용 프롬프트
@@ -208,6 +218,7 @@ export async function processBotSeedJob(
 
   let successCount = 0;
   let fallbackCursor = 0;
+  let processingError: unknown = null;
 
   const runPersonaGeneration = async (args: {
     persona: PersonaProfile;
@@ -310,49 +321,46 @@ export async function processBotSeedJob(
     return { success: false as const, nextAttempt: attempt };
   };
 
-  for (let slotIndex = 0; slotIndex < selectedCount; slotIndex += 1) {
-    const selectedOrder = slotIndex + 1;
-    const selectedPersona = selectedProfiles[slotIndex];
+  try {
+    for (let slotIndex = 0; slotIndex < selectedCount; slotIndex += 1) {
+      const selectedOrder = slotIndex + 1;
+      const selectedPersona = selectedProfiles[slotIndex];
 
-    let attemptStart = 1;
-    const primaryResult = await runPersonaGeneration({
-      persona: selectedPersona,
-      selectedOrder,
-      attemptStart,
-    });
+      let attemptStart = 1;
+      const primaryResult = await runPersonaGeneration({
+        persona: selectedPersona,
+        selectedOrder,
+        attemptStart,
+      });
 
-    if (primaryResult.success) {
-      successCount += 1;
-      continue;
+      if (primaryResult.success) {
+        successCount += 1;
+        continue;
+      }
+
+      attemptStart = primaryResult.nextAttempt;
+      const fallbackPersona = fallbackProfiles[fallbackCursor];
+      if (!fallbackPersona) {
+        continue;
+      }
+      fallbackCursor += 1;
+
+      const fallbackResult = await runPersonaGeneration({
+        persona: fallbackPersona,
+        selectedOrder,
+        attemptStart,
+      });
+
+      if (fallbackResult.success) {
+        successCount += 1;
+      }
     }
-
-    attemptStart = primaryResult.nextAttempt;
-    const fallbackPersona = fallbackProfiles[fallbackCursor];
-    if (!fallbackPersona) {
-      continue;
-    }
-    fallbackCursor += 1;
-
-    const fallbackResult = await runPersonaGeneration({
-      persona: fallbackPersona,
-      selectedOrder,
-      attemptStart,
-    });
-
-    if (fallbackResult.success) {
-      successCount += 1;
-    }
+  } catch (error) {
+    processingError = error;
   }
 
   // 활성 페르소나가 0개면 당일 시드 구성이 불가능하므로 실패로 기록한다.
-  const status: BotSeedRunStatus =
-    selectedCount === 0
-      ? "FAILED"
-      : successCount === selectedCount
-        ? "SUCCEEDED"
-        : successCount > 0
-          ? "FAILED_PARTIAL"
-          : "FAILED";
+  const status = computeSeedRunStatus(selectedCount, successCount);
 
   await prisma.botSeedRun.update({
     where: { id: seedRun.id },
@@ -362,6 +370,10 @@ export async function processBotSeedJob(
       finishedAt: new Date(),
     },
   });
+
+  if (processingError) {
+    throw processingError;
+  }
 
   return {
     dayKey,

@@ -297,4 +297,30 @@ describe("processBotSeedJob", () => {
       status: "FAILED",
     });
   });
+
+  it("finalizes seed run as FAILED even when unexpected error is thrown", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [],
+    });
+    runDishGeneration.mockRejectedValueOnce(
+      new ProviderError({ provider: "leesfield", code: "TIMEOUT", message: "timeout" }),
+    );
+    prisma.botSeedItem.create.mockRejectedValueOnce(new Error("seed-item write failed"));
+
+    await expect(
+      processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" }),
+    ).rejects.toThrow("seed-item write failed");
+
+    expect(prisma.botSeedRun.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "run-1" },
+        data: expect.objectContaining({
+          status: "FAILED",
+          successCount: 0,
+          finishedAt: expect.any(Date),
+        }),
+      }),
+    );
+  });
 });
