@@ -57,7 +57,7 @@ async function getJson<T>(path: string): Promise<FetchResult<T>> {
 export default async function Home() {
   const mePromise = getJson<MeResponse>("/api/me");
   const themePromise = getJson<ThemeResponse>("/api/theme/today");
-  const feedPromise = getJson<FeedResponse>("/api/feed?limit=8");
+  const feedPromise = getJson<FeedResponse>("/api/home/matches?limit=8");
 
   const [meResult, themeResult, feedResult] = await Promise.all([
     mePromise,

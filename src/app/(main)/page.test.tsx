@@ -30,7 +30,7 @@ describe("Home page SSR fetch logic", () => {
       if (url.endsWith("/api/theme/today")) {
         return new Response(JSON.stringify({ dayKey: "2026-02-05" }), { status: 200 });
       }
-      if (url.includes("/api/feed")) {
+      if (url.includes("/api/home/matches")) {
         return new Response(JSON.stringify({ items: [] }), { status: 200 });
       }
       if (url.includes("/api/snapshot/")) {
