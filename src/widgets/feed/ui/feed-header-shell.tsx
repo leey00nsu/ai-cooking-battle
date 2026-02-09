@@ -14,6 +14,13 @@ function toFeedHref(filters: FeedFilters) {
   return `/feed${query ? `?${query}` : ""}`;
 }
 
+const SORT_OPTIONS: Array<{ value: FeedFilters["sort"]; label: string }> = [
+  { value: "latest", label: "Latest" },
+  { value: "oldest", label: "Oldest" },
+  { value: "title_asc", label: "Title A-Z" },
+  { value: "title_desc", label: "Title Z-A" },
+];
+
 function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
   const allFilters: FeedFilters = {
     ...filters,
@@ -32,6 +39,7 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
   const allHref = toFeedHref(allFilters);
   const mineHref = toFeedHref(mineFilters);
   const excludeBotsHref = toFeedHref(excludeBotsFilters);
+  const resetHref = "/feed";
 
   const isAllActive = !filters.mine && !filters.excludeBots;
 
@@ -63,6 +71,59 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
         >
           <Link href={excludeBotsHref}>Exclude Bots</Link>
         </Button>
+      </Surface>
+      <Surface className="p-3" radius="2xl" tone="soft">
+        <form
+          action="/feed"
+          className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px_auto]"
+          method="get"
+        >
+          {filters.mine ? <input name="mine" type="hidden" value="true" /> : null}
+          {filters.excludeBots ? <input name="excludeBots" type="hidden" value="true" /> : null}
+
+          <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.08em] text-white/70">
+            Search
+            <input
+              className="h-10 rounded-[var(--radius-4xl)] border border-white/10 bg-black/40 px-4 text-sm text-white placeholder:text-white/40 focus:border-primary/40 focus:outline-none"
+              defaultValue={filters.search}
+              name="search"
+              placeholder="Search dish title"
+              type="search"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.08em] text-white/70">
+            Sort
+            <select
+              className="h-10 rounded-[var(--radius-4xl)] border border-white/10 bg-black/40 px-4 text-sm text-white focus:border-primary/40 focus:outline-none"
+              defaultValue={filters.sort}
+              name="sort"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="flex items-end gap-2">
+            <Button
+              className="h-10 px-4 text-xs font-bold uppercase tracking-[0.08em]"
+              type="submit"
+              variant="cta"
+            >
+              Apply
+            </Button>
+            <Button
+              asChild
+              className="h-10 px-4 text-xs font-bold uppercase tracking-[0.08em]"
+              variant="outline"
+            >
+              <Link href={resetHref}>Reset</Link>
+            </Button>
+          </div>
+        </form>
       </Surface>
       {mineUnauthorized ? (
         <Surface className="px-4 py-3 text-sm text-red-100" radius="xl" tone="overlayDanger">

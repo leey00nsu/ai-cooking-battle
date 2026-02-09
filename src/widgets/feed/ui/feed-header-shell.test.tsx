@@ -69,4 +69,29 @@ describe("FeedHeaderShell", () => {
       screen.getByText("Mine 필터는 로그인 후 사용할 수 있습니다. 현재 전체 요리를 표시합니다."),
     ).toBeInTheDocument();
   });
+
+  it("renders search/sort controls with current filter values", () => {
+    render(
+      <FeedHeaderShell
+        filters={{
+          mine: true,
+          excludeBots: true,
+          search: "charcoal",
+          sort: "oldest",
+        }}
+      />,
+    );
+
+    const searchInput = screen.getByRole("searchbox", { name: "Search" });
+    const sortSelect = screen.getByRole("combobox", { name: "Sort" });
+
+    expect(searchInput).toHaveValue("charcoal");
+    expect(sortSelect).toHaveValue("oldest");
+
+    expect(
+      screen.getByRole("link", {
+        name: "Reset",
+      }),
+    ).toHaveAttribute("href", "/feed");
+  });
 });
