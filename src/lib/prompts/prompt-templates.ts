@@ -34,6 +34,10 @@ export function getOpenAiBotDishPromptInstructions() {
   return promptTemplates.openai.botDishPrompt.instructions.join("\n");
 }
 
+export function getOpenAiDishScoreInstructions() {
+  return promptTemplates.openai.dishScore.instructions.join("\n");
+}
+
 export function getPlatedDishSuffixEn() {
   return promptTemplates.generation.platedDishSuffixEn;
 }
