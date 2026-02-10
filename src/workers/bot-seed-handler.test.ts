@@ -61,7 +61,8 @@ describe("processBotSeedJob", () => {
     });
     generateBotDishPromptWithOpenAi.mockResolvedValue({
       ok: true,
-      dishPrompt: "생성된 한식 요리",
+      dishName: "생성된 한식 요리",
+      dishNameEn: "Generated Korean Dish",
       dishPromptEn: "generated prompt from theme and persona with style one",
     });
     prisma.botPersona.findMany.mockResolvedValue([
@@ -121,6 +122,8 @@ describe("processBotSeedJob", () => {
     expect(prisma.dish.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          dishName: "생성된 한식 요리",
+          dishNameEn: "Generated Korean Dish",
           prompt: "생성된 한식 요리",
         }),
       }),
@@ -241,7 +244,8 @@ describe("processBotSeedJob", () => {
     });
     generateBotDishPromptWithOpenAi.mockResolvedValueOnce({
       ok: true,
-      dishPrompt: "겨울 캠핑 숯불 요리",
+      dishName: "겨울 캠핑 숯불 요리",
+      dishNameEn: "Winter Campfire Charcoal Dish",
       dishPromptEn: "Charcoal-grilled dishes suitable for a winter campfire",
     });
     runDishGeneration.mockResolvedValueOnce({
@@ -267,7 +271,8 @@ describe("processBotSeedJob", () => {
     });
     generateBotDishPromptWithOpenAi.mockResolvedValueOnce({
       ok: false,
-      dishPrompt: undefined,
+      dishName: undefined,
+      dishNameEn: undefined,
       dishPromptEn: undefined,
     });
     runDishGeneration.mockResolvedValueOnce({

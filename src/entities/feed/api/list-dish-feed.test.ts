@@ -18,7 +18,7 @@ describe("listDishFeed", () => {
     prisma.dish.findMany.mockResolvedValueOnce([
       {
         id: "dish-1",
-        prompt: "dish 1",
+        dishName: "dish 1",
         imageUrl: "https://cdn.example/dish-1.webp",
         createdAt,
         user: { name: "Chef A" },
@@ -57,7 +57,7 @@ describe("listDishFeed", () => {
     prisma.dish.findMany.mockResolvedValueOnce([
       {
         id: "dish-3",
-        prompt: "dish 3",
+        dishName: "dish 3",
         imageUrl: "https://cdn.example/dish-3.webp",
         createdAt: new Date("2026-02-09T10:03:00.000Z"),
         user: { name: "Chef C" },
@@ -65,7 +65,7 @@ describe("listDishFeed", () => {
       },
       {
         id: "dish-2",
-        prompt: "dish 2 (트리플 실루엣)",
+        dishName: "dish 2 (트리플 실루엣)",
         imageUrl: "https://cdn.example/dish-2.webp",
         createdAt: new Date("2026-02-09T10:02:00.000Z"),
         user: { name: "Chef B" },
@@ -76,7 +76,7 @@ describe("listDishFeed", () => {
       },
       {
         id: "dish-1",
-        prompt: "dish 1",
+        dishName: "dish 1",
         imageUrl: "https://cdn.example/dish-1.webp",
         createdAt: new Date("2026-02-09T10:01:00.000Z"),
         user: { name: "Chef A" },
@@ -177,9 +177,9 @@ describe("listDishFeed", () => {
     expect(prisma.dish.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          prompt: { contains: "ramen", mode: "insensitive" },
+          dishName: { contains: "ramen", mode: "insensitive" },
         }),
-        orderBy: [{ prompt: "asc" }, { id: "asc" }],
+        orderBy: [{ dishName: "asc" }, { id: "asc" }],
         take: 11,
       }),
     );

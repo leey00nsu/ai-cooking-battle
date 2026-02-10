@@ -92,6 +92,8 @@ describe("processCreatePipelineRequest", () => {
     expect(prisma.dish.create).toHaveBeenCalledWith({
       data: {
         userId: "user",
+        dishName: "피자",
+        dishNameEn: "pizza",
         prompt: "피자",
         promptEn: "pizza",
         imageUrl: "https://cdn.example/image.webp",

@@ -38,7 +38,7 @@ function normalizeSingleLine(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function validateDishPromptEn(value: string) {
+function validateGenerationPromptEn(value: string) {
   const candidate = normalizeSingleLine(value);
   if (!candidate) {
     return null;
@@ -46,7 +46,7 @@ function validateDishPromptEn(value: string) {
   return candidate;
 }
 
-function validateDishPrompt(value: string, personaDisplayName: string) {
+function validateDishName(value: string, personaDisplayName: string) {
   const candidate = normalizeSingleLine(value);
   if (!candidate) {
     return null;
@@ -76,6 +76,17 @@ function validateDishPrompt(value: string, personaDisplayName: string) {
   return candidate;
 }
 
+function validateDishNameEn(value: string) {
+  const candidate = normalizeSingleLine(value);
+  if (!candidate) {
+    return null;
+  }
+  if (candidate.length < 2 || candidate.length > 120) {
+    return null;
+  }
+  return candidate;
+}
+
 export type BotDishPromptRaw = {
   model: string;
   openAiResponseId: string | null;
@@ -85,7 +96,8 @@ export type BotDishPromptRaw = {
 
 export type BotDishPromptResult = {
   ok: true;
-  dishPrompt: string;
+  dishName: string;
+  dishNameEn: string;
   dishPromptEn: string;
 };
 
@@ -139,9 +151,10 @@ export async function generateBotDishPromptWithOpenAiWithRaw(args: {
   }
 
   const record = parsed as Record<string, unknown>;
-  const dishPrompt = validateDishPrompt(String(record.dishPrompt ?? ""), args.personaDisplayName);
-  const dishPromptEn = validateDishPromptEn(String(record.dishPromptEn ?? ""));
-  if (!dishPrompt || !dishPromptEn) {
+  const dishName = validateDishName(String(record.dishName ?? ""), args.personaDisplayName);
+  const dishNameEn = validateDishNameEn(String(record.dishNameEn ?? ""));
+  const dishPromptEn = validateGenerationPromptEn(String(record.dishPromptEn ?? ""));
+  if (!dishName || !dishNameEn || !dishPromptEn) {
     throw new ProviderError({
       provider: PROVIDER,
       code: "INVALID_RESPONSE",
@@ -150,7 +163,7 @@ export async function generateBotDishPromptWithOpenAiWithRaw(args: {
   }
 
   return {
-    result: { ok: true, dishPrompt, dishPromptEn },
+    result: { ok: true, dishName, dishNameEn, dishPromptEn },
     raw: {
       model: config.model,
       openAiResponseId: response.id?.toString() ?? null,

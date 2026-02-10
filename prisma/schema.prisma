@@ -340,6 +340,8 @@ model Dish {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dishName  String
+  dishNameEn String?
   prompt    String
   promptEn  String?
   imageUrl  String

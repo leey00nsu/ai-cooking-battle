@@ -73,7 +73,8 @@ async function resolveBotGenerationPrompts(args: {
   persona: Pick<PersonaProfile, "displayName" | "stylePrompt" | "personaKey">;
 }) {
   const fallback = {
-    dishPrompt: args.themeText.trim(),
+    dishName: args.themeText.trim(),
+    dishNameEn: args.themeTextEn.trim(),
     dishPromptEn: buildFallbackGenerationPromptEn({
       themeTextEn: args.themeTextEn,
       personaStylePrompt: args.persona.stylePrompt,
@@ -87,9 +88,10 @@ async function resolveBotGenerationPrompts(args: {
       personaDisplayName: args.persona.displayName,
       personaStylePrompt: args.persona.stylePrompt,
     });
-    if (generated.ok && generated.dishPrompt && generated.dishPromptEn) {
+    if (generated.ok && generated.dishName && generated.dishNameEn && generated.dishPromptEn) {
       return {
-        dishPrompt: generated.dishPrompt,
+        dishName: generated.dishName,
+        dishNameEn: generated.dishNameEn,
         dishPromptEn: generated.dishPromptEn,
       };
     }
@@ -236,7 +238,7 @@ export async function processBotSeedJob(
       try {
         const generationResult = await runDishGeneration({
           userId: BOT_SYSTEM_USER_ID,
-          prompt: botPrompts.dishPrompt,
+          prompt: botPrompts.dishName,
           promptEn: botPrompts.dishPromptEn,
         });
 
@@ -267,7 +269,9 @@ export async function processBotSeedJob(
           const dish = await tx.dish.create({
             data: {
               userId: BOT_SYSTEM_USER_ID,
-              prompt: botPrompts.dishPrompt,
+              dishName: botPrompts.dishName,
+              dishNameEn: botPrompts.dishNameEn,
+              prompt: botPrompts.dishName,
               promptEn: botPrompts.dishPromptEn,
               imageUrl: generationResult.imageUrl,
               isHidden: false,

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const responsesCreateMock = vi.fn(async () => ({
   output_text:
-    '{"dishPrompt":"겨울 캠핑 화롯가 숯불 해산물 꼬치","dishPromptEn":"charcoal-grilled skewers with smoky glaze, winter campsite hearth mood, molecular garnish accents"}',
+    '{"dishName":"겨울 캠핑 화롯가 숯불 해산물 꼬치","dishNameEn":"Charcoal-Grilled Seafood Skewers for Winter Campfire","dishPromptEn":"charcoal-grilled skewers with smoky glaze, winter campsite hearth mood, molecular garnish accents"}',
 }));
 
 vi.mock("openai", () => {
@@ -35,7 +35,8 @@ describe("openai-bot-dish-prompt-generator", () => {
     });
 
     expect(result.result.ok).toBe(true);
-    expect(result.result.dishPrompt.length).toBeGreaterThan(4);
+    expect(result.result.dishName.length).toBeGreaterThan(4);
+    expect(result.result.dishNameEn.length).toBeGreaterThan(8);
     expect(result.result.dishPromptEn.length).toBeGreaterThan(16);
   });
 
@@ -59,7 +60,7 @@ describe("openai-bot-dish-prompt-generator", () => {
     vi.stubEnv("OPENAI_BOT_DISH_PROMPT_MODEL", "gpt-5-mini");
     responsesCreateMock.mockResolvedValueOnce({
       output_text:
-        '{"dishPrompt":"크레이지 테크니션의 겨울 캠핑 요리","dishPromptEn":"charcoal-grilled seafood salad with bright winter garnish and molecular accents"}',
+        '{"dishName":"크레이지 테크니션의 겨울 캠핑 요리","dishNameEn":"Winter Camp Dish by Crazy Technician","dishPromptEn":"charcoal-grilled seafood salad with bright winter garnish and molecular accents"}',
     });
 
     await expect(
@@ -72,12 +73,12 @@ describe("openai-bot-dish-prompt-generator", () => {
     ).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
   });
 
-  it("throws when dishPrompt is sentence-like with punctuation", async () => {
+  it("throws when dishName is sentence-like with punctuation", async () => {
     vi.stubEnv("OPENAI_API_KEY", "key");
     vi.stubEnv("OPENAI_BOT_DISH_PROMPT_MODEL", "gpt-5-mini");
     responsesCreateMock.mockResolvedValueOnce({
       output_text:
-        '{"dishPrompt":"한겨울 캠핑에 어울리는 숯불 해산물 샐러드.","dishPromptEn":"charcoal-grilled seafood salad with winter campfire mood"}',
+        '{"dishName":"한겨울 캠핑에 어울리는 숯불 해산물 샐러드.","dishNameEn":"Charcoal Seafood Salad for Midwinter Camp","dishPromptEn":"charcoal-grilled seafood salad with winter campfire mood"}',
     });
 
     await expect(

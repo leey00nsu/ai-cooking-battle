@@ -10,13 +10,13 @@ type CursorPayload = {
   sort: DishFeedSort;
   id: string;
   createdAt?: string;
-  prompt?: string;
+  title?: string;
 };
 
 type DecodedCursor = {
   id: string;
   createdAt?: Date;
-  prompt?: string;
+  title?: string;
 };
 
 function toSafeLimit(limit: number | undefined) {
@@ -76,10 +76,10 @@ function decodeCursor(
       }
       return { id: parsed.id, createdAt };
     }
-    if (!parsed.prompt) {
+    if (!parsed.title) {
       return null;
     }
-    return { id: parsed.id, prompt: parsed.prompt };
+    return { id: parsed.id, title: parsed.title };
   } catch {
     return null;
   }
@@ -89,14 +89,14 @@ function encodeCursor(args: {
   sort: DishFeedSort;
   id: string;
   createdAt?: Date;
-  prompt?: string;
+  title?: string;
 }): string {
   return Buffer.from(
     JSON.stringify({
       sort: args.sort,
       id: args.id,
       createdAt: args.createdAt?.toISOString(),
-      prompt: args.prompt,
+      title: args.title,
     } satisfies CursorPayload),
     "utf8",
   ).toString("base64url");
@@ -107,10 +107,10 @@ function buildOrderBy(sort: DishFeedSort) {
     return [{ createdAt: "asc" as const }, { id: "asc" as const }];
   }
   if (sort === "title_asc") {
-    return [{ prompt: "asc" as const }, { id: "asc" as const }];
+    return [{ dishName: "asc" as const }, { id: "asc" as const }];
   }
   if (sort === "title_desc") {
-    return [{ prompt: "desc" as const }, { id: "desc" as const }];
+    return [{ dishName: "desc" as const }, { id: "desc" as const }];
   }
   return [{ createdAt: "desc" as const }, { id: "desc" as const }];
 }
@@ -135,14 +135,14 @@ function buildCursorWhere(sort: DishFeedSort, cursor: DecodedCursor | null) {
       ],
     };
   }
-  if (sort === "title_asc" && cursor.prompt) {
+  if (sort === "title_asc" && cursor.title) {
     return {
-      OR: [{ prompt: { gt: cursor.prompt } }, { prompt: cursor.prompt, id: { gt: cursor.id } }],
+      OR: [{ dishName: { gt: cursor.title } }, { dishName: cursor.title, id: { gt: cursor.id } }],
     };
   }
-  if (sort === "title_desc" && cursor.prompt) {
+  if (sort === "title_desc" && cursor.title) {
     return {
-      OR: [{ prompt: { lt: cursor.prompt } }, { prompt: cursor.prompt, id: { lt: cursor.id } }],
+      OR: [{ dishName: { lt: cursor.title } }, { dishName: cursor.title, id: { lt: cursor.id } }],
     };
   }
   return {};
@@ -174,7 +174,7 @@ export async function listDishFeed(args: {
     isHidden: false,
     ...(mine ? { userId } : {}),
     ...(excludeBots ? { botMeta: { is: null } } : {}),
-    ...(search ? { prompt: { contains: search, mode: "insensitive" as const } } : {}),
+    ...(search ? { dishName: { contains: search, mode: "insensitive" as const } } : {}),
     ...buildCursorWhere(sort, cursor),
   };
 
@@ -184,7 +184,7 @@ export async function listDishFeed(args: {
     take: limit + 1,
     select: {
       id: true,
-      prompt: true,
+      dishName: true,
       imageUrl: true,
       createdAt: true,
       user: {
@@ -213,8 +213,8 @@ export async function listDishFeed(args: {
     items: visible.map((item) => ({
       id: item.id,
       prompt: item.botMeta
-        ? normalizeBotPrompt(item.prompt, item.botMeta.persona.displayName)
-        : item.prompt,
+        ? normalizeBotPrompt(item.dishName, item.botMeta.persona.displayName)
+        : item.dishName,
       imageUrl: item.imageUrl,
       createdAt: item.createdAt.toISOString(),
       authorType: item.botMeta ? "bot" : "user",
@@ -228,7 +228,7 @@ export async function listDishFeed(args: {
             sort,
             id: last.id,
             createdAt: sort === "latest" || sort === "oldest" ? last.createdAt : undefined,
-            prompt: sort === "title_asc" || sort === "title_desc" ? last.prompt : undefined,
+            title: sort === "title_asc" || sort === "title_desc" ? last.dishName : undefined,
           })
         : null,
   };
