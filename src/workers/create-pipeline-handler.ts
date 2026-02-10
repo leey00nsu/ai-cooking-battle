@@ -119,6 +119,8 @@ export async function processCreatePipelineRequest(requestId: string) {
       const dish = await tx.dish.create({
         data: {
           userId: createRequest.userId,
+          dishName: prompt || basePrompt,
+          dishNameEn: promptEn,
           prompt,
           promptEn,
           imageUrl,

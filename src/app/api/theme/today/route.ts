@@ -23,15 +23,20 @@ export async function GET() {
       dayKey,
       themeText: "",
       themeTextEn: "",
+      axisAType: "",
+      axisA: "",
+      axisBType: "",
+      axisB: "",
+      axisFlavor: "",
       themeImageUrl: null,
       isPending: true,
     });
   }
 
   if (shouldReplaceDayThemeImageUrl(theme.themeImageUrl)) {
-    enqueueDayThemePrecreateJob({ dayKey }).catch((error) => {
+    enqueueDayThemePrecreateJob({ dayKey: theme.dayKey }).catch((error) => {
       console.warn("[theme.today] failed to enqueue precreate job", {
-        dayKey,
+        dayKey: theme.dayKey,
         error: error instanceof Error ? error.message : String(error),
       });
     });
@@ -41,6 +46,11 @@ export async function GET() {
     dayKey: theme.dayKey,
     themeText: theme.themeText,
     themeTextEn: theme.themeTextEn,
+    axisAType: theme.axisAType,
+    axisA: theme.axisA,
+    axisBType: theme.axisBType,
+    axisB: theme.axisB,
+    axisFlavor: theme.axisFlavor,
     themeImageUrl: theme.themeImageUrl,
     isPending: false,
   });

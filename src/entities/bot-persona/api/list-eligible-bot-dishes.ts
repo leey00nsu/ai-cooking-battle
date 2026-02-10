@@ -49,6 +49,8 @@ export async function listEligibleBotDishes(dayKey: string): Promise<EligibleBot
       dish: {
         select: {
           imageUrl: true,
+          dishName: true,
+          dishNameEn: true,
           prompt: true,
           promptEn: true,
           dayScores: {
@@ -70,8 +72,8 @@ export async function listEligibleBotDishes(dayKey: string): Promise<EligibleBot
     .map((item) => ({
       dishId: item.dishId,
       imageUrl: item.dish.imageUrl,
-      prompt: item.dish.prompt,
-      promptEn: item.dish.promptEn,
+      prompt: item.dish.dishName || item.dish.prompt,
+      promptEn: item.dish.dishNameEn || item.dish.promptEn,
       personaKey: item.personaKey,
       personaDisplayName: item.persona.displayName,
       selectedOrder: item.selectedOrder,

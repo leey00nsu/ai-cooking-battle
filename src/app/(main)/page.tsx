@@ -16,6 +16,10 @@ type FeedResponse = MatchFeed;
 type MeResponse = {
   status: "GUEST" | "AUTH" | "ELIGIBLE" | "LIMITED";
 };
+
+const HOME_MATCH_FEED_LIMIT = 8;
+const HOME_MATCH_FEED_API_PATH = `/api/home/matches?limit=${HOME_MATCH_FEED_LIMIT}`;
+
 type FetchResult<T> = {
   data: T | null;
   error: boolean;
@@ -57,7 +61,7 @@ async function getJson<T>(path: string): Promise<FetchResult<T>> {
 export default async function Home() {
   const mePromise = getJson<MeResponse>("/api/me");
   const themePromise = getJson<ThemeResponse>("/api/theme/today");
-  const feedPromise = getJson<FeedResponse>("/api/feed?limit=8");
+  const feedPromise = getJson<FeedResponse>(HOME_MATCH_FEED_API_PATH);
 
   const [meResult, themeResult, feedResult] = await Promise.all([
     mePromise,

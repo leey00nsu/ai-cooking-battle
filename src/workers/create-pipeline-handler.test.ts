@@ -92,6 +92,8 @@ describe("processCreatePipelineRequest", () => {
     expect(prisma.dish.create).toHaveBeenCalledWith({
       data: {
         userId: "user",
+        dishName: "피자",
+        dishNameEn: "pizza",
         prompt: "피자",
         promptEn: "pizza",
         imageUrl: "https://cdn.example/image.webp",
@@ -106,6 +108,56 @@ describe("processCreatePipelineRequest", () => {
       data: { status: "DONE", dishId: "dish", imageUrl: "https://cdn.example/image.webp" },
     });
     expect(markReservationFailed).not.toHaveBeenCalled();
+  });
+
+  it("falls back dishName to promptEn when prompt is blank", async () => {
+    const { processCreatePipelineRequest } = await import("./create-pipeline-handler");
+
+    prisma.createRequest.findUnique
+      .mockResolvedValueOnce({
+        id: "req",
+        userId: "user",
+        prompt: "   ",
+        promptEn: "charcoal grilled bowl",
+        reservationId: "res",
+        status: "GENERATING",
+        dishId: null,
+        imageUrl: null,
+        reservation: {
+          id: "res",
+          status: "CONFIRMED",
+          dayKey: "2026-02-03",
+          slotType: "FREE",
+        },
+      })
+      .mockResolvedValueOnce({
+        id: "req",
+        status: "SAFETY",
+        dishId: null,
+      });
+
+    runDishGeneration.mockImplementation(
+      async ({ onImageReady }: { onImageReady: (url: string) => Promise<void> }) => {
+        await onImageReady("https://cdn.example/image.webp");
+        return {
+          status: "ALLOW",
+          imageUrl: "https://cdn.example/image.webp",
+          generationPrompt: "charcoal grilled bowl, close-up",
+        };
+      },
+    );
+    prisma.dish.create.mockResolvedValueOnce({ id: "dish" });
+
+    await processCreatePipelineRequest("req");
+
+    expect(prisma.dish.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        dishName: "charcoal grilled bowl",
+        dishNameEn: "charcoal grilled bowl",
+        prompt: "",
+        promptEn: "charcoal grilled bowl",
+      }),
+    });
   });
 
   it("marks request FAILED when safety blocks", async () => {

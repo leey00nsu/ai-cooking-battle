@@ -24,6 +24,11 @@ describe("GET /api/theme/today", () => {
       dayKey: "2026-02-09",
       themeText: "한겨울 캠핑 화롯가에 어울리는 숯불구이 요리",
       themeTextEn: "Charcoal-grilled dishes suitable for a winter campfire",
+      axisAType: "장소",
+      axisA: "한겨울 캠핑 화롯가",
+      axisBType: "조리법",
+      axisB: "숯불구이",
+      axisFlavor: "훈연향",
       themeImageUrl: "https://example.com/theme.jpg",
     });
 
@@ -35,6 +40,11 @@ describe("GET /api/theme/today", () => {
       dayKey: "2026-02-09",
       themeText: "한겨울 캠핑 화롯가에 어울리는 숯불구이 요리",
       themeTextEn: "Charcoal-grilled dishes suitable for a winter campfire",
+      axisAType: "장소",
+      axisA: "한겨울 캠핑 화롯가",
+      axisBType: "조리법",
+      axisB: "숯불구이",
+      axisFlavor: "훈연향",
       themeImageUrl: "https://example.com/theme.jpg",
       isPending: false,
     });
@@ -54,6 +64,11 @@ describe("GET /api/theme/today", () => {
       dayKey: expect.any(String),
       themeText: "",
       themeTextEn: "",
+      axisAType: "",
+      axisA: "",
+      axisBType: "",
+      axisB: "",
+      axisFlavor: "",
       themeImageUrl: null,
       isPending: true,
     });
@@ -65,6 +80,11 @@ describe("GET /api/theme/today", () => {
       dayKey: "2026-02-09",
       themeText: "한겨울 캠핑 화롯가에 어울리는 숯불구이 요리",
       themeTextEn: "Charcoal-grilled dishes suitable for a winter campfire",
+      axisAType: "장소",
+      axisA: "한겨울 캠핑 화롯가",
+      axisBType: "조리법",
+      axisB: "숯불구이",
+      axisFlavor: "훈연향",
       themeImageUrl: null,
     });
 

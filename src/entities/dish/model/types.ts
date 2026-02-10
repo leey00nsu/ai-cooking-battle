@@ -1,6 +1,8 @@
 export type Dish = {
   id: string;
   userId: string;
+  dishName: string;
+  dishNameEn: string | null;
   prompt: string;
   promptEn: string | null;
   imageUrl: string;

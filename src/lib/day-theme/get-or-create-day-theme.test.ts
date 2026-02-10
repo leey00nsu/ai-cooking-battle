@@ -34,14 +34,19 @@ describe("getOrCreateDayTheme", () => {
     generateDayThemeWithOpenAiWithRaw.mockResolvedValueOnce({
       result: {
         ok: true,
-        themeText: "비 오는 밤에 어울리는 닭꼬치 음식",
-        themeTextEn: "Chicken skewers for a rainy night",
+        themeText: "비 오는 밤에 어울리는 닭꼬치 매콤한 풍미의 음식",
+        themeTextEn: "A dish with spicy-flavored chicken skewers suitable for a rainy night",
+        axisAType: "상황",
+        axisA: "비 오는 밤",
+        axisBType: "특정재료",
+        axisB: "닭꼬치",
+        axisFlavor: "매콤한",
       },
       raw: {
         model: "gpt-5-mini",
         openAiResponseId: "r",
         outputText: "{}",
-        outputJson: { themeText: "x", themeTextEn: "y" },
+        outputJson: { themeText: "x", themeTextEn: "y", axisAType: "상황", axisBType: "특정재료" },
       },
     });
 
@@ -50,6 +55,8 @@ describe("getOrCreateDayTheme", () => {
 
     expect(prisma.dayTheme.create).toHaveBeenCalled();
     expect(theme.themeText).toContain("에 어울리는");
+    expect(theme.axisAType).toBe("상황");
+    expect(theme.axisBType).toBe("특정재료");
     expect(prisma.openAiCallLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -70,6 +77,9 @@ describe("getOrCreateDayTheme", () => {
     const theme = await getOrCreateDayTheme("2026-02-05", { userId: null });
 
     expect(theme.themeText).toContain("에 어울리는");
+    expect(theme.axisAType).toBeTruthy();
+    expect(theme.axisBType).toBeTruthy();
+    expect(theme.axisFlavor).toBeTruthy();
     expect(prisma.openAiCallLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
