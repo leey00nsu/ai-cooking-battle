@@ -64,7 +64,7 @@ function FeedSpotlightShell({ item }: FeedSpotlightShellProps) {
         <img
           alt={`Spotlight dish image: ${item.prompt}`}
           className="absolute inset-0 h-full w-full object-cover"
-          loading="lazy"
+          loading="eager"
           src={item.imageUrl}
         />
         <MediaDimmer tone="card" />

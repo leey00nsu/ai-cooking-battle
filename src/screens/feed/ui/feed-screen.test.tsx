@@ -1,6 +1,12 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import FeedScreen from "./feed-screen";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: () => {},
+  }),
+}));
 
 const baseFilters = {
   mine: false,
@@ -61,7 +67,7 @@ describe("FeedScreen", () => {
     );
 
     expect(
-      screen.getByText("Mine 필터는 로그인 후 사용할 수 있습니다. 현재 전체 요리를 표시합니다."),
+      screen.getByText("Mine filter is available after login. Showing all dishes for now."),
     ).toBeInTheDocument();
   });
 

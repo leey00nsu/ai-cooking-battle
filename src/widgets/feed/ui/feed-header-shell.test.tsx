@@ -5,6 +5,8 @@ import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
 import { FeedHeaderShell } from "./feed-header-shell";
 
+const pushMock = vi.fn();
+
 vi.mock("next/link", () => ({
   default: ({ href, onClick, children, ...props }: Record<string, unknown>) => (
     <a
@@ -20,6 +22,12 @@ vi.mock("next/link", () => ({
       {children as ReactNode}
     </a>
   ),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: pushMock,
+  }),
 }));
 
 vi.mock("@/shared/analytics/track-event", () => ({
@@ -94,7 +102,7 @@ describe("FeedHeaderShell", () => {
     );
 
     expect(
-      screen.getByText("Mine 필터는 로그인 후 사용할 수 있습니다. 현재 전체 요리를 표시합니다."),
+      screen.getByText("Mine filter is available after login. Showing all dishes for now."),
     ).toBeInTheDocument();
   });
 
@@ -147,6 +155,7 @@ describe("FeedHeaderShell", () => {
         dayKey: expect.any(String),
       }),
     );
+    expect(pushMock).toHaveBeenCalledWith("/feed?mine=true");
   });
 
   it("tracks FEED_FILTER_CHANGED when apply is submitted", () => {
@@ -177,6 +186,9 @@ describe("FeedHeaderShell", () => {
         hasSearch: true,
         sort: "title_desc",
       }),
+    );
+    expect(pushMock).toHaveBeenCalledWith(
+      "/feed?mine=true&excludeBots=true&search=steak&sort=title_desc",
     );
   });
 });

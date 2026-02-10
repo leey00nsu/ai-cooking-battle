@@ -47,6 +47,10 @@ describe("FeedSpotlightShell", () => {
 
     fireEvent.click(screen.getByRole("link", { name: /Spotlight Dish detail page/i }));
 
+    expect(screen.getByAltText("Spotlight dish image: Spotlight Dish")).toHaveAttribute(
+      "loading",
+      "eager",
+    );
     expect(trackEvent).toHaveBeenCalledWith(
       ANALYTICS_EVENTS.FEED_ITEM_CLICKED,
       expect.objectContaining({

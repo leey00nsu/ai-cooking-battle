@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   type FeedFilters,
   isDishFeedSort,
@@ -43,6 +44,8 @@ const SORT_OPTIONS: Array<{ value: FeedFilters["sort"]; label: string }> = [
 ];
 
 function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
+  const router = useRouter();
+
   const allFilters: FeedFilters = {
     ...filters,
     mine: false,
@@ -64,6 +67,11 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
 
   const isAllActive = !filters.mine && !filters.excludeBots;
 
+  const navigateWithTracking = (event: { preventDefault: () => void }, href: string) => {
+    event.preventDefault();
+    router.push(href);
+  };
+
   return (
     <div className="space-y-5">
       <SectionHeading
@@ -76,7 +84,13 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
           className="h-9 px-4 text-xs font-bold uppercase tracking-[0.08em]"
           variant={isAllActive ? "cta" : "outline"}
         >
-          <Link href={allHref} onClick={() => trackFilterChanged(allFilters, "all_dishes")}>
+          <Link
+            href={allHref}
+            onClick={(event) => {
+              trackFilterChanged(allFilters, "all_dishes");
+              navigateWithTracking(event, allHref);
+            }}
+          >
             All Dishes
           </Link>
         </Button>
@@ -85,7 +99,13 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
           className="h-9 px-4 text-xs font-bold uppercase tracking-[0.08em]"
           variant={filters.mine ? "cta" : "outline"}
         >
-          <Link href={mineHref} onClick={() => trackFilterChanged(mineFilters, "my_dishes")}>
+          <Link
+            href={mineHref}
+            onClick={(event) => {
+              trackFilterChanged(mineFilters, "my_dishes");
+              navigateWithTracking(event, mineHref);
+            }}
+          >
             My Dishes
           </Link>
         </Button>
@@ -96,7 +116,10 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
         >
           <Link
             href={excludeBotsHref}
-            onClick={() => trackFilterChanged(excludeBotsFilters, "exclude_bots")}
+            onClick={(event) => {
+              trackFilterChanged(excludeBotsFilters, "exclude_bots");
+              navigateWithTracking(event, excludeBotsHref);
+            }}
           >
             Exclude Bots
           </Link>
@@ -108,6 +131,7 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
           className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px_auto]"
           method="get"
           onSubmit={(event) => {
+            event.preventDefault();
             const formData = new FormData(event.currentTarget);
             const rawSort = formData.get("sort")?.toString().trim() ?? "latest";
             const nextFilters: FeedFilters = {
@@ -117,6 +141,7 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
               sort: isDishFeedSort(rawSort) ? rawSort : "latest",
             };
             trackFilterChanged(nextFilters, "apply");
+            router.push(toFeedHref(nextFilters));
           }}
         >
           {filters.mine ? <input name="mine" type="hidden" value="true" /> : null}
@@ -163,7 +188,7 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
             >
               <Link
                 href={resetHref}
-                onClick={() =>
+                onClick={(event) => {
                   trackFilterChanged(
                     {
                       mine: false,
@@ -172,8 +197,9 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
                       sort: "latest",
                     },
                     "reset",
-                  )
-                }
+                  );
+                  navigateWithTracking(event, resetHref);
+                }}
               >
                 Reset
               </Link>
@@ -183,7 +209,7 @@ function FeedHeaderShell({ filters, mineUnauthorized }: FeedHeaderShellProps) {
       </Surface>
       {mineUnauthorized ? (
         <Surface className="px-4 py-3 text-sm text-red-100" radius="xl" tone="overlayDanger">
-          Mine 필터는 로그인 후 사용할 수 있습니다. 현재 전체 요리를 표시합니다.
+          Mine filter is available after login. Showing all dishes for now.
         </Surface>
       ) : null}
     </div>
