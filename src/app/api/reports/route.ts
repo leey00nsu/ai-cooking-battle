@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createReport } from "@/entities/report/api/create-report";
 import { auth } from "@/lib/auth";
+import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
+import { trackServerEvent } from "@/shared/analytics/track-server-event";
+import { formatDayKeyForKST } from "@/shared/lib/day-key";
 
 export const runtime = "nodejs";
 
@@ -63,6 +66,14 @@ export async function POST(request: Request) {
         { status: result.status },
       );
     }
+
+    trackServerEvent(ANALYTICS_EVENTS.REPORT_SUBMITTED, {
+      dayKey: formatDayKeyForKST(),
+      reportId: result.reportId,
+      reporterId: userId,
+      targetDishId: normalized.targetDishId,
+      reason: normalized.reason,
+    });
 
     return NextResponse.json({
       ok: true,

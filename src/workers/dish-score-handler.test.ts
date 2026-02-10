@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProviderError } from "@/lib/providers/provider-error";
+import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 
 const generateDishScoreWithOpenAiWithRaw = vi.fn();
+const trackServerEvent = vi.fn();
 
 const prisma = {
   dishDayScore: {
@@ -14,6 +16,9 @@ const prisma = {
   dayTheme: {
     findUnique: vi.fn(),
   },
+  openAiCallLog: {
+    create: vi.fn(),
+  },
 };
 
 vi.mock("@/lib/providers/openai-dish-score-generator", () => ({
@@ -21,6 +26,7 @@ vi.mock("@/lib/providers/openai-dish-score-generator", () => ({
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma }));
+vi.mock("@/shared/analytics/track-server-event", () => ({ trackServerEvent }));
 
 describe("processDishScoreJob", () => {
   beforeEach(() => {
@@ -47,9 +53,11 @@ describe("processDishScoreJob", () => {
 
     prisma.dishDayScore.findUnique.mockResolvedValueOnce(null);
     prisma.dish.findUnique.mockResolvedValueOnce({
+      userId: "user-1",
       prompt: "겨울 캠핑 숯불 해산물 구이",
       promptEn: "winter camp charcoal seafood",
       imageUrl: "https://cdn.example/dish.webp",
+      botMeta: null,
     });
     prisma.dayTheme.findUnique.mockResolvedValueOnce({
       themeText: "한겨울 캠핑 화롯가에 어울리는 숯불구이 요리",
@@ -96,6 +104,24 @@ describe("processDishScoreJob", () => {
         }),
       }),
     );
+    expect(prisma.openAiCallLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          kind: "DISH_SCORE",
+          decision: "READY",
+          category: "OK",
+          userId: "user-1",
+        }),
+      }),
+    );
+    expect(trackServerEvent).toHaveBeenCalledWith(ANALYTICS_EVENTS.SCORE_READY, {
+      dishId: "dish-1",
+      dayKey: "2026-02-10",
+      totalScore: 87,
+      themeFit: 90,
+      execution: 84,
+      userType: "user",
+    });
   });
 
   it("throws on retryable error and keeps score PENDING", async () => {
@@ -103,9 +129,11 @@ describe("processDishScoreJob", () => {
 
     prisma.dishDayScore.findUnique.mockResolvedValueOnce(null);
     prisma.dish.findUnique.mockResolvedValueOnce({
+      userId: "bot-system-user",
       prompt: "dish prompt",
       promptEn: "dish prompt",
       imageUrl: "https://cdn.example/dish.webp",
+      botMeta: { id: "meta-1" },
     });
     prisma.dayTheme.findUnique.mockResolvedValueOnce({
       themeText: "theme",
@@ -126,6 +154,22 @@ describe("processDishScoreJob", () => {
         }),
       }),
     );
+    expect(prisma.openAiCallLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          kind: "DISH_SCORE",
+          errorCode: "openai:TIMEOUT",
+          userId: "bot-system-user",
+        }),
+      }),
+    );
+    expect(trackServerEvent).toHaveBeenCalledWith(ANALYTICS_EVENTS.SCORE_FAILED, {
+      dishId: "dish-1",
+      dayKey: "2026-02-10",
+      errorCode: "openai:TIMEOUT",
+      userType: "bot",
+      retryable: true,
+    });
   });
 
   it("marks FAILED on non-retryable error", async () => {
@@ -133,9 +177,11 @@ describe("processDishScoreJob", () => {
 
     prisma.dishDayScore.findUnique.mockResolvedValueOnce(null);
     prisma.dish.findUnique.mockResolvedValueOnce({
+      userId: "bot-system-user",
       prompt: "dish prompt",
       promptEn: null,
       imageUrl: "https://cdn.example/dish.webp",
+      botMeta: { id: "meta-1" },
     });
     prisma.dayTheme.findUnique.mockResolvedValueOnce({
       themeText: "theme",
@@ -165,5 +211,21 @@ describe("processDishScoreJob", () => {
         }),
       }),
     );
+    expect(prisma.openAiCallLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          kind: "DISH_SCORE",
+          errorCode: "openai:INVALID_RESPONSE",
+          userId: "bot-system-user",
+        }),
+      }),
+    );
+    expect(trackServerEvent).toHaveBeenCalledWith(ANALYTICS_EVENTS.SCORE_FAILED, {
+      dishId: "dish-1",
+      dayKey: "2026-02-10",
+      errorCode: "openai:INVALID_RESPONSE",
+      userType: "bot",
+      retryable: false,
+    });
   });
 });

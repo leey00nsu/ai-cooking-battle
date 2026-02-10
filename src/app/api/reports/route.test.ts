@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 
 const getSessionMock = vi.fn();
 const createReportMock = vi.fn();
+const trackServerEventMock = vi.fn();
 
 vi.mock("@/lib/auth", () => ({
   auth: {
@@ -13,6 +15,14 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/entities/report/api/create-report", () => ({
   createReport: createReportMock,
+}));
+
+vi.mock("@/shared/analytics/track-server-event", () => ({
+  trackServerEvent: trackServerEventMock,
+}));
+
+vi.mock("@/shared/lib/day-key", () => ({
+  formatDayKeyForKST: vi.fn(() => "2026-02-10"),
 }));
 
 describe("POST /api/reports", () => {
@@ -112,6 +122,13 @@ describe("POST /api/reports", () => {
     expect(await response.json()).toEqual({
       ok: true,
       reportId: "report-1",
+    });
+    expect(trackServerEventMock).toHaveBeenCalledWith(ANALYTICS_EVENTS.REPORT_SUBMITTED, {
+      dayKey: "2026-02-10",
+      reportId: "report-1",
+      reporterId: "user-1",
+      targetDishId: "dish-1",
+      reason: "copyright",
     });
   });
 

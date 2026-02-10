@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateDishScoreWithOpenAiWithRaw } from "@/lib/providers/openai-dish-score-generator";
 import { ProviderError } from "@/lib/providers/provider-error";
+import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
+import { trackServerEvent } from "@/shared/analytics/track-server-event";
 
 type ProcessDishScoreJobArgs = {
   dishId: string;
@@ -45,6 +47,119 @@ function isRetryableError(error: unknown) {
     return false;
   }
   return false;
+}
+
+function normalizeErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function toOpenAiErrorStatus(error: unknown) {
+  if (!(error instanceof ProviderError)) {
+    return null;
+  }
+  return error.status ?? null;
+}
+
+function getDishUserType(dish: { botMeta: { id: string } | null }) {
+  return dish.botMeta ? "bot" : "user";
+}
+
+function buildDishScoreInputPrompt(args: {
+  themeText: string;
+  themeTextEn: string;
+  prompt: string;
+  promptEn: string | null;
+}) {
+  return JSON.stringify({
+    themeTextKo: args.themeText,
+    themeTextEn: args.themeTextEn,
+    dishPromptKo: args.prompt,
+    dishPromptEn: args.promptEn ?? "",
+  });
+}
+
+async function persistDishScoreSuccessLog(args: {
+  dish: {
+    userId: string;
+    prompt: string;
+    promptEn: string | null;
+    imageUrl: string;
+  };
+  theme: {
+    themeText: string;
+    themeTextEn: string;
+  };
+  raw: {
+    model: string;
+    openAiResponseId: string | null;
+    outputText: string;
+    outputJson: unknown;
+  };
+}) {
+  try {
+    await prisma.openAiCallLog.create({
+      data: {
+        kind: "DISH_SCORE",
+        model: args.raw.model,
+        openAiResponseId: args.raw.openAiResponseId,
+        userId: args.dish.userId,
+        inputPrompt: buildDishScoreInputPrompt({
+          themeText: args.theme.themeText,
+          themeTextEn: args.theme.themeTextEn,
+          prompt: args.dish.prompt,
+          promptEn: args.dish.promptEn,
+        }),
+        inputImageUrl: args.dish.imageUrl,
+        outputText: args.raw.outputText,
+        outputJson: args.raw.outputJson as Prisma.InputJsonValue,
+        decision: "READY",
+        category: "OK",
+      },
+    });
+  } catch (error) {
+    console.warn("[dish-score] failed to persist openai success log", {
+      error: normalizeErrorMessage(error),
+    });
+  }
+}
+
+async function persistDishScoreErrorLog(args: {
+  dish: {
+    userId: string;
+    prompt: string;
+    promptEn: string | null;
+    imageUrl: string;
+  };
+  theme: {
+    themeText: string;
+    themeTextEn: string;
+  };
+  error: unknown;
+  errorCode: string;
+}) {
+  try {
+    await prisma.openAiCallLog.create({
+      data: {
+        kind: "DISH_SCORE",
+        model: process.env.OPENAI_DISH_SCORE_MODEL?.trim() || "gpt-5-mini",
+        userId: args.dish.userId,
+        inputPrompt: buildDishScoreInputPrompt({
+          themeText: args.theme.themeText,
+          themeTextEn: args.theme.themeTextEn,
+          prompt: args.dish.prompt,
+          promptEn: args.dish.promptEn,
+        }),
+        inputImageUrl: args.dish.imageUrl,
+        errorCode: args.errorCode,
+        errorStatus: toOpenAiErrorStatus(args.error),
+        errorMessage: normalizeErrorMessage(args.error),
+      },
+    });
+  } catch (logError) {
+    console.warn("[dish-score] failed to persist openai error log", {
+      error: normalizeErrorMessage(logError),
+    });
+  }
 }
 
 function toNullableJsonInput(
@@ -134,9 +249,15 @@ export async function processDishScoreJob(
     prisma.dish.findUnique({
       where: { id: dishId },
       select: {
+        userId: true,
         prompt: true,
         promptEn: true,
         imageUrl: true,
+        botMeta: {
+          select: {
+            id: true,
+          },
+        },
       },
     }),
     prisma.dayTheme.findUnique({
@@ -156,6 +277,13 @@ export async function processDishScoreJob(
       status: "FAILED",
       analyzedAt: null,
       errorCode,
+    });
+    trackServerEvent(ANALYTICS_EVENTS.SCORE_FAILED, {
+      dishId,
+      dayKey,
+      errorCode,
+      userType: "unknown",
+      retryable: false,
     });
     return { status: "FAILED", dishId, dayKey, errorCode };
   }
@@ -191,6 +319,34 @@ export async function processDishScoreJob(
       errorCode: null,
     });
 
+    await persistDishScoreSuccessLog({
+      dish: {
+        userId: dish.userId,
+        prompt: dish.prompt,
+        promptEn: dish.promptEn,
+        imageUrl: dish.imageUrl,
+      },
+      theme: {
+        themeText: theme.themeText,
+        themeTextEn: theme.themeTextEn,
+      },
+      raw: {
+        model: scored.raw.model,
+        openAiResponseId: scored.raw.openAiResponseId,
+        outputText: scored.raw.outputText,
+        outputJson: scored.raw.outputJson,
+      },
+    });
+
+    trackServerEvent(ANALYTICS_EVENTS.SCORE_READY, {
+      dishId,
+      dayKey,
+      totalScore: scored.result.total,
+      themeFit: scored.result.themeFit,
+      execution: scored.result.execution,
+      userType: getDishUserType(dish),
+    });
+
     return {
       status: "READY",
       dishId,
@@ -199,6 +355,20 @@ export async function processDishScoreJob(
     };
   } catch (error) {
     const errorCode = normalizeErrorCode(error);
+    await persistDishScoreErrorLog({
+      dish: {
+        userId: dish.userId,
+        prompt: dish.prompt,
+        promptEn: dish.promptEn,
+        imageUrl: dish.imageUrl,
+      },
+      theme: {
+        themeText: theme.themeText,
+        themeTextEn: theme.themeTextEn,
+      },
+      error,
+      errorCode,
+    });
 
     if (isRetryableError(error)) {
       await upsertDishScoreStatus({
@@ -207,6 +377,13 @@ export async function processDishScoreJob(
         status: "PENDING",
         analyzedAt: null,
         errorCode,
+      });
+      trackServerEvent(ANALYTICS_EVENTS.SCORE_FAILED, {
+        dishId,
+        dayKey,
+        errorCode,
+        userType: getDishUserType(dish),
+        retryable: true,
       });
       throw error;
     }
@@ -217,6 +394,13 @@ export async function processDishScoreJob(
       status: "FAILED",
       analyzedAt: null,
       errorCode,
+    });
+    trackServerEvent(ANALYTICS_EVENTS.SCORE_FAILED, {
+      dishId,
+      dayKey,
+      errorCode,
+      userType: getDishUserType(dish),
+      retryable: false,
     });
     return { status: "FAILED", dishId, dayKey, errorCode };
   }
