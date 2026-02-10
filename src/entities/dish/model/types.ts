@@ -39,3 +39,40 @@ export type DishReport = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type DishDetail = {
+  dish: {
+    id: string;
+    imageUrl: string;
+    dishName: string;
+    dishNameEn: string | null;
+    createdAt: string;
+  };
+  author: {
+    type: "user" | "bot";
+    displayName: string;
+    userId: string | null;
+    personaId: string | null;
+  };
+  theme: {
+    dayKey: string | null;
+    themeText: string | null;
+  };
+  score: {
+    status: "ready" | "pending";
+    total: number | null;
+    themeFit: number | null;
+    execution: number | null;
+    oneLiner: string | null;
+    reasons: string[] | null;
+    tip: string | null;
+  };
+};
+
+export type DishDetailResponse =
+  | ({ ok: true } & DishDetail)
+  | {
+      ok: false;
+      code: "INVALID_DISH_ID" | "DISH_NOT_FOUND" | "DISH_RESTRICTED" | "INTERNAL_ERROR";
+      message: string;
+    };
