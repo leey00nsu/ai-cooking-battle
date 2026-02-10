@@ -3,6 +3,7 @@ import { ProviderError } from "@/lib/providers/provider-error";
 
 const markReservationFailed = vi.fn();
 const runDishGeneration = vi.fn();
+const enqueueDishScoreJob = vi.fn();
 
 const prisma = {
   createRequest: {
@@ -24,6 +25,10 @@ vi.mock("@/workers/services/run-dish-generation", () => ({
 
 vi.mock("@/lib/slot-recovery", () => ({
   markReservationFailed,
+}));
+
+vi.mock("@/lib/queue/dish-score-job", () => ({
+  enqueueDishScoreJob,
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma }));
@@ -107,6 +112,10 @@ describe("processCreatePipelineRequest", () => {
       where: { id: "req" },
       data: { status: "DONE", dishId: "dish", imageUrl: "https://cdn.example/image.webp" },
     });
+    expect(enqueueDishScoreJob).toHaveBeenCalledWith({
+      dishId: "dish",
+      dayKey: "2026-02-03",
+    });
     expect(markReservationFailed).not.toHaveBeenCalled();
   });
 
@@ -157,6 +166,43 @@ describe("processCreatePipelineRequest", () => {
         prompt: "",
         promptEn: "charcoal grilled bowl",
       }),
+    });
+    expect(enqueueDishScoreJob).toHaveBeenCalledWith({
+      dishId: "dish",
+      dayKey: "2026-02-03",
+    });
+  });
+
+  it("enqueues dish-score when request already has dishId", async () => {
+    const { processCreatePipelineRequest } = await import("./create-pipeline-handler");
+
+    prisma.createRequest.findUnique.mockResolvedValueOnce({
+      id: "req",
+      userId: "user",
+      prompt: "피자",
+      promptEn: "pizza",
+      reservationId: "res",
+      status: "GENERATING",
+      dishId: "dish-existing",
+      imageUrl: "https://cdn.example/image.webp",
+      reservation: {
+        id: "res",
+        status: "CONFIRMED",
+        dayKey: "2026-02-03",
+        slotType: "FREE",
+      },
+    });
+
+    await processCreatePipelineRequest("req");
+
+    expect(runDishGeneration).not.toHaveBeenCalled();
+    expect(prisma.createRequest.update).toHaveBeenCalledWith({
+      where: { id: "req" },
+      data: { status: "DONE" },
+    });
+    expect(enqueueDishScoreJob).toHaveBeenCalledWith({
+      dishId: "dish-existing",
+      dayKey: "2026-02-03",
     });
   });
 

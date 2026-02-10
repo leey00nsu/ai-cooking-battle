@@ -37,6 +37,7 @@ const getOrCreateDayTheme = vi.hoisted(() => vi.fn());
 const generateBotDishPromptWithOpenAi = vi.hoisted(() => vi.fn());
 const runDishGeneration = vi.hoisted(() => vi.fn());
 const formatDayKeyForKST = vi.hoisted(() => vi.fn());
+const enqueueDishScoreJob = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/prisma", () => ({ prisma }));
 vi.mock("@/entities/bot-persona/model/select-daily-personas", () => ({ selectDailyPersonas }));
@@ -46,6 +47,7 @@ vi.mock("@/lib/providers/openai-bot-dish-prompt-generator", () => ({
 }));
 vi.mock("@/workers/services/run-dish-generation", () => ({ runDishGeneration }));
 vi.mock("@/shared/lib/day-key", () => ({ formatDayKeyForKST }));
+vi.mock("@/lib/queue/dish-score-job", () => ({ enqueueDishScoreJob }));
 
 import { processBotSeedJob } from "@/workers/bot-seed-handler";
 
@@ -137,6 +139,10 @@ describe("processBotSeedJob", () => {
         }),
       }),
     );
+    expect(enqueueDishScoreJob).toHaveBeenCalledWith({
+      dishId: "dish-1",
+      dayKey: "2026-02-09",
+    });
     expect(prisma.botSeedRun.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
