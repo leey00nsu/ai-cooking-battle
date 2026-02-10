@@ -45,6 +45,11 @@ export type DayThemeResult = {
   ok: true;
   themeText: string;
   themeTextEn: string;
+  axisAType: "상황" | "장소" | "분위기";
+  axisA: string;
+  axisBType: "음식종류" | "특정재료" | "조리법";
+  axisB: string;
+  axisFlavor: string;
 };
 
 export type DayThemeWithRaw = {
@@ -67,7 +72,10 @@ function validateThemeText(themeText: string) {
   if (!candidate.includes("에 어울리는")) {
     return null;
   }
-  if (candidate.length < 8 || candidate.length > 80) {
+  if (!candidate.includes("풍미의 음식")) {
+    return null;
+  }
+  if (candidate.length < 12 || candidate.length > 100) {
     return null;
   }
   return candidate;
@@ -79,6 +87,35 @@ function validateThemeTextEn(themeTextEn: string) {
     return null;
   }
   if (candidate.length < 4 || candidate.length > 160) {
+    return null;
+  }
+  return candidate;
+}
+
+const AXIS_A_TYPES = ["상황", "장소", "분위기"] as const;
+const AXIS_B_TYPES = ["음식종류", "특정재료", "조리법"] as const;
+
+function validateAxisAType(value: string): DayThemeResult["axisAType"] | null {
+  return AXIS_A_TYPES.includes(value as DayThemeResult["axisAType"])
+    ? (value as DayThemeResult["axisAType"])
+    : null;
+}
+
+function validateAxisBType(value: string): DayThemeResult["axisBType"] | null {
+  return AXIS_B_TYPES.includes(value as DayThemeResult["axisBType"])
+    ? (value as DayThemeResult["axisBType"])
+    : null;
+}
+
+function validateAxisText(value: string, maxLen: number) {
+  const candidate = normalizeSingleLine(value);
+  if (!candidate) {
+    return null;
+  }
+  if (candidate.length < 1 || candidate.length > maxLen) {
+    return null;
+  }
+  if (candidate.includes(",")) {
     return null;
   }
   return candidate;
@@ -127,8 +164,13 @@ export async function generateDayThemeWithOpenAiWithRaw(args: {
   const record = parsed as Record<string, unknown>;
   const themeText = validateThemeText(String(record.themeText ?? ""));
   const themeTextEn = validateThemeTextEn(String(record.themeTextEn ?? ""));
+  const axisAType = validateAxisAType(String(record.axisAType ?? ""));
+  const axisA = validateAxisText(String(record.axisA ?? ""), 30);
+  const axisBType = validateAxisBType(String(record.axisBType ?? ""));
+  const axisB = validateAxisText(String(record.axisB ?? ""), 30);
+  const axisFlavor = validateAxisText(String(record.axisFlavor ?? ""), 30);
 
-  if (!themeText || !themeTextEn) {
+  if (!themeText || !themeTextEn || !axisAType || !axisA || !axisBType || !axisB || !axisFlavor) {
     throw new ProviderError({
       provider: PROVIDER,
       code: "INVALID_RESPONSE",
@@ -137,7 +179,7 @@ export async function generateDayThemeWithOpenAiWithRaw(args: {
   }
 
   return {
-    result: { ok: true, themeText, themeTextEn },
+    result: { ok: true, themeText, themeTextEn, axisAType, axisA, axisBType, axisB, axisFlavor },
     raw: {
       model: config.model,
       openAiResponseId: (response as { id?: string | null })?.id?.toString() ?? null,
