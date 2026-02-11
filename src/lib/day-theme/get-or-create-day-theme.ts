@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { generateDayThemeWithOpenAiWithRaw } from "@/lib/providers/openai-day-theme-generator";
+import {
+  type DayThemeSignals,
+  type DayThemeWeights,
+  generateDayThemeWithOpenAiWithRaw,
+} from "@/lib/providers/openai-day-theme-generator";
 import { ProviderError } from "@/lib/providers/provider-error";
 
 type FallbackDayTheme = {
@@ -10,7 +14,29 @@ type FallbackDayTheme = {
   axisBType: "음식종류" | "특정재료" | "조리법";
   axisB: string;
   axisFlavor: string;
+  themeWeights: DayThemeWeights;
+  themeSignals: DayThemeSignals;
 };
+
+const DEFAULT_THEME_WEIGHTS: DayThemeWeights = {
+  A: 15,
+  B: 55,
+  F: 30,
+};
+
+const DEFAULT_THEME_SIGNALS: DayThemeSignals = {
+  A: ["일상 상황이 느껴지는 간단한 상차림"],
+  B: ["요리 형태가 주제 축과 일치"],
+  F: ["풍미를 드러내는 재료 포인트"],
+};
+
+function cloneThemeWeights(weights: DayThemeWeights): DayThemeWeights {
+  return { A: weights.A, B: weights.B, F: weights.F };
+}
+
+function cloneThemeSignals(signals: DayThemeSignals): DayThemeSignals {
+  return { A: [...signals.A], B: [...signals.B], F: [...signals.F] };
+}
 
 const FALLBACK_THEMES: FallbackDayTheme[] = [
   {
@@ -21,6 +47,8 @@ const FALLBACK_THEMES: FallbackDayTheme[] = [
     axisBType: "특정재료",
     axisB: "닭꼬치",
     axisFlavor: "고추장 양념",
+    themeWeights: DEFAULT_THEME_WEIGHTS,
+    themeSignals: DEFAULT_THEME_SIGNALS,
   },
   {
     themeText: "봄 소풍 공원에 어울리는 디저트 상큼한 풍미의 음식",
@@ -30,6 +58,8 @@ const FALLBACK_THEMES: FallbackDayTheme[] = [
     axisBType: "특정재료",
     axisB: "딸기와 요거트",
     axisFlavor: "상큼한",
+    themeWeights: DEFAULT_THEME_WEIGHTS,
+    themeSignals: DEFAULT_THEME_SIGNALS,
   },
   {
     themeText: "캠핑 불멍 분위기에 어울리는 버거 훈연향 풍미의 음식",
@@ -39,6 +69,8 @@ const FALLBACK_THEMES: FallbackDayTheme[] = [
     axisBType: "음식종류",
     axisB: "버거",
     axisFlavor: "훈연향",
+    themeWeights: DEFAULT_THEME_WEIGHTS,
+    themeSignals: DEFAULT_THEME_SIGNALS,
   },
   {
     themeText: "한여름 해변에 어울리는 타코 상큼한 풍미의 음식",
@@ -48,6 +80,8 @@ const FALLBACK_THEMES: FallbackDayTheme[] = [
     axisBType: "음식종류",
     axisB: "타코",
     axisFlavor: "라임",
+    themeWeights: DEFAULT_THEME_WEIGHTS,
+    themeSignals: DEFAULT_THEME_SIGNALS,
   },
   {
     themeText: "시험 기간 집에 어울리는 볶음 담백한 풍미의 음식",
@@ -57,6 +91,8 @@ const FALLBACK_THEMES: FallbackDayTheme[] = [
     axisBType: "조리법",
     axisB: "볶음",
     axisFlavor: "김치 치즈",
+    themeWeights: DEFAULT_THEME_WEIGHTS,
+    themeSignals: DEFAULT_THEME_SIGNALS,
   },
 ];
 
@@ -117,6 +153,8 @@ export async function getOrCreateDayTheme(dayKey: string, opts?: { userId?: stri
   let axisBType = fallback.axisBType;
   let axisB = fallback.axisB;
   let axisFlavor = fallback.axisFlavor;
+  let themeWeights = cloneThemeWeights(fallback.themeWeights);
+  let themeSignals = cloneThemeSignals(fallback.themeSignals);
 
   if (shouldAttemptOpenAi) {
     try {
@@ -140,6 +178,8 @@ export async function getOrCreateDayTheme(dayKey: string, opts?: { userId?: stri
       axisBType = result.axisBType;
       axisB = result.axisB;
       axisFlavor = result.axisFlavor;
+      themeWeights = result.themeWeights;
+      themeSignals = result.themeSignals;
 
       await prisma.openAiCallLog.create({
         data: {
@@ -201,6 +241,8 @@ export async function getOrCreateDayTheme(dayKey: string, opts?: { userId?: stri
         axisBType,
         axisB,
         axisFlavor,
+        themeWeights,
+        themeSignals,
         themeImageUrl: null,
       },
     });

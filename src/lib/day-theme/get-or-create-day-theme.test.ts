@@ -41,6 +41,12 @@ describe("getOrCreateDayTheme", () => {
         axisBType: "특정재료",
         axisB: "닭꼬치",
         axisFlavor: "매콤한",
+        themeWeights: { A: 15, B: 55, F: 30 },
+        themeSignals: {
+          A: ["따뜻한 실내 조명"],
+          B: ["꼬치 형태의 메인 구성"],
+          F: ["붉은 양념 포인트"],
+        },
       },
       raw: {
         model: "gpt-5-mini",
@@ -57,6 +63,12 @@ describe("getOrCreateDayTheme", () => {
     expect(theme.themeText).toContain("에 어울리는");
     expect(theme.axisAType).toBe("상황");
     expect(theme.axisBType).toBe("특정재료");
+    expect(theme.themeWeights).toEqual({ A: 15, B: 55, F: 30 });
+    expect(theme.themeSignals).toEqual({
+      A: ["따뜻한 실내 조명"],
+      B: ["꼬치 형태의 메인 구성"],
+      F: ["붉은 양념 포인트"],
+    });
     expect(prisma.openAiCallLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -80,6 +92,12 @@ describe("getOrCreateDayTheme", () => {
     expect(theme.axisAType).toBeTruthy();
     expect(theme.axisBType).toBeTruthy();
     expect(theme.axisFlavor).toBeTruthy();
+    expect(theme.themeWeights).toEqual({ A: 15, B: 55, F: 30 });
+    expect(theme.themeSignals).toEqual({
+      A: ["일상 상황이 느껴지는 간단한 상차림"],
+      B: ["요리 형태가 주제 축과 일치"],
+      F: ["풍미를 드러내는 재료 포인트"],
+    });
     expect(prisma.openAiCallLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

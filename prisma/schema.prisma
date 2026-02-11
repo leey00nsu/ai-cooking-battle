@@ -153,6 +153,8 @@ model DayTheme {
   axisBType     String
   axisB         String
   axisFlavor    String
+  themeWeights  Json
+  themeSignals  Json
   themeImageUrl String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
