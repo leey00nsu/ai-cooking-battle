@@ -4,6 +4,7 @@ import { getOrCreateDayTheme } from "@/lib/day-theme/get-or-create-day-theme";
 import { prisma } from "@/lib/prisma";
 import { generateBotDishPromptWithOpenAi } from "@/lib/providers/openai-bot-dish-prompt-generator";
 import { ProviderError } from "@/lib/providers/provider-error";
+import { enqueueDishScoreJob } from "@/lib/queue/dish-score-job";
 import { formatDayKeyForKST } from "@/shared/lib/day-key";
 import { runDishGeneration } from "@/workers/services/run-dish-generation";
 
@@ -265,7 +266,7 @@ export async function processBotSeedJob(
           continue;
         }
 
-        await prisma.$transaction(async (tx) => {
+        const dishId = await prisma.$transaction(async (tx) => {
           const dish = await tx.dish.create({
             data: {
               userId: BOT_SYSTEM_USER_ID,
@@ -305,7 +306,20 @@ export async function processBotSeedJob(
               dishId: dish.id,
             },
           });
+
+          return dish.id;
         });
+
+        try {
+          await enqueueDishScoreJob({ dishId, dayKey });
+        } catch (enqueueError) {
+          console.warn("[bot-seed] failed to enqueue dish-score", {
+            dayKey,
+            dishId,
+            personaKey: args.persona.personaKey,
+            error: normalizeErrorMessage(enqueueError),
+          });
+        }
 
         return { success: true as const, nextAttempt: attempt + 1 };
       } catch (error) {

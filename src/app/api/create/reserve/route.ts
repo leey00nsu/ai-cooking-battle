@@ -125,32 +125,28 @@ export async function POST(request: Request) {
       });
 
       if (freeRemaining > 0 && activeFreeReservationCount < freeDailyLimit) {
-        try {
-          const reservation = await tx.slotReservation.create({
-            data: {
-              userId,
-              dayKey,
-              status: "RESERVED",
-              slotType: "FREE",
-              expiresAt,
-              idempotencyKey,
-            },
-          });
+        const reservation = await tx.slotReservation.create({
+          data: {
+            userId,
+            dayKey,
+            status: "RESERVED",
+            slotType: "FREE",
+            expiresAt,
+            idempotencyKey,
+          },
+        });
 
-          await tx.dailySlotCounter.update({
-            where: { dayKey },
-            data: { freeUsedCount: { increment: 1 } },
-          });
+        await tx.dailySlotCounter.update({
+          where: { dayKey },
+          data: { freeUsedCount: { increment: 1 } },
+        });
 
-          return {
-            type: "created",
-            reservationId: reservation.id,
-            slotType: reservation.slotType,
-            expiresAt: reservation.expiresAt,
-          };
-        } catch (error) {
-          throw error;
-        }
+        return {
+          type: "created",
+          reservationId: reservation.id,
+          slotType: reservation.slotType,
+          expiresAt: reservation.expiresAt,
+        };
       }
 
       if (activeFreeReservationCount >= freeDailyLimit && !adRewardId) {
@@ -207,53 +203,49 @@ export async function POST(request: Request) {
         };
       }
 
-      try {
-        const claimed = await tx.adReward.updateMany({
-          where: {
-            id: reward.id,
-            status: "GRANTED",
-          },
-          data: {
-            status: "USED",
-            usedAt: reward.usedAt ?? now,
-          },
-        });
+      const claimed = await tx.adReward.updateMany({
+        where: {
+          id: reward.id,
+          status: "GRANTED",
+        },
+        data: {
+          status: "USED",
+          usedAt: reward.usedAt ?? now,
+        },
+      });
 
-        if (claimed.count === 0) {
-          return {
-            type: "error",
-            status: 409,
-            code: "AD_REWARD_INVALID",
-            message: "Ad reward is already used.",
-          };
-        }
-
-        const reservation = await tx.slotReservation.create({
-          data: {
-            userId,
-            dayKey,
-            status: "RESERVED",
-            slotType: "AD",
-            adRewardId: reward.id,
-            expiresAt,
-            idempotencyKey,
-          },
-        });
-
-        await tx.dailySlotCounter.update({
-          where: { dayKey },
-          data: { adUsedCount: { increment: 1 } },
-        });
-
+      if (claimed.count === 0) {
         return {
-          type: "created",
-          reservationId: reservation.id,
-          slotType: reservation.slotType,
-          expiresAt: reservation.expiresAt,
+          type: "error",
+          status: 409,
+          code: "AD_REWARD_INVALID",
+          message: "Ad reward is already used.",
         };
-      } catch (error) {
-        throw error;
       }
+
+      const reservation = await tx.slotReservation.create({
+        data: {
+          userId,
+          dayKey,
+          status: "RESERVED",
+          slotType: "AD",
+          adRewardId: reward.id,
+          expiresAt,
+          idempotencyKey,
+        },
+      });
+
+      await tx.dailySlotCounter.update({
+        where: { dayKey },
+        data: { adUsedCount: { increment: 1 } },
+      });
+
+      return {
+        type: "created",
+        reservationId: reservation.id,
+        slotType: reservation.slotType,
+        expiresAt: reservation.expiresAt,
+      };
     });
   } catch (error) {
     if (isUniqueConstraintError(error)) {

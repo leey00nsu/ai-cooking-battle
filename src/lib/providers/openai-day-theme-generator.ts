@@ -41,6 +41,18 @@ export type DayThemeRaw = {
   outputJson: unknown;
 };
 
+export type DayThemeWeights = {
+  A: number;
+  B: number;
+  F: number;
+};
+
+export type DayThemeSignals = {
+  A: string[];
+  B: string[];
+  F: string[];
+};
+
 export type DayThemeResult = {
   ok: true;
   themeText: string;
@@ -50,6 +62,8 @@ export type DayThemeResult = {
   axisBType: "음식종류" | "특정재료" | "조리법";
   axisB: string;
   axisFlavor: string;
+  themeWeights: DayThemeWeights;
+  themeSignals: DayThemeSignals;
 };
 
 export type DayThemeWithRaw = {
@@ -59,6 +73,22 @@ export type DayThemeWithRaw = {
 
 function normalizeSingleLine(value: string) {
   return value.replace(/\s+/g, " ").trim();
+}
+
+const EXPOSED_SCHEMA_TOKEN_PATTERNS = [
+  /\bthemeText\b/i,
+  /\bthemeTextEn\b/i,
+  /\baxisAType\b/i,
+  /\baxisA\b/i,
+  /\baxisBType\b/i,
+  /\baxisB\b/i,
+  /\baxisFlavor\b/i,
+  /\bthemeWeights\b/i,
+  /\bthemeSignals\b/i,
+];
+
+function includesExposedSchemaToken(value: string) {
+  return EXPOSED_SCHEMA_TOKEN_PATTERNS.some((pattern) => pattern.test(value));
 }
 
 function validateThemeText(themeText: string) {
@@ -78,6 +108,9 @@ function validateThemeText(themeText: string) {
   if (candidate.length < 12 || candidate.length > 100) {
     return null;
   }
+  if (includesExposedSchemaToken(candidate)) {
+    return null;
+  }
   return candidate;
 }
 
@@ -87,6 +120,9 @@ function validateThemeTextEn(themeTextEn: string) {
     return null;
   }
   if (candidate.length < 4 || candidate.length > 160) {
+    return null;
+  }
+  if (includesExposedSchemaToken(candidate)) {
     return null;
   }
   return candidate;
@@ -118,7 +154,82 @@ function validateAxisText(value: string, maxLen: number) {
   if (candidate.includes(",")) {
     return null;
   }
+  if (includesExposedSchemaToken(candidate)) {
+    return null;
+  }
   return candidate;
+}
+
+function validateWeightNumber(value: unknown) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  if (value < 0 || value > 100) {
+    return null;
+  }
+
+  return value;
+}
+
+function validateThemeWeights(value: unknown): DayThemeWeights | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const A = validateWeightNumber(record.A);
+  const B = validateWeightNumber(record.B);
+  const F = validateWeightNumber(record.F);
+  if (A === null || B === null || F === null) {
+    return null;
+  }
+
+  const sum = A + B + F;
+  if (Math.abs(sum - 100) > 0.001) {
+    return null;
+  }
+
+  return { A, B, F };
+}
+
+function validateSignalArray(value: unknown) {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const normalized = value
+    .map((item) => (typeof item === "string" ? normalizeSingleLine(item) : ""))
+    .filter(Boolean);
+
+  if (normalized.length < 1 || normalized.length > 3) {
+    return null;
+  }
+
+  if (normalized.some((item) => item.length > 60)) {
+    return null;
+  }
+  if (normalized.some((item) => includesExposedSchemaToken(item))) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function validateThemeSignals(value: unknown): DayThemeSignals | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const A = validateSignalArray(record.A);
+  const B = validateSignalArray(record.B);
+  const F = validateSignalArray(record.F);
+  if (!A || !B || !F) {
+    return null;
+  }
+
+  return { A, B, F };
 }
 
 export async function generateDayThemeWithOpenAiWithRaw(args: {
@@ -169,8 +280,20 @@ export async function generateDayThemeWithOpenAiWithRaw(args: {
   const axisBType = validateAxisBType(String(record.axisBType ?? ""));
   const axisB = validateAxisText(String(record.axisB ?? ""), 30);
   const axisFlavor = validateAxisText(String(record.axisFlavor ?? ""), 30);
+  const themeWeights = validateThemeWeights(record.themeWeights);
+  const themeSignals = validateThemeSignals(record.themeSignals);
 
-  if (!themeText || !themeTextEn || !axisAType || !axisA || !axisBType || !axisB || !axisFlavor) {
+  if (
+    !themeText ||
+    !themeTextEn ||
+    !axisAType ||
+    !axisA ||
+    !axisBType ||
+    !axisB ||
+    !axisFlavor ||
+    !themeWeights ||
+    !themeSignals
+  ) {
     throw new ProviderError({
       provider: PROVIDER,
       code: "INVALID_RESPONSE",
@@ -179,7 +302,18 @@ export async function generateDayThemeWithOpenAiWithRaw(args: {
   }
 
   return {
-    result: { ok: true, themeText, themeTextEn, axisAType, axisA, axisBType, axisB, axisFlavor },
+    result: {
+      ok: true,
+      themeText,
+      themeTextEn,
+      axisAType,
+      axisA,
+      axisBType,
+      axisB,
+      axisFlavor,
+      themeWeights,
+      themeSignals,
+    },
     raw: {
       model: config.model,
       openAiResponseId: (response as { id?: string | null })?.id?.toString() ?? null,

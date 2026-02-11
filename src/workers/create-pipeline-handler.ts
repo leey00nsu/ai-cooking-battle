@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ProviderError } from "@/lib/providers/provider-error";
+import { enqueueDishScoreJob } from "@/lib/queue/dish-score-job";
 import { markReservationFailed } from "@/lib/slot-recovery";
 import { runDishGeneration } from "@/workers/services/run-dish-generation";
 
@@ -21,6 +22,34 @@ function isRetryableError(error: unknown) {
   }
 
   return false;
+}
+
+async function enqueueDishScoreSafely(args: {
+  dishId: string;
+  dayKey: string;
+  requestId: string;
+  context: "existing" | "new";
+}) {
+  try {
+    await enqueueDishScoreJob({
+      dishId: args.dishId,
+      dayKey: args.dayKey,
+    });
+    console.log("[create-pipeline] dish-score enqueued", {
+      requestId: args.requestId,
+      dishId: args.dishId,
+      dayKey: args.dayKey,
+      context: args.context,
+    });
+  } catch (error) {
+    console.warn("[create-pipeline] failed to enqueue dish-score", {
+      requestId: args.requestId,
+      dishId: args.dishId,
+      dayKey: args.dayKey,
+      context: args.context,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 export async function processCreatePipelineRequest(requestId: string) {
@@ -46,15 +75,27 @@ export async function processCreatePipelineRequest(requestId: string) {
     hasDishId: Boolean(createRequest.dishId),
   });
 
-  if (createRequest.status === "DONE" || createRequest.status === "FAILED") {
+  if (createRequest.status === "FAILED") {
     return;
   }
 
   if (createRequest.dishId) {
-    await prisma.createRequest.update({
-      where: { id },
-      data: { status: "DONE" },
+    if (createRequest.status !== "DONE") {
+      await prisma.createRequest.update({
+        where: { id },
+        data: { status: "DONE" },
+      });
+    }
+    await enqueueDishScoreSafely({
+      dishId: createRequest.dishId,
+      dayKey: createRequest.reservation.dayKey,
+      requestId: id,
+      context: "existing",
     });
+    return;
+  }
+
+  if (createRequest.status === "DONE") {
     return;
   }
 
@@ -106,12 +147,14 @@ export async function processCreatePipelineRequest(requestId: string) {
 
     const imageUrl = result.imageUrl;
 
+    let dishIdForScore: string | null = null;
     await prisma.$transaction(async (tx) => {
       const latest = await tx.createRequest.findUnique({ where: { id } });
       if (!latest || latest.status === "DONE" || latest.status === "FAILED") {
         return;
       }
       if (latest.dishId) {
+        dishIdForScore = latest.dishId;
         await tx.createRequest.update({ where: { id }, data: { status: "DONE" } });
         return;
       }
@@ -144,7 +187,17 @@ export async function processCreatePipelineRequest(requestId: string) {
           imageUrl,
         },
       });
+      dishIdForScore = dish.id;
     });
+
+    if (dishIdForScore) {
+      await enqueueDishScoreSafely({
+        dishId: dishIdForScore,
+        dayKey: createRequest.reservation.dayKey,
+        requestId: id,
+        context: "new",
+      });
+    }
 
     console.log("[create-pipeline] done", { requestId: id });
   } catch (error) {

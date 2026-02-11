@@ -20,10 +20,22 @@ import {
   type DayThemePrecreateJobPayload,
   ensureDayThemePrecreateSchedule,
 } from "@/lib/queue/day-theme-precreate-job";
+import {
+  DISH_SCORE_JOB_NAME,
+  type DishScoreJobPayload,
+  ensureDishScoreQueue,
+} from "@/lib/queue/dish-score-job";
+import {
+  DISH_SCORE_RECOVERY_JOB_NAME,
+  type DishScoreRecoveryJobPayload,
+  ensureDishScoreRecoverySchedule,
+} from "@/lib/queue/dish-score-recovery-job";
 import { startPgBoss, stopPgBoss } from "@/lib/queue/pg-boss";
 import { formatDayKeyForKST } from "@/shared/lib/day-key";
 import { processBotSeedJob } from "@/workers/bot-seed-handler";
 import { processCreatePipelineRequest } from "@/workers/create-pipeline-handler";
+import { processDishScoreJob } from "@/workers/dish-score-handler";
+import { processDishScoreRecoveryJob } from "@/workers/dish-score-recovery-handler";
 
 function safeDbInfo(url: string) {
   try {
@@ -47,6 +59,8 @@ async function main() {
   await boss.createQueue(CREATE_PIPELINE_JOB_NAME, CREATE_PIPELINE_QUEUE_OPTIONS);
   await ensureDayThemePrecreateSchedule(boss);
   await ensureBotSeedQueue(boss);
+  await ensureDishScoreQueue(boss);
+  await ensureDishScoreRecoverySchedule(boss);
 
   await boss.work<CreatePipelineJobPayload>(
     CREATE_PIPELINE_JOB_NAME,
@@ -146,6 +160,47 @@ async function main() {
     }
   });
 
+  await boss.work<DishScoreJobPayload>(DISH_SCORE_JOB_NAME, { batchSize: 1 }, async (jobs) => {
+    for (const job of jobs) {
+      const dishId = job.data?.dishId?.toString().trim() ?? "";
+      const dayKey = job.data?.dayKey?.toString().trim() ?? "";
+      if (!dishId || !dayKey) {
+        throw new Error("[dish-score] Missing dishId/dayKey in job payload.");
+      }
+
+      console.log("[dish-score] job received", { dishId, dayKey, jobId: job.id });
+      const result = await processDishScoreJob({ dishId, dayKey });
+      console.log("[dish-score] job processed", { ...result, jobId: job.id });
+    }
+  });
+
+  await boss.work<DishScoreRecoveryJobPayload>(
+    DISH_SCORE_RECOVERY_JOB_NAME,
+    { batchSize: 1 },
+    async (jobs) => {
+      for (const job of jobs) {
+        const dayKey = job.data?.dayKey?.toString().trim() || undefined;
+        const limit =
+          typeof job.data?.limit === "number" && Number.isFinite(job.data.limit)
+            ? job.data.limit
+            : undefined;
+        const staleMinutes =
+          typeof job.data?.staleMinutes === "number" && Number.isFinite(job.data.staleMinutes)
+            ? job.data.staleMinutes
+            : undefined;
+
+        console.log("[dish-score-recovery] job received", {
+          dayKey: dayKey ?? null,
+          limit: limit ?? null,
+          staleMinutes: staleMinutes ?? null,
+          jobId: job.id,
+        });
+        const result = await processDishScoreRecoveryJob({ dayKey, limit, staleMinutes });
+        console.log("[dish-score-recovery] job processed", { ...result, jobId: job.id });
+      }
+    },
+  );
+
   const shutdown = async () => {
     await stopPgBoss({ graceful: true, timeout: 30_000 });
     process.exit(0);
@@ -157,8 +212,11 @@ async function main() {
   console.log(`[create-pipeline-worker] started. queue=${CREATE_PIPELINE_JOB_NAME}`, {
     bossDbSource: process.env.BOSS_DATABASE_URL ? "BOSS_DATABASE_URL" : "DATABASE_URL",
     dbInfo,
-    schedules: [{ queue: DAY_THEME_PRECREATE_JOB_NAME, tz: "Asia/Seoul", cron: "0 0 * * *" }],
-    queues: [BOT_SEED_JOB_NAME],
+    schedules: [
+      { queue: DAY_THEME_PRECREATE_JOB_NAME, tz: "Asia/Seoul", cron: "0 0 * * *" },
+      { queue: DISH_SCORE_RECOVERY_JOB_NAME, tz: "Asia/Seoul", cron: "*/10 * * * *" },
+    ],
+    queues: [BOT_SEED_JOB_NAME, DISH_SCORE_JOB_NAME, DISH_SCORE_RECOVERY_JOB_NAME],
   });
 }
 

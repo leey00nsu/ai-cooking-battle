@@ -11,11 +11,71 @@ export type Dish = {
   updatedAt: string;
 };
 
+export type DishDayScoreStatus = "PENDING" | "READY" | "FAILED";
+
 export type DishDayScore = {
   id: string;
   dishId: string;
   dayKey: string;
   totalScore: number;
+  themeFit: number;
+  execution: number;
+  oneLiner: string | null;
+  reasons: string[] | null;
+  tip: string | null;
+  status: DishDayScoreStatus;
+  analyzedAt: string | null;
+  errorCode: string | null;
   createdAt: string;
   updatedAt: string;
 };
+
+export type DishReport = {
+  id: string;
+  reporterId: string;
+  targetDishId: string;
+  reason: string;
+  detail: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DishDetail = {
+  dish: {
+    id: string;
+    imageUrl: string;
+    dishName: string;
+    dishNameEn: string | null;
+    createdAt: string;
+  };
+  author: {
+    type: "user" | "bot";
+    displayName: string;
+    userId: string | null;
+    personaId: string | null;
+  };
+  theme: {
+    dayKey: string | null;
+    themeText: string | null;
+  };
+  score: {
+    // Server mapping policy:
+    // DishDayScore.status "READY" -> "ready", "PENDING"/"FAILED" -> "pending"
+    // (FAILED는 복구/재시도 경로로 처리하고 UI에는 분석 대기 상태만 노출)
+    status: "ready" | "pending";
+    total: number | null;
+    themeFit: number | null;
+    execution: number | null;
+    oneLiner: string | null;
+    reasons: string[] | null;
+    tip: string | null;
+  };
+};
+
+export type DishDetailResponse =
+  | ({ ok: true } & DishDetail)
+  | {
+      ok: false;
+      code: "INVALID_DISH_ID" | "DISH_NOT_FOUND" | "DISH_RESTRICTED" | "INTERNAL_ERROR";
+      message: string;
+    };

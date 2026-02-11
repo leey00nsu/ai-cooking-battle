@@ -7,6 +7,16 @@ export type Theme = {
   axisBType?: "음식종류" | "특정재료" | "조리법";
   axisB?: string;
   axisFlavor?: string;
+  themeWeights?: {
+    A: number;
+    B: number;
+    F: number;
+  };
+  themeSignals?: {
+    A: string[];
+    B: string[];
+    F: string[];
+  };
   themeImageUrl?: string | null;
   isPending?: boolean;
 };
