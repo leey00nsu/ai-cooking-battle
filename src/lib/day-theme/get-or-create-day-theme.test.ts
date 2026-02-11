@@ -113,6 +113,7 @@ describe("getOrCreateDayTheme", () => {
   it("retries on invalid response and succeeds within retry budget", async () => {
     vi.stubEnv("OPENAI_API_KEY", "key");
     vi.stubEnv("OPENAI_DAY_THEME_MAX_ATTEMPTS", "2");
+    vi.stubEnv("OPENAI_DAY_THEME_RETRY_BASE_MS", "0");
     generateDayThemeWithOpenAiWithRaw
       .mockRejectedValueOnce(
         new ProviderError({ provider: "openai", code: "INVALID_RESPONSE", message: "invalid" }),

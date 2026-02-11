@@ -6,6 +6,7 @@ import {
   type DishScoreThemeSignals,
   type DishScoreThemeWeights,
   generateDishScoreWithOpenAiWithRaw,
+  resolveOpenAiDishScoreModel,
 } from "@/lib/providers/openai-dish-score-generator";
 import { ProviderError } from "@/lib/providers/provider-error";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
@@ -182,7 +183,7 @@ async function persistDishScoreErrorLog(args: {
     await prisma.openAiCallLog.create({
       data: {
         kind: "DISH_SCORE",
-        model: process.env.OPENAI_DISH_SCORE_MODEL?.trim() || "gpt-5-mini",
+        model: resolveOpenAiDishScoreModel(),
         userId: args.dish.userId,
         inputPrompt: buildDishScoreInputPrompt({
           themeText: args.theme.themeText,

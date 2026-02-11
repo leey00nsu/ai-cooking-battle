@@ -3,6 +3,7 @@ import { ProviderError } from "@/lib/providers/provider-error";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 
 const generateDishScoreWithOpenAiWithRaw = vi.fn();
+const resolveOpenAiDishScoreModel = vi.fn(() => "gpt-5-mini");
 const trackServerEvent = vi.fn();
 
 const prisma = {
@@ -39,6 +40,7 @@ const baseTheme = {
 
 vi.mock("@/lib/providers/openai-dish-score-generator", () => ({
   generateDishScoreWithOpenAiWithRaw,
+  resolveOpenAiDishScoreModel,
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma }));

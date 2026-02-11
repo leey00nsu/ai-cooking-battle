@@ -3,11 +3,16 @@ import { getOpenAiDishScoreInstructions } from "@/lib/prompts/prompt-templates";
 import { ProviderError } from "@/lib/providers/provider-error";
 
 const PROVIDER = "openai";
+export const DEFAULT_OPENAI_DISH_SCORE_MODEL = "gpt-5-mini";
 
 type OpenAiConfig = {
   apiKey: string;
   model: string;
 };
+
+export function resolveOpenAiDishScoreModel() {
+  return process.env.OPENAI_DISH_SCORE_MODEL?.trim() || DEFAULT_OPENAI_DISH_SCORE_MODEL;
+}
 
 function getOpenAiConfig(): OpenAiConfig {
   const apiKey = process.env.OPENAI_API_KEY?.trim() ?? "";
@@ -21,7 +26,7 @@ function getOpenAiConfig(): OpenAiConfig {
 
   return {
     apiKey,
-    model: process.env.OPENAI_DISH_SCORE_MODEL?.trim() || "gpt-5-mini",
+    model: resolveOpenAiDishScoreModel(),
   };
 }
 
@@ -67,8 +72,8 @@ const EXPOSED_SCHEMA_TOKEN_PATTERNS = [
   /\bthemeWeights\b/i,
   /\bthemeSignals\b/i,
   /\bthemeFit\b/i,
-  /\bexecution\b/i,
-  /\btotal\b/i,
+  /["']execution["']\s*:/i,
+  /["']total["']\s*:/i,
 ];
 
 function includesExposedSchemaToken(value: string) {

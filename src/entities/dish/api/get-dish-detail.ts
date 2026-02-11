@@ -151,9 +151,13 @@ export async function getDishDetail(rawDishId: string): Promise<DishDetailResult
 
   const isBot = Boolean(dish.botMeta);
   const authorDisplayName = isBot
-    ? dish.botMeta?.persona.displayName || BOT_AUTHOR_LABEL_FALLBACK
+    ? dish.botMeta?.persona?.displayName || BOT_AUTHOR_LABEL_FALLBACK
     : dish.user.name;
 
+  // NOTE:
+  // API 응답은 FAILED 상태를 별도로 노출하지 않고 pending으로 통일한다.
+  // 분석 실패 케이스는 워커 재시도/복구 대상이며, 상세 화면에서는 사용자 혼선을 줄이기 위해
+  // "분석 준비 중" 상태로 처리한다.
   const score =
     dayScore?.status === "READY"
       ? {

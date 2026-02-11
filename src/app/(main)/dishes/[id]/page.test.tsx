@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const headersMock = vi.fn();
 
@@ -7,6 +7,10 @@ vi.mock("next/headers", () => ({
 }));
 
 describe("Dish detail page SSR fetch logic", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("fetches /api/dishes/:id and passes ready status to screen", async () => {
     headersMock.mockResolvedValue({
       get: () => null,

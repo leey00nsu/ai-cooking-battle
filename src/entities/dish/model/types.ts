@@ -59,6 +59,9 @@ export type DishDetail = {
     themeText: string | null;
   };
   score: {
+    // Server mapping policy:
+    // DishDayScore.status "READY" -> "ready", "PENDING"/"FAILED" -> "pending"
+    // (FAILED는 복구/재시도 경로로 처리하고 UI에는 분석 대기 상태만 노출)
     status: "ready" | "pending";
     total: number | null;
     themeFit: number | null;

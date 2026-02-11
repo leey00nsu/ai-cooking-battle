@@ -32,7 +32,12 @@ async function getJson<T>(path: string): Promise<FetchResult<T>> {
       headers: cookie ? { cookie } : undefined,
     });
     if (!response.ok) {
-      return { data: (await response.json()) as T, error: true, status: response.status };
+      const status = response.status;
+      try {
+        return { data: (await response.json()) as T, error: true, status };
+      } catch {
+        return { data: null, error: true, status };
+      }
     }
     return { data: (await response.json()) as T, error: false, status: response.status };
   } catch {

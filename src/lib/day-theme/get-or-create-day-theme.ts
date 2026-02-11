@@ -105,6 +105,8 @@ function stableIndexFromString(input: string, modulo: number) {
 }
 
 const DEFAULT_OPENAI_DAY_THEME_MAX_ATTEMPTS = 3;
+const DEFAULT_OPENAI_DAY_THEME_RETRY_BASE_MS = 300;
+const MAX_OPENAI_DAY_THEME_RETRY_BASE_MS = 5_000;
 
 function getOpenAiDayThemeMaxAttempts() {
   const parsed = Number.parseInt(process.env.OPENAI_DAY_THEME_MAX_ATTEMPTS ?? "", 10);
@@ -112,6 +114,27 @@ function getOpenAiDayThemeMaxAttempts() {
     return DEFAULT_OPENAI_DAY_THEME_MAX_ATTEMPTS;
   }
   return Math.min(parsed, 5);
+}
+
+function getOpenAiDayThemeRetryBaseMs() {
+  const parsed = Number.parseInt(process.env.OPENAI_DAY_THEME_RETRY_BASE_MS ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return DEFAULT_OPENAI_DAY_THEME_RETRY_BASE_MS;
+  }
+  return Math.min(parsed, MAX_OPENAI_DAY_THEME_RETRY_BASE_MS);
+}
+
+function getRetryDelayMs(attempt: number) {
+  const baseMs = getOpenAiDayThemeRetryBaseMs();
+  const exponential = baseMs * 2 ** Math.max(0, attempt - 1);
+  const jitter = Math.floor(Math.random() * Math.max(1, baseMs / 2));
+  return exponential + jitter;
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 function shouldRetryDayThemeGeneration(error: unknown) {
@@ -224,6 +247,7 @@ export async function getOrCreateDayTheme(dayKey: string, opts?: { userId?: stri
         if (attempt >= maxAttempts || !shouldRetryDayThemeGeneration(error)) {
           break;
         }
+        await sleep(getRetryDelayMs(attempt));
       }
     }
 
