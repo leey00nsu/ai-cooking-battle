@@ -81,6 +81,7 @@ describe("getOrCreateDayTheme", () => {
 
   it("falls back when OpenAI fails", async () => {
     vi.stubEnv("OPENAI_API_KEY", "key");
+    vi.stubEnv("OPENAI_DAY_THEME_MAX_ATTEMPTS", "1");
     generateDayThemeWithOpenAiWithRaw.mockRejectedValueOnce(
       new ProviderError({ provider: "openai", code: "TIMEOUT", message: "timeout" }),
     );
@@ -104,6 +105,53 @@ describe("getOrCreateDayTheme", () => {
           kind: "DAY_THEME",
           decision: "FALLBACK",
           errorCode: "TIMEOUT",
+        }),
+      }),
+    );
+  });
+
+  it("retries on invalid response and succeeds within retry budget", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "key");
+    vi.stubEnv("OPENAI_DAY_THEME_MAX_ATTEMPTS", "2");
+    generateDayThemeWithOpenAiWithRaw
+      .mockRejectedValueOnce(
+        new ProviderError({ provider: "openai", code: "INVALID_RESPONSE", message: "invalid" }),
+      )
+      .mockResolvedValueOnce({
+        result: {
+          ok: true,
+          themeText: "주말 아침에 어울리는 샌드위치 버터 마늘 풍미의 음식",
+          themeTextEn: "A buttery garlic sandwich dish suitable for a weekend morning",
+          axisAType: "상황",
+          axisA: "주말 아침",
+          axisBType: "음식종류",
+          axisB: "샌드위치",
+          axisFlavor: "버터 마늘",
+          themeWeights: { A: 15, B: 55, F: 30 },
+          themeSignals: {
+            A: ["캐주얼한 브런치 상차림"],
+            B: ["샌드위치 레이어가 보이는 형태"],
+            F: ["버터 윤기와 마늘 토핑"],
+          },
+        },
+        raw: {
+          model: "gpt-5-mini",
+          openAiResponseId: "resp-2",
+          outputText: "{}",
+          outputJson: { ok: true },
+        },
+      });
+
+    const { getOrCreateDayTheme } = await import("./get-or-create-day-theme");
+    const theme = await getOrCreateDayTheme("2026-02-06", { userId: null });
+
+    expect(generateDayThemeWithOpenAiWithRaw).toHaveBeenCalledTimes(2);
+    expect(theme.themeText).toContain("주말 아침");
+    expect(prisma.openAiCallLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          kind: "DAY_THEME",
+          decision: "OK",
         }),
       }),
     );

@@ -104,6 +104,33 @@ function stableIndexFromString(input: string, modulo: number) {
   return Math.abs(hash) % Math.max(1, modulo);
 }
 
+const DEFAULT_OPENAI_DAY_THEME_MAX_ATTEMPTS = 3;
+
+function getOpenAiDayThemeMaxAttempts() {
+  const parsed = Number.parseInt(process.env.OPENAI_DAY_THEME_MAX_ATTEMPTS ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return DEFAULT_OPENAI_DAY_THEME_MAX_ATTEMPTS;
+  }
+  return Math.min(parsed, 5);
+}
+
+function shouldRetryDayThemeGeneration(error: unknown) {
+  if (!(error instanceof ProviderError)) {
+    return false;
+  }
+
+  if (error.code === "INVALID_RESPONSE" || error.code === "TIMEOUT" || error.code === "UNKNOWN") {
+    return true;
+  }
+
+  if (error.code === "HTTP_ERROR") {
+    const status = error.status ?? 0;
+    return status === 429 || status >= 500;
+  }
+
+  return false;
+}
+
 const isUniqueConstraintError = (error: unknown) => {
   if (!error || typeof error !== "object") {
     return false;
@@ -157,45 +184,65 @@ export async function getOrCreateDayTheme(dayKey: string, opts?: { userId?: stri
   let themeSignals = cloneThemeSignals(fallback.themeSignals);
 
   if (shouldAttemptOpenAi) {
-    try {
-      const { result, raw } = await generateDayThemeWithOpenAiWithRaw({
-        dayKey,
-        recentThemesKo,
-      });
+    const maxAttempts = getOpenAiDayThemeMaxAttempts();
+    let openAiSuccessRaw: {
+      model: string;
+      openAiResponseId: string | null;
+      outputText: string;
+      outputJson: unknown;
+    } | null = null;
+    let lastOpenAiError: unknown = null;
 
-      if (recentThemesKo.includes(result.themeText)) {
-        throw new ProviderError({
-          provider: "openai",
-          code: "INVALID_RESPONSE",
-          message: "[openai] Generated theme duplicated recent themes.",
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const { result, raw } = await generateDayThemeWithOpenAiWithRaw({
+          dayKey,
+          recentThemesKo,
         });
+
+        if (recentThemesKo.includes(result.themeText)) {
+          throw new ProviderError({
+            provider: "openai",
+            code: "INVALID_RESPONSE",
+            message: "[openai] Generated theme duplicated recent themes.",
+          });
+        }
+
+        themeText = result.themeText;
+        themeTextEn = result.themeTextEn;
+        axisAType = result.axisAType;
+        axisA = result.axisA;
+        axisBType = result.axisBType;
+        axisB = result.axisB;
+        axisFlavor = result.axisFlavor;
+        themeWeights = result.themeWeights;
+        themeSignals = result.themeSignals;
+        openAiSuccessRaw = raw;
+        break;
+      } catch (error) {
+        lastOpenAiError = error;
+        if (attempt >= maxAttempts || !shouldRetryDayThemeGeneration(error)) {
+          break;
+        }
       }
+    }
 
-      themeText = result.themeText;
-      themeTextEn = result.themeTextEn;
-      axisAType = result.axisAType;
-      axisA = result.axisA;
-      axisBType = result.axisBType;
-      axisB = result.axisB;
-      axisFlavor = result.axisFlavor;
-      themeWeights = result.themeWeights;
-      themeSignals = result.themeSignals;
-
+    if (openAiSuccessRaw) {
       await prisma.openAiCallLog.create({
         data: {
           kind: "DAY_THEME",
-          model: raw.model,
-          openAiResponseId: raw.openAiResponseId,
+          model: openAiSuccessRaw.model,
+          openAiResponseId: openAiSuccessRaw.openAiResponseId,
           userId: opts?.userId ?? null,
           inputPrompt: `dayKey=${dayKey}`,
-          outputText: raw.outputText,
-          outputJson: raw.outputJson as object,
+          outputText: openAiSuccessRaw.outputText,
+          outputJson: openAiSuccessRaw.outputJson as object,
           decision: "OK",
           category: "DAY_THEME",
         },
       });
-    } catch (error) {
-      const providerError = error instanceof ProviderError ? error : null;
+    } else {
+      const providerError = lastOpenAiError instanceof ProviderError ? lastOpenAiError : null;
       await prisma.openAiCallLog.create({
         data: {
           kind: "DAY_THEME",
@@ -209,7 +256,8 @@ export async function getOrCreateDayTheme(dayKey: string, opts?: { userId?: stri
           errorCode: providerError?.code ?? "UNKNOWN",
           errorStatus: providerError?.status ?? null,
           errorMessage:
-            providerError?.message ?? (error instanceof Error ? error.message : String(error)),
+            providerError?.message ??
+            (lastOpenAiError instanceof Error ? lastOpenAiError.message : String(lastOpenAiError)),
         },
       });
     }
