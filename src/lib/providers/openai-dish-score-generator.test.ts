@@ -107,6 +107,29 @@ describe("openai-dish-score-generator", () => {
     });
   });
 
+  it("throws when response exposes schema field names", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "key");
+    vi.stubEnv("OPENAI_DISH_SCORE_MODEL", "gpt-5-mini");
+    responsesCreateMock.mockResolvedValueOnce({
+      output_text: JSON.stringify({
+        total: 58.5,
+        themeFit: 38.8,
+        execution: 88,
+        oneLiner:
+          "레몬을 얹은 홍차 사진은 완성도가 높지만 '허브 레몬 샐러드(주말 아침)' 테마와는 맞지 않습니다.",
+        reasons: [
+          "샐러드 신호가 전혀 보이지 않아 음식종류(axisB)에 부합하지 않습니다.",
+          "상황(axisA) 매칭이 약합니다.",
+        ],
+        tip: "축별 시그널을 명확히 보여주세요.",
+      }),
+    });
+
+    await expect(generateDishScoreWithOpenAiWithRaw(baseArgs)).rejects.toMatchObject({
+      code: "INVALID_RESPONSE",
+    });
+  });
+
   it("throws when theme metadata is invalid", async () => {
     vi.stubEnv("OPENAI_API_KEY", "key");
     vi.stubEnv("OPENAI_DISH_SCORE_MODEL", "gpt-5-mini");

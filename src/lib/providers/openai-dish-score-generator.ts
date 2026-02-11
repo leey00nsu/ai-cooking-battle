@@ -60,6 +60,21 @@ function parseShortText(value: unknown, maxLen: number) {
   return normalized;
 }
 
+const EXPOSED_SCHEMA_TOKEN_PATTERNS = [
+  /\baxisA\b/i,
+  /\baxisB\b/i,
+  /\baxisFlavor\b/i,
+  /\bthemeWeights\b/i,
+  /\bthemeSignals\b/i,
+  /\bthemeFit\b/i,
+  /\bexecution\b/i,
+  /\btotal\b/i,
+];
+
+function includesExposedSchemaToken(value: string) {
+  return EXPOSED_SCHEMA_TOKEN_PATTERNS.some((pattern) => pattern.test(value));
+}
+
 function parseReasons(value: unknown) {
   if (!Array.isArray(value)) {
     return null;
@@ -68,6 +83,9 @@ function parseReasons(value: unknown) {
     .map((item) => parseShortText(item, 200))
     .filter((item): item is string => Boolean(item));
   if (reasons.length < 2 || reasons.length > 3) {
+    return null;
+  }
+  if (reasons.some((reason) => includesExposedSchemaToken(reason))) {
     return null;
   }
   return reasons;
@@ -283,7 +301,16 @@ export async function generateDishScoreWithOpenAiWithRaw(args: {
   const reasons = parseReasons(record.reasons);
   const tip = parseShortText(record.tip, 220);
 
-  if (total === null || themeFit === null || execution === null || !oneLiner || !reasons || !tip) {
+  if (
+    total === null ||
+    themeFit === null ||
+    execution === null ||
+    !oneLiner ||
+    !reasons ||
+    !tip ||
+    includesExposedSchemaToken(oneLiner) ||
+    includesExposedSchemaToken(tip)
+  ) {
     throw new ProviderError({
       provider: PROVIDER,
       code: "INVALID_RESPONSE",

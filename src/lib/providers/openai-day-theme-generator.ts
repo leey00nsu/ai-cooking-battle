@@ -75,6 +75,22 @@ function normalizeSingleLine(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+const EXPOSED_SCHEMA_TOKEN_PATTERNS = [
+  /\bthemeText\b/i,
+  /\bthemeTextEn\b/i,
+  /\baxisAType\b/i,
+  /\baxisA\b/i,
+  /\baxisBType\b/i,
+  /\baxisB\b/i,
+  /\baxisFlavor\b/i,
+  /\bthemeWeights\b/i,
+  /\bthemeSignals\b/i,
+];
+
+function includesExposedSchemaToken(value: string) {
+  return EXPOSED_SCHEMA_TOKEN_PATTERNS.some((pattern) => pattern.test(value));
+}
+
 function validateThemeText(themeText: string) {
   const candidate = normalizeSingleLine(themeText);
   if (!candidate) {
@@ -92,6 +108,9 @@ function validateThemeText(themeText: string) {
   if (candidate.length < 12 || candidate.length > 100) {
     return null;
   }
+  if (includesExposedSchemaToken(candidate)) {
+    return null;
+  }
   return candidate;
 }
 
@@ -101,6 +120,9 @@ function validateThemeTextEn(themeTextEn: string) {
     return null;
   }
   if (candidate.length < 4 || candidate.length > 160) {
+    return null;
+  }
+  if (includesExposedSchemaToken(candidate)) {
     return null;
   }
   return candidate;
@@ -130,6 +152,9 @@ function validateAxisText(value: string, maxLen: number) {
     return null;
   }
   if (candidate.includes(",")) {
+    return null;
+  }
+  if (includesExposedSchemaToken(candidate)) {
     return null;
   }
   return candidate;
@@ -182,6 +207,9 @@ function validateSignalArray(value: unknown) {
   }
 
   if (normalized.some((item) => item.length > 60)) {
+    return null;
+  }
+  if (normalized.some((item) => includesExposedSchemaToken(item))) {
     return null;
   }
 

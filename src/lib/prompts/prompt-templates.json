@@ -83,6 +83,7 @@
         "Important:",
         "- themeTextEn must be a direct translation of themeText only. Do not add extra ideas.",
         "- Ensure the Korean themeText reads naturally.",
+        "- Do not output schema key names (e.g., axisAType, axisB, themeSignals) inside any field value.",
         "- Output ONLY the JSON object, nothing else."
       ]
     },
@@ -123,6 +124,7 @@
         "- No markdown, no quotes around the whole sentence.",
         "- Keep it practical and image-generation-friendly.",
         "- Avoid real person names, political content, logos, or copyrighted characters.",
+        "- Do not output schema/input key names (e.g., themeTextKo, personaDisplayName, dishPromptEn) inside any field value.",
         "",
         "Return ONLY this JSON schema:",
         "{",
@@ -195,6 +197,8 @@
         "- reasons: 2~3 short Korean reasons without markdown or numbering.",
         "- Each reason must mention observed present/missing cues.",
         "- tip: one practical Korean improvement tip.",
+        "- Do NOT expose internal field names or variable names such as axisA/axisB/axisFlavor/themeWeights/themeSignals/themeFit/execution/total.",
+        "- Use plain Korean wording only (e.g., 상황, 요리 형태, 풍미) instead of schema key names.",
         "- Avoid emojis and policy/legal disclaimers.",
         "",
         "Safety/style constraints:",

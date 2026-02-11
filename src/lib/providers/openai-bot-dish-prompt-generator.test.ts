@@ -90,4 +90,22 @@ describe("openai-bot-dish-prompt-generator", () => {
       }),
     ).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
   });
+
+  it("throws when output exposes schema field names", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "key");
+    vi.stubEnv("OPENAI_BOT_DISH_PROMPT_MODEL", "gpt-5-mini");
+    responsesCreateMock.mockResolvedValueOnce({
+      output_text:
+        '{"dishName":"themeTextKo 숯불 해산물 구이","dishNameEn":"Dish based on themeTextKo","dishPromptEn":"personaDisplayName styled grilled seafood"}',
+    });
+
+    await expect(
+      generateBotDishPromptWithOpenAiWithRaw({
+        themeText: "한겨울 캠핑 화롯가에 어울리는 숯불구이 요리",
+        themeTextEn: "Charcoal-grilled dish for a midwinter camping campfire",
+        personaDisplayName: "크레이지 테크니션",
+        personaStylePrompt: "molecular style",
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+  });
 });

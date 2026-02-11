@@ -71,4 +71,20 @@ describe("openai-day-theme-generator", () => {
       }),
     ).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
   });
+
+  it("throws when output text exposes schema field names", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "key");
+    vi.stubEnv("OPENAI_DAY_THEME_MODEL", "gpt-5-mini");
+    responsesCreateMock.mockResolvedValueOnce({
+      output_text:
+        '{"themeText":"axisAType에 어울리는 닭꼬치 매콤한 풍미의 음식","themeTextEn":"A spicy chicken skewer dish suitable for axisAType","axisAType":"상황","axisA":"비 오는 밤","axisBType":"특정재료","axisB":"닭꼬치","axisFlavor":"매콤한","themeWeights":{"A":15,"B":55,"F":30},"themeSignals":{"A":["따뜻한 실내 조명"],"B":["꼬치 형태"],"F":["붉은 양념 포인트"]}}',
+    });
+
+    await expect(
+      generateDayThemeWithOpenAiWithRaw({
+        dayKey: "2026-02-05",
+        recentThemesKo: [],
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+  });
 });

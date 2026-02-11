@@ -38,9 +38,29 @@ function normalizeSingleLine(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+const EXPOSED_SCHEMA_TOKEN_PATTERNS = [
+  /\bthemeTextKo\b/i,
+  /\bthemeTextEn\b/i,
+  /\bpersonaDisplayName\b/i,
+  /\bpersonaStylePrompt\b/i,
+  /\bdishName\b/i,
+  /\bdishNameEn\b/i,
+  /\bdishPromptEn\b/i,
+  /\baxisA\b/i,
+  /\baxisB\b/i,
+  /\baxisFlavor\b/i,
+];
+
+function includesExposedSchemaToken(value: string) {
+  return EXPOSED_SCHEMA_TOKEN_PATTERNS.some((pattern) => pattern.test(value));
+}
+
 function validateGenerationPromptEn(value: string) {
   const candidate = normalizeSingleLine(value);
   if (!candidate) {
+    return null;
+  }
+  if (includesExposedSchemaToken(candidate)) {
     return null;
   }
   return candidate;
@@ -73,6 +93,9 @@ function validateDishName(value: string, personaDisplayName: string) {
   if (normalizedPersona && lower.includes(normalizedPersona.toLowerCase())) {
     return null;
   }
+  if (includesExposedSchemaToken(candidate)) {
+    return null;
+  }
   return candidate;
 }
 
@@ -82,6 +105,9 @@ function validateDishNameEn(value: string) {
     return null;
   }
   if (candidate.length < 2 || candidate.length > 120) {
+    return null;
+  }
+  if (includesExposedSchemaToken(candidate)) {
     return null;
   }
   return candidate;
