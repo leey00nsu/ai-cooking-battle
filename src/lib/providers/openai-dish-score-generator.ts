@@ -73,6 +73,21 @@ function parseReasons(value: unknown) {
   return reasons;
 }
 
+export type DishScoreAxisAType = "상황" | "장소" | "분위기";
+export type DishScoreAxisBType = "음식종류" | "특정재료" | "조리법";
+
+export type DishScoreThemeWeights = {
+  A: number;
+  B: number;
+  F: number;
+};
+
+export type DishScoreThemeSignals = {
+  A: string[];
+  B: string[];
+  F: string[];
+};
+
 export type DishScoreRaw = {
   model: string;
   openAiResponseId: string | null;
@@ -95,13 +110,114 @@ export type DishScoreWithRaw = {
   raw: DishScoreRaw;
 };
 
+function parseAxisAType(value: unknown): DishScoreAxisAType | null {
+  const normalized = normalizeSingleLine(String(value ?? ""));
+  if (normalized === "상황" || normalized === "장소" || normalized === "분위기") {
+    return normalized;
+  }
+  return null;
+}
+
+function parseAxisBType(value: unknown): DishScoreAxisBType | null {
+  const normalized = normalizeSingleLine(String(value ?? ""));
+  if (normalized === "음식종류" || normalized === "특정재료" || normalized === "조리법") {
+    return normalized;
+  }
+  return null;
+}
+
+function parseThemeWeights(value: unknown): DishScoreThemeWeights | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const A = parseScore(record.A);
+  const B = parseScore(record.B);
+  const F = parseScore(record.F);
+  if (A === null || B === null || F === null) {
+    return null;
+  }
+  if (Math.abs(A + B + F - 100) > 0.001) {
+    return null;
+  }
+  return { A, B, F };
+}
+
+function parseThemeSignalList(value: unknown): string[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const parsed = value
+    .map((item) => parseShortText(item, 80))
+    .filter((item): item is string => !!item);
+  if (parsed.length < 1 || parsed.length > 3) {
+    return null;
+  }
+  return parsed;
+}
+
+function parseThemeSignals(value: unknown): DishScoreThemeSignals | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const A = parseThemeSignalList(record.A);
+  const B = parseThemeSignalList(record.B);
+  const F = parseThemeSignalList(record.F);
+  if (!A || !B || !F) {
+    return null;
+  }
+  return { A, B, F };
+}
+
 export async function generateDishScoreWithOpenAiWithRaw(args: {
   themeText: string;
   themeTextEn: string;
+  axisAType: DishScoreAxisAType;
+  axisA: string;
+  axisBType: DishScoreAxisBType;
+  axisB: string;
+  axisFlavor: string;
+  themeWeights: DishScoreThemeWeights;
+  themeSignals: DishScoreThemeSignals;
   prompt: string;
   promptEn?: string | null;
   imageUrl: string;
 }): Promise<DishScoreWithRaw> {
+  const themeText = parseShortText(args.themeText, 160);
+  const themeTextEn = parseShortText(args.themeTextEn, 220);
+  const axisAType = parseAxisAType(args.axisAType);
+  const axisA = parseShortText(args.axisA, 40);
+  const axisBType = parseAxisBType(args.axisBType);
+  const axisB = parseShortText(args.axisB, 40);
+  const axisFlavor = parseShortText(args.axisFlavor, 40);
+  const themeWeights = parseThemeWeights(args.themeWeights);
+  const themeSignals = parseThemeSignals(args.themeSignals);
+  const dishPromptKo = parseShortText(args.prompt, 280);
+  const dishPromptEn = parseShortText(args.promptEn ?? "", 900) ?? "";
+  const imageUrl = parseShortText(args.imageUrl, 1_500);
+
+  if (
+    !themeText ||
+    !themeTextEn ||
+    !axisAType ||
+    !axisA ||
+    !axisBType ||
+    !axisB ||
+    !axisFlavor ||
+    !themeWeights ||
+    !themeSignals ||
+    !dishPromptKo ||
+    !imageUrl
+  ) {
+    throw new ProviderError({
+      provider: PROVIDER,
+      code: "INVALID_RESPONSE",
+      message: "[openai] dish score input did not match schema/constraints.",
+    });
+  }
+
   const config = getOpenAiConfig();
   const client = new OpenAI({ apiKey: config.apiKey });
   const instructions = getOpenAiDishScoreInstructions();
@@ -109,13 +225,31 @@ export async function generateDishScoreWithOpenAiWithRaw(args: {
   const response = await client.responses.create({
     model: config.model,
     instructions,
-    input: JSON.stringify({
-      themeTextKo: args.themeText,
-      themeTextEn: args.themeTextEn,
-      dishPromptKo: args.prompt,
-      dishPromptEn: args.promptEn ?? "",
-      imageUrl: args.imageUrl,
-    }),
+    input: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: JSON.stringify({
+              themeTextKo: themeText,
+              themeTextEn,
+              axisAType,
+              axisA,
+              axisBType,
+              axisB,
+              axisFlavor,
+              themeWeights,
+              themeSignals,
+              dishPromptKo,
+              dishPromptEn,
+              imageUrl,
+            }),
+          },
+          { type: "input_image", image_url: imageUrl, detail: "auto" },
+        ],
+      },
+    ],
   });
 
   const outputText = (response.output_text ?? "").trim();
@@ -171,6 +305,13 @@ export async function generateDishScoreWithOpenAiWithRaw(args: {
 export async function generateDishScoreWithOpenAi(args: {
   themeText: string;
   themeTextEn: string;
+  axisAType: DishScoreAxisAType;
+  axisA: string;
+  axisBType: DishScoreAxisBType;
+  axisB: string;
+  axisFlavor: string;
+  themeWeights: DishScoreThemeWeights;
+  themeSignals: DishScoreThemeSignals;
   prompt: string;
   promptEn?: string | null;
   imageUrl: string;

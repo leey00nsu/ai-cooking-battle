@@ -1,6 +1,12 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { generateDishScoreWithOpenAiWithRaw } from "@/lib/providers/openai-dish-score-generator";
+import {
+  type DishScoreAxisAType,
+  type DishScoreAxisBType,
+  type DishScoreThemeSignals,
+  type DishScoreThemeWeights,
+  generateDishScoreWithOpenAiWithRaw,
+} from "@/lib/providers/openai-dish-score-generator";
 import { ProviderError } from "@/lib/providers/provider-error";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackServerEvent } from "@/shared/analytics/track-server-event";
@@ -67,12 +73,26 @@ function getDishUserType(dish: { botMeta: { id: string } | null }) {
 function buildDishScoreInputPrompt(args: {
   themeText: string;
   themeTextEn: string;
+  axisAType: DishScoreAxisAType;
+  axisA: string;
+  axisBType: DishScoreAxisBType;
+  axisB: string;
+  axisFlavor: string;
+  themeWeights: DishScoreThemeWeights;
+  themeSignals: DishScoreThemeSignals;
   prompt: string;
   promptEn: string | null;
 }) {
   return JSON.stringify({
     themeTextKo: args.themeText,
     themeTextEn: args.themeTextEn,
+    axisAType: args.axisAType,
+    axisA: args.axisA,
+    axisBType: args.axisBType,
+    axisB: args.axisB,
+    axisFlavor: args.axisFlavor,
+    themeWeights: args.themeWeights,
+    themeSignals: args.themeSignals,
     dishPromptKo: args.prompt,
     dishPromptEn: args.promptEn ?? "",
   });
@@ -88,6 +108,13 @@ async function persistDishScoreSuccessLog(args: {
   theme: {
     themeText: string;
     themeTextEn: string;
+    axisAType: DishScoreAxisAType;
+    axisA: string;
+    axisBType: DishScoreAxisBType;
+    axisB: string;
+    axisFlavor: string;
+    themeWeights: DishScoreThemeWeights;
+    themeSignals: DishScoreThemeSignals;
   };
   raw: {
     model: string;
@@ -106,6 +133,13 @@ async function persistDishScoreSuccessLog(args: {
         inputPrompt: buildDishScoreInputPrompt({
           themeText: args.theme.themeText,
           themeTextEn: args.theme.themeTextEn,
+          axisAType: args.theme.axisAType,
+          axisA: args.theme.axisA,
+          axisBType: args.theme.axisBType,
+          axisB: args.theme.axisB,
+          axisFlavor: args.theme.axisFlavor,
+          themeWeights: args.theme.themeWeights,
+          themeSignals: args.theme.themeSignals,
           prompt: args.dish.prompt,
           promptEn: args.dish.promptEn,
         }),
@@ -133,6 +167,13 @@ async function persistDishScoreErrorLog(args: {
   theme: {
     themeText: string;
     themeTextEn: string;
+    axisAType: DishScoreAxisAType;
+    axisA: string;
+    axisBType: DishScoreAxisBType;
+    axisB: string;
+    axisFlavor: string;
+    themeWeights: DishScoreThemeWeights;
+    themeSignals: DishScoreThemeSignals;
   };
   error: unknown;
   errorCode: string;
@@ -146,6 +187,13 @@ async function persistDishScoreErrorLog(args: {
         inputPrompt: buildDishScoreInputPrompt({
           themeText: args.theme.themeText,
           themeTextEn: args.theme.themeTextEn,
+          axisAType: args.theme.axisAType,
+          axisA: args.theme.axisA,
+          axisBType: args.theme.axisBType,
+          axisB: args.theme.axisB,
+          axisFlavor: args.theme.axisFlavor,
+          themeWeights: args.theme.themeWeights,
+          themeSignals: args.theme.themeSignals,
           prompt: args.dish.prompt,
           promptEn: args.dish.promptEn,
         }),
@@ -169,6 +217,79 @@ function toNullableJsonInput(
     return Prisma.JsonNull;
   }
   return value as Prisma.InputJsonValue;
+}
+
+const DEFAULT_THEME_WEIGHTS: DishScoreThemeWeights = {
+  A: 15,
+  B: 55,
+  F: 30,
+};
+
+const DEFAULT_THEME_SIGNALS: DishScoreThemeSignals = {
+  A: ["일상 상황이 느껴지는 간단한 상차림"],
+  B: ["요리 형태가 주제 축과 일치"],
+  F: ["풍미를 드러내는 재료 포인트"],
+};
+
+function normalizeAxisAType(value: string): DishScoreAxisAType {
+  if (value === "상황" || value === "장소" || value === "분위기") {
+    return value;
+  }
+  return "상황";
+}
+
+function normalizeAxisBType(value: string): DishScoreAxisBType {
+  if (value === "음식종류" || value === "특정재료" || value === "조리법") {
+    return value;
+  }
+  return "음식종류";
+}
+
+function normalizeThemeWeights(value: Prisma.JsonValue): DishScoreThemeWeights {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return DEFAULT_THEME_WEIGHTS;
+  }
+  const record = value as Record<string, unknown>;
+  const A = typeof record.A === "number" ? record.A : NaN;
+  const B = typeof record.B === "number" ? record.B : NaN;
+  const F = typeof record.F === "number" ? record.F : NaN;
+  if (!Number.isFinite(A) || !Number.isFinite(B) || !Number.isFinite(F)) {
+    return DEFAULT_THEME_WEIGHTS;
+  }
+  if (Math.abs(A + B + F - 100) > 0.001) {
+    return DEFAULT_THEME_WEIGHTS;
+  }
+  return { A, B, F };
+}
+
+function normalizeThemeSignals(value: Prisma.JsonValue): DishScoreThemeSignals {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return DEFAULT_THEME_SIGNALS;
+  }
+  const record = value as Record<string, unknown>;
+
+  const normalizeList = (source: unknown): string[] | null => {
+    if (!Array.isArray(source)) {
+      return null;
+    }
+    const parsed = source
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter(Boolean)
+      .slice(0, 3);
+    if (parsed.length < 1) {
+      return null;
+    }
+    return parsed;
+  };
+
+  const A = normalizeList(record.A);
+  const B = normalizeList(record.B);
+  const F = normalizeList(record.F);
+  if (!A || !B || !F) {
+    return DEFAULT_THEME_SIGNALS;
+  }
+
+  return { A, B, F };
 }
 
 async function upsertDishScoreStatus(args: {
@@ -265,6 +386,13 @@ export async function processDishScoreJob(
       select: {
         themeText: true,
         themeTextEn: true,
+        axisAType: true,
+        axisA: true,
+        axisBType: true,
+        axisB: true,
+        axisFlavor: true,
+        themeWeights: true,
+        themeSignals: true,
       },
     }),
   ]);
@@ -297,9 +425,28 @@ export async function processDishScoreJob(
   });
 
   try {
-    const scored = await generateDishScoreWithOpenAiWithRaw({
+    const normalizedTheme = {
       themeText: theme.themeText,
       themeTextEn: theme.themeTextEn,
+      axisAType: normalizeAxisAType(theme.axisAType),
+      axisA: theme.axisA,
+      axisBType: normalizeAxisBType(theme.axisBType),
+      axisB: theme.axisB,
+      axisFlavor: theme.axisFlavor,
+      themeWeights: normalizeThemeWeights(theme.themeWeights),
+      themeSignals: normalizeThemeSignals(theme.themeSignals),
+    };
+
+    const scored = await generateDishScoreWithOpenAiWithRaw({
+      themeText: normalizedTheme.themeText,
+      themeTextEn: normalizedTheme.themeTextEn,
+      axisAType: normalizedTheme.axisAType,
+      axisA: normalizedTheme.axisA,
+      axisBType: normalizedTheme.axisBType,
+      axisB: normalizedTheme.axisB,
+      axisFlavor: normalizedTheme.axisFlavor,
+      themeWeights: normalizedTheme.themeWeights,
+      themeSignals: normalizedTheme.themeSignals,
       prompt: dish.prompt,
       promptEn: dish.promptEn,
       imageUrl: dish.imageUrl,
@@ -327,8 +474,15 @@ export async function processDishScoreJob(
         imageUrl: dish.imageUrl,
       },
       theme: {
-        themeText: theme.themeText,
-        themeTextEn: theme.themeTextEn,
+        themeText: normalizedTheme.themeText,
+        themeTextEn: normalizedTheme.themeTextEn,
+        axisAType: normalizedTheme.axisAType,
+        axisA: normalizedTheme.axisA,
+        axisBType: normalizedTheme.axisBType,
+        axisB: normalizedTheme.axisB,
+        axisFlavor: normalizedTheme.axisFlavor,
+        themeWeights: normalizedTheme.themeWeights,
+        themeSignals: normalizedTheme.themeSignals,
       },
       raw: {
         model: scored.raw.model,
@@ -365,6 +519,13 @@ export async function processDishScoreJob(
       theme: {
         themeText: theme.themeText,
         themeTextEn: theme.themeTextEn,
+        axisAType: normalizeAxisAType(theme.axisAType),
+        axisA: theme.axisA,
+        axisBType: normalizeAxisBType(theme.axisBType),
+        axisB: theme.axisB,
+        axisFlavor: theme.axisFlavor,
+        themeWeights: normalizeThemeWeights(theme.themeWeights),
+        themeSignals: normalizeThemeSignals(theme.themeSignals),
       },
       error,
       errorCode,

@@ -21,6 +21,22 @@ const prisma = {
   },
 };
 
+const baseTheme = {
+  themeText: "한겨울 캠핑 화롯가에 어울리는 숯불구이 요리",
+  themeTextEn: "Charcoal-grilled dishes suitable for a winter campfire",
+  axisAType: "장소",
+  axisA: "한겨울 캠핑 화롯가",
+  axisBType: "조리법",
+  axisB: "숯불구이",
+  axisFlavor: "훈연향",
+  themeWeights: { A: 15, B: 55, F: 30 },
+  themeSignals: {
+    A: ["야외 분위기의 자연광"],
+    B: ["숯불구이 형태의 메인 구성"],
+    F: ["훈연된 갈색 그릴 마크"],
+  },
+};
+
 vi.mock("@/lib/providers/openai-dish-score-generator", () => ({
   generateDishScoreWithOpenAiWithRaw,
 }));
@@ -60,8 +76,7 @@ describe("processDishScoreJob", () => {
       botMeta: null,
     });
     prisma.dayTheme.findUnique.mockResolvedValueOnce({
-      themeText: "한겨울 캠핑 화롯가에 어울리는 숯불구이 요리",
-      themeTextEn: "Charcoal-grilled dishes suitable for a winter campfire",
+      ...baseTheme,
     });
     generateDishScoreWithOpenAiWithRaw.mockResolvedValueOnce({
       result: {
@@ -122,6 +137,21 @@ describe("processDishScoreJob", () => {
       execution: 84,
       userType: "user",
     });
+    expect(generateDishScoreWithOpenAiWithRaw).toHaveBeenCalledWith(
+      expect.objectContaining({
+        axisAType: "장소",
+        axisA: "한겨울 캠핑 화롯가",
+        axisBType: "조리법",
+        axisB: "숯불구이",
+        axisFlavor: "훈연향",
+        themeWeights: { A: 15, B: 55, F: 30 },
+        themeSignals: {
+          A: ["야외 분위기의 자연광"],
+          B: ["숯불구이 형태의 메인 구성"],
+          F: ["훈연된 갈색 그릴 마크"],
+        },
+      }),
+    );
   });
 
   it("throws on retryable error and keeps score PENDING", async () => {
@@ -136,8 +166,7 @@ describe("processDishScoreJob", () => {
       botMeta: { id: "meta-1" },
     });
     prisma.dayTheme.findUnique.mockResolvedValueOnce({
-      themeText: "theme",
-      themeTextEn: "theme",
+      ...baseTheme,
     });
     generateDishScoreWithOpenAiWithRaw.mockRejectedValueOnce(
       new ProviderError({ provider: "openai", code: "TIMEOUT", message: "timeout" }),
@@ -184,8 +213,7 @@ describe("processDishScoreJob", () => {
       botMeta: { id: "meta-1" },
     });
     prisma.dayTheme.findUnique.mockResolvedValueOnce({
-      themeText: "theme",
-      themeTextEn: "theme",
+      ...baseTheme,
     });
     generateDishScoreWithOpenAiWithRaw.mockRejectedValueOnce(
       new ProviderError({
