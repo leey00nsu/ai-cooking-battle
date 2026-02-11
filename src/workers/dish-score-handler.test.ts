@@ -228,4 +228,43 @@ describe("processDishScoreJob", () => {
       retryable: false,
     });
   });
+
+  it("marks FAILED when theme is missing", async () => {
+    const { processDishScoreJob } = await import("./dish-score-handler");
+
+    prisma.dishDayScore.findUnique.mockResolvedValueOnce(null);
+    prisma.dish.findUnique.mockResolvedValueOnce({
+      userId: "user-1",
+      prompt: "dish prompt",
+      promptEn: "dish prompt",
+      imageUrl: "https://cdn.example/dish.webp",
+      botMeta: null,
+    });
+    prisma.dayTheme.findUnique.mockResolvedValueOnce(null);
+
+    const result = await processDishScoreJob({ dishId: "dish-1", dayKey: "2026-02-10" });
+
+    expect(result).toEqual({
+      status: "FAILED",
+      dishId: "dish-1",
+      dayKey: "2026-02-10",
+      errorCode: "THEME_NOT_FOUND",
+    });
+    expect(prisma.dishDayScore.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          status: "FAILED",
+          errorCode: "THEME_NOT_FOUND",
+        }),
+      }),
+    );
+    expect(prisma.openAiCallLog.create).not.toHaveBeenCalled();
+    expect(trackServerEvent).toHaveBeenCalledWith(ANALYTICS_EVENTS.SCORE_FAILED, {
+      dishId: "dish-1",
+      dayKey: "2026-02-10",
+      errorCode: "THEME_NOT_FOUND",
+      userType: "unknown",
+      retryable: false,
+    });
+  });
 });
