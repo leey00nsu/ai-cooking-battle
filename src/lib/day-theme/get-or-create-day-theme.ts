@@ -137,21 +137,61 @@ function sleep(ms: number) {
   });
 }
 
-function shouldRetryDayThemeGeneration(error: unknown) {
-  if (!(error instanceof ProviderError)) {
+const TRANSIENT_OPENAI_ERROR_CODES = new Set([
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "EAI_AGAIN",
+  "ENOTFOUND",
+  "ECONNREFUSED",
+]);
+
+const TRANSIENT_OPENAI_ERROR_NAMES = new Set([
+  "FetchError",
+  "AbortError",
+  "APIConnectionError",
+  "TimeoutError",
+]);
+
+function isTransientOpenAiError(error: unknown) {
+  if (!error || typeof error !== "object") {
     return false;
   }
 
-  if (error.code === "INVALID_RESPONSE" || error.code === "TIMEOUT" || error.code === "UNKNOWN") {
+  const record = error as {
+    code?: unknown;
+    name?: unknown;
+    message?: unknown;
+  };
+
+  const code = typeof record.code === "string" ? record.code.toUpperCase() : "";
+  if (TRANSIENT_OPENAI_ERROR_CODES.has(code)) {
     return true;
   }
 
-  if (error.code === "HTTP_ERROR") {
-    const status = error.status ?? 0;
-    return status === 429 || status >= 500;
+  const name = typeof record.name === "string" ? record.name : "";
+  if (TRANSIENT_OPENAI_ERROR_NAMES.has(name)) {
+    return true;
   }
 
-  return false;
+  const message = typeof record.message === "string" ? record.message.toLowerCase() : "";
+  return message.includes("timeout") || message.includes("network");
+}
+
+function shouldRetryDayThemeGeneration(error: unknown) {
+  if (error instanceof ProviderError) {
+    if (error.code === "INVALID_RESPONSE" || error.code === "TIMEOUT" || error.code === "UNKNOWN") {
+      return true;
+    }
+
+    if (error.code === "HTTP_ERROR") {
+      const status = error.status ?? 0;
+      return status === 429 || status >= 500;
+    }
+
+    return false;
+  }
+
+  return isTransientOpenAiError(error);
 }
 
 const isUniqueConstraintError = (error: unknown) => {

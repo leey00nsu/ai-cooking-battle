@@ -157,4 +157,54 @@ describe("getOrCreateDayTheme", () => {
       }),
     );
   });
+
+  it("retries on transient non-ProviderError and succeeds", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "key");
+    vi.stubEnv("OPENAI_DAY_THEME_MAX_ATTEMPTS", "2");
+    vi.stubEnv("OPENAI_DAY_THEME_RETRY_BASE_MS", "0");
+
+    const transientError = Object.assign(new Error("network timeout"), {
+      code: "ECONNRESET",
+      name: "FetchError",
+    });
+
+    generateDayThemeWithOpenAiWithRaw.mockRejectedValueOnce(transientError).mockResolvedValueOnce({
+      result: {
+        ok: true,
+        themeText: "주말 저녁에 어울리는 덮밥 버터 마늘 풍미의 음식",
+        themeTextEn: "A buttery garlic rice bowl dish suitable for a weekend evening",
+        axisAType: "상황",
+        axisA: "주말 저녁",
+        axisBType: "음식종류",
+        axisB: "덮밥",
+        axisFlavor: "버터 마늘",
+        themeWeights: { A: 15, B: 55, F: 30 },
+        themeSignals: {
+          A: ["따뜻한 실내 조명"],
+          B: ["덮밥 형태가 보이는 구성"],
+          F: ["버터 윤기와 마늘 토핑"],
+        },
+      },
+      raw: {
+        model: "gpt-5-mini",
+        openAiResponseId: "resp-transient",
+        outputText: "{}",
+        outputJson: { ok: true },
+      },
+    });
+
+    const { getOrCreateDayTheme } = await import("./get-or-create-day-theme");
+    const theme = await getOrCreateDayTheme("2026-02-07", { userId: null });
+
+    expect(generateDayThemeWithOpenAiWithRaw).toHaveBeenCalledTimes(2);
+    expect(theme.themeText).toContain("주말 저녁");
+    expect(prisma.openAiCallLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          kind: "DAY_THEME",
+          decision: "OK",
+        }),
+      }),
+    );
+  });
 });
