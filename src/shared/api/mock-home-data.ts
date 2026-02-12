@@ -55,9 +55,15 @@ function makeSnapshotEntry(dayKey: string, rank: number): SnapshotEntry {
   const baseSeed = `${dayKey}-rank-${pad(rank)}`;
   const leftScore = 8.8 - rank * 0.2;
   const rightScore = 8.3 - rank * 0.18;
+  const isLeftWinner = leftScore >= rightScore;
+  const score = isLeftWinner ? leftScore : rightScore;
   return {
     rank,
     dishId: baseSeed,
+    dishName: `Hall Dish #${pad(rank)}`,
+    authorName: `Chef_${pad(rank)}`,
+    imageUrl: dishImage(`${baseSeed}-${isLeftWinner ? "left" : "right"}`),
+    score,
     leftImageUrl: dishImage(`${baseSeed}-left`),
     rightImageUrl: dishImage(`${baseSeed}-right`),
     leftScore,
@@ -65,7 +71,7 @@ function makeSnapshotEntry(dayKey: string, rank: number): SnapshotEntry {
   };
 }
 
-export function getMockSnapshotTop(dayKey = formatDayKey(), count = 4): SnapshotTop {
+export function getMockSnapshotTop(dayKey = formatDayKey(), count = 10): SnapshotTop {
   const safeCount = Math.max(0, Math.floor(Number(count)));
   const items = Array.from({ length: safeCount }, (_, index) =>
     makeSnapshotEntry(dayKey, index + 1),

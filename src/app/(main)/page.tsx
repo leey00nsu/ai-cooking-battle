@@ -19,6 +19,7 @@ type MeResponse = {
 
 const HOME_MATCH_FEED_LIMIT = 8;
 const HOME_MATCH_FEED_API_PATH = `/api/home/matches?limit=${HOME_MATCH_FEED_LIMIT}`;
+const HOME_SNAPSHOT_LIMIT = 4;
 
 type FetchResult<T> = {
   data: T | null;
@@ -71,7 +72,7 @@ export default async function Home() {
 
   const dayKey = themeResult.data?.dayKey;
   const snapshotResult = dayKey
-    ? await getJson<SnapshotResponse>(`/api/snapshot/${dayKey}`)
+    ? await getJson<SnapshotResponse>(`/api/snapshot/${dayKey}?count=${HOME_SNAPSHOT_LIMIT}`)
     : { data: null, error: false, status: null };
 
   const userStatus = meResult.data?.status ?? "GUEST";

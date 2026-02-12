@@ -55,6 +55,12 @@ describe("Home page SSR fetch logic", () => {
     ).toBe(true);
     expect(
       fetchMock.mock.calls.some(
+        (args) =>
+          typeof args[0] === "string" && args[0].includes("/api/snapshot/2026-02-05?count=4"),
+      ),
+    ).toBe(true);
+    expect(
+      fetchMock.mock.calls.some(
         (args) => typeof args[0] === "string" && args[0].includes("/api/feed"),
       ),
     ).toBe(false);

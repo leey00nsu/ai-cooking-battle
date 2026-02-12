@@ -1,6 +1,10 @@
 export type SnapshotEntry = {
   rank: number;
   dishId: string;
+  dishName: string;
+  authorName: string;
+  imageUrl: string;
+  score: number;
   leftImageUrl: string;
   rightImageUrl: string;
   leftScore: number;

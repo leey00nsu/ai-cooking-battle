@@ -8,6 +8,10 @@ const snapshotTop = {
     {
       rank: 1,
       dishId: "dish-1",
+      dishName: "Hall Dish #01",
+      authorName: "Chef_01",
+      imageUrl: "https://example.com/winner-1.jpg",
+      score: 9.8,
       leftImageUrl: "https://example.com/left.jpg",
       rightImageUrl: "https://example.com/right.jpg",
       leftScore: 9.8,
@@ -16,6 +20,10 @@ const snapshotTop = {
     {
       rank: 2,
       dishId: "dish-2",
+      dishName: "Hall Dish #02",
+      authorName: "Chef_02",
+      imageUrl: "https://example.com/winner-2.jpg",
+      score: 9.2,
       leftImageUrl: "",
       rightImageUrl: "",
       leftScore: 9.2,
@@ -32,9 +40,7 @@ describe("Highlights", () => {
     expect(screen.getByRole("link", { name: "View Ladder" })).toBeInTheDocument();
 
     const links = screen.getAllByRole("link");
-    expect(links.some((link) => link.getAttribute("href") === "/snapshot/2026-01-26")).toBe(
-      true,
-    );
+    expect(links.some((link) => link.getAttribute("href") === "/snapshot/2026-01-26")).toBe(true);
   });
 
   it("renders empty state when no data", () => {
