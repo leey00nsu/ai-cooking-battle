@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import type { SnapshotEntry } from "@/entities/snapshot/model/types";
+import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
+import { trackEvent } from "@/shared/analytics/track-event";
 import { SectionHeading } from "@/shared/ui/section-heading";
 import { Surface } from "@/shared/ui/surface";
 
@@ -41,6 +45,15 @@ export function SnapshotTopList({ dayKey, items }: SnapshotTopListProps) {
               <Link
                 className="inline-flex pt-2 text-sm font-semibold text-white underline underline-offset-4"
                 href={`/dishes/${entry.dishId}`}
+                onClick={() =>
+                  trackEvent(ANALYTICS_EVENTS.SNAPSHOT_ITEM_CLICKED, {
+                    screen: "snapshot",
+                    section: "top_list",
+                    dayKey,
+                    rank: entry.rank,
+                    dishId: entry.dishId,
+                  })
+                }
               >
                 상세 보기
               </Link>

@@ -1,13 +1,18 @@
+"use client";
+
 import Link from "next/link";
 import type { SnapshotEntry } from "@/entities/snapshot/model/types";
+import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
+import { trackEvent } from "@/shared/analytics/track-event";
 import { Button } from "@/shared/ui/button";
 import { Surface } from "@/shared/ui/surface";
 
 type SnapshotChampionProps = {
+  dayKey: string;
   entry: SnapshotEntry;
 };
 
-export function SnapshotChampion({ entry }: SnapshotChampionProps) {
+export function SnapshotChampion({ dayKey, entry }: SnapshotChampionProps) {
   return (
     <Surface
       className="relative overflow-hidden p-0"
@@ -31,7 +36,20 @@ export function SnapshotChampion({ entry }: SnapshotChampionProps) {
           <p className="text-sm text-white/70">{entry.authorName}</p>
           <div>
             <Button asChild className="h-10 px-4 text-sm font-bold" variant="cta">
-              <Link href={`/dishes/${entry.dishId}`}>View Analysis</Link>
+              <Link
+                href={`/dishes/${entry.dishId}`}
+                onClick={() =>
+                  trackEvent(ANALYTICS_EVENTS.SNAPSHOT_ITEM_CLICKED, {
+                    screen: "snapshot",
+                    section: "champion",
+                    dayKey,
+                    rank: entry.rank,
+                    dishId: entry.dishId,
+                  })
+                }
+              >
+                View Analysis
+              </Link>
             </Button>
           </div>
         </div>
