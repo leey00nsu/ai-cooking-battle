@@ -48,4 +48,16 @@ describe("Highlights", () => {
 
     expect(screen.getByText("하이라이트가 없습니다")).toBeInTheDocument();
   });
+
+  it("renders error state when request fails", () => {
+    render(<Highlights snapshotTop={snapshotTop} isError />);
+
+    expect(screen.getByText("하이라이트 오류")).toBeInTheDocument();
+  });
+
+  it("renders restricted state for limited user", () => {
+    render(<Highlights snapshotTop={snapshotTop} isRestricted />);
+
+    expect(screen.getByText("하이라이트 제한")).toBeInTheDocument();
+  });
 });
