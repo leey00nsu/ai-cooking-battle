@@ -1,6 +1,7 @@
 import type { MatchFeed } from "@/entities/match/model/types";
+import { listRankingTop } from "@/entities/ranking/api/list-ranking-top";
 import type { RankingTop } from "@/entities/ranking/model/types";
-import { getMockMatchFeed, getMockRankingTop } from "@/shared/api/mock-home-data";
+import { getMockMatchFeed } from "@/shared/api/mock-home-data";
 
 export type HomeDataSource = {
   getMatchFeed(args: { dayKey: string; limit: number }): Promise<MatchFeed>;
@@ -12,11 +13,11 @@ const mockHomeDataSource: HomeDataSource = {
     return getMockMatchFeed(args.dayKey, args.limit);
   },
   async getRankingTop(args) {
-    return getMockRankingTop(args.dayKey, args.count);
+    return listRankingTop(args);
   },
 };
 
-// F011+에서 DB 기반 피드/스냅샷 소스로 교체할 때 이 반환값만 교체한다.
+// matchFeed는 추후 실제 매치 데이터 연동 시 교체한다.
 export function getHomeDataSource(): HomeDataSource {
   return mockHomeDataSource;
 }
