@@ -33,7 +33,7 @@ describe("Home page SSR fetch logic", () => {
       if (url.includes("/api/home/matches")) {
         return new Response(JSON.stringify({ items: [] }), { status: 200 });
       }
-      if (url.includes("/api/snapshot/")) {
+      if (url.includes("/api/ranking/")) {
         return new Response(JSON.stringify({ dayKey: "2026-02-05", items: [] }), { status: 200 });
       }
       return new Response(null, { status: 404 });
@@ -56,7 +56,7 @@ describe("Home page SSR fetch logic", () => {
     expect(
       fetchMock.mock.calls.some(
         (args) =>
-          typeof args[0] === "string" && args[0].includes("/api/snapshot/2026-02-05?count=4"),
+          typeof args[0] === "string" && args[0].includes("/api/ranking/2026-02-05?count=4"),
       ),
     ).toBe(true);
     expect(
@@ -86,7 +86,7 @@ describe("Home page SSR fetch logic", () => {
       if (url.includes("/api/home/matches")) {
         return new Response(JSON.stringify({ ok: false }), { status: 500 });
       }
-      if (url.includes("/api/snapshot/")) {
+      if (url.includes("/api/ranking/")) {
         return new Response(JSON.stringify({ dayKey: "2026-02-05", items: [] }), { status: 200 });
       }
       if (url.endsWith("/api/slots/public-summary")) {
@@ -114,7 +114,7 @@ describe("Home page SSR fetch logic", () => {
     });
   });
 
-  it("marks isSnapshotError=true when /api/snapshot request fails", async () => {
+  it("marks isRankingError=true when /api/ranking request fails", async () => {
     headersMock.mockResolvedValue({
       get: () => null,
     });
@@ -129,7 +129,7 @@ describe("Home page SSR fetch logic", () => {
       if (url.includes("/api/home/matches")) {
         return new Response(JSON.stringify({ items: [] }), { status: 200 });
       }
-      if (url.includes("/api/snapshot/")) {
+      if (url.includes("/api/ranking/")) {
         return new Response(JSON.stringify({ ok: false }), { status: 500 });
       }
       if (url.endsWith("/api/slots/public-summary")) {
@@ -152,7 +152,7 @@ describe("Home page SSR fetch logic", () => {
 
     expect(element).toMatchObject({
       props: {
-        isSnapshotError: true,
+        isRankingError: true,
       },
     });
   });

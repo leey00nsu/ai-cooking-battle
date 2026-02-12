@@ -6,7 +6,7 @@ vi.mock("next/headers", () => ({
   headers: headersMock,
 }));
 
-describe("Snapshot page SSR fetch logic", () => {
+describe("Ranking page SSR fetch logic", () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
     headersMock.mockResolvedValue({
@@ -20,12 +20,12 @@ describe("Snapshot page SSR fetch logic", () => {
     delete process.env.NEXT_PUBLIC_APP_URL;
   });
 
-  it("renders ready status and requests snapshot with count=10", async () => {
+  it("renders ready status and requests ranking with count=10", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith("/api/me")) {
         return new Response(JSON.stringify({ status: "GUEST" }), { status: 200 });
       }
-      if (url.includes("/api/snapshot/2026-02-11?count=10")) {
+      if (url.includes("/api/ranking/2026-02-11?count=10")) {
         return new Response(
           JSON.stringify({
             dayKey: "2026-02-11",
@@ -51,13 +51,13 @@ describe("Snapshot page SSR fetch logic", () => {
     });
     vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
 
-    const SnapshotPage = (await import("./page")).default;
-    const element = await SnapshotPage({
+    const RankingPage = (await import("./page")).default;
+    const element = await RankingPage({
       params: Promise.resolve({ dayKey: "2026-02-11" }),
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringMatching(/\/api\/snapshot\/2026-02-11\?count=10$/),
+      expect.stringMatching(/\/api\/ranking\/2026-02-11\?count=10$/),
       expect.any(Object),
     );
     expect(element).toMatchObject({
@@ -68,12 +68,12 @@ describe("Snapshot page SSR fetch logic", () => {
     });
   });
 
-  it("renders empty status when snapshot has no items", async () => {
+  it("renders empty status when ranking has no items", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith("/api/me")) {
         return new Response(JSON.stringify({ status: "AUTH" }), { status: 200 });
       }
-      if (url.includes("/api/snapshot/2026-02-11?count=10")) {
+      if (url.includes("/api/ranking/2026-02-11?count=10")) {
         return new Response(
           JSON.stringify({
             dayKey: "2026-02-11",
@@ -86,8 +86,8 @@ describe("Snapshot page SSR fetch logic", () => {
     });
     vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
 
-    const SnapshotPage = (await import("./page")).default;
-    const element = await SnapshotPage({
+    const RankingPage = (await import("./page")).default;
+    const element = await RankingPage({
       params: Promise.resolve({ dayKey: "2026-02-11" }),
     });
 
@@ -99,20 +99,20 @@ describe("Snapshot page SSR fetch logic", () => {
     });
   });
 
-  it("renders error status when snapshot request fails", async () => {
+  it("renders error status when ranking request fails", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith("/api/me")) {
         return new Response(JSON.stringify({ status: "GUEST" }), { status: 200 });
       }
-      if (url.includes("/api/snapshot/2026-02-11?count=10")) {
+      if (url.includes("/api/ranking/2026-02-11?count=10")) {
         return new Response(JSON.stringify({ ok: false }), { status: 500 });
       }
       return new Response(null, { status: 404 });
     });
     vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
 
-    const SnapshotPage = (await import("./page")).default;
-    const element = await SnapshotPage({
+    const RankingPage = (await import("./page")).default;
+    const element = await RankingPage({
       params: Promise.resolve({ dayKey: "2026-02-11" }),
     });
 

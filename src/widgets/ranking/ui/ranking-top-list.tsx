@@ -1,18 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import type { SnapshotEntry } from "@/entities/snapshot/model/types";
+import type { RankingEntry } from "@/entities/ranking/model/types";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
 import { SectionHeading } from "@/shared/ui/section-heading";
 import { Surface } from "@/shared/ui/surface";
 
-type SnapshotTopListProps = {
+type RankingTopListProps = {
   dayKey: string;
-  items: SnapshotEntry[];
+  items: RankingEntry[];
 };
 
-export function SnapshotTopList({ dayKey, items }: SnapshotTopListProps) {
+export function RankingTopList({ dayKey, items }: RankingTopListProps) {
   return (
     <section className="space-y-4">
       <SectionHeading
@@ -46,8 +46,8 @@ export function SnapshotTopList({ dayKey, items }: SnapshotTopListProps) {
                 className="inline-flex pt-2 text-sm font-semibold text-white underline underline-offset-4"
                 href={`/dishes/${entry.dishId}`}
                 onClick={() =>
-                  trackEvent(ANALYTICS_EVENTS.SNAPSHOT_ITEM_CLICKED, {
-                    screen: "snapshot",
+                  trackEvent(ANALYTICS_EVENTS.RANKING_ITEM_CLICKED, {
+                    screen: "ranking",
                     section: "top_list",
                     dayKey,
                     rank: entry.rank,

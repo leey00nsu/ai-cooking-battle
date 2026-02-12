@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const getSnapshotTopMock = vi.fn();
+const getRankingTopMock = vi.fn();
 
 vi.mock("@/shared/api/home-data-source", () => ({
   getHomeDataSource: () => ({
-    getSnapshotTop: getSnapshotTopMock,
+    getRankingTop: getRankingTopMock,
   }),
 }));
 
-describe("GET /api/snapshot/[dayKey]", () => {
+describe("GET /api/ranking/[dayKey]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getSnapshotTopMock.mockResolvedValue({
+    getRankingTopMock.mockResolvedValue({
       dayKey: "2026-02-11",
       items: [],
     });
@@ -20,12 +20,12 @@ describe("GET /api/snapshot/[dayKey]", () => {
   it("uses default count=10 when query is missing", async () => {
     const { GET } = await import("./route");
 
-    const response = await GET(new Request("http://localhost/api/snapshot/2026-02-11"), {
+    const response = await GET(new Request("http://localhost/api/ranking/2026-02-11"), {
       params: Promise.resolve({ dayKey: "2026-02-11" }),
     });
 
     expect(response.status).toBe(200);
-    expect(getSnapshotTopMock).toHaveBeenCalledWith({
+    expect(getRankingTopMock).toHaveBeenCalledWith({
       dayKey: "2026-02-11",
       count: 10,
     });
@@ -34,11 +34,11 @@ describe("GET /api/snapshot/[dayKey]", () => {
   it("uses requested count from query", async () => {
     const { GET } = await import("./route");
 
-    await GET(new Request("http://localhost/api/snapshot/2026-02-11?count=7"), {
+    await GET(new Request("http://localhost/api/ranking/2026-02-11?count=7"), {
       params: Promise.resolve({ dayKey: "2026-02-11" }),
     });
 
-    expect(getSnapshotTopMock).toHaveBeenCalledWith({
+    expect(getRankingTopMock).toHaveBeenCalledWith({
       dayKey: "2026-02-11",
       count: 7,
     });
@@ -47,18 +47,18 @@ describe("GET /api/snapshot/[dayKey]", () => {
   it("normalizes invalid negative/string count to default", async () => {
     const { GET } = await import("./route");
 
-    await GET(new Request("http://localhost/api/snapshot/2026-02-11?count=-3"), {
+    await GET(new Request("http://localhost/api/ranking/2026-02-11?count=-3"), {
       params: Promise.resolve({ dayKey: "2026-02-11" }),
     });
-    await GET(new Request("http://localhost/api/snapshot/2026-02-11?count=abc"), {
+    await GET(new Request("http://localhost/api/ranking/2026-02-11?count=abc"), {
       params: Promise.resolve({ dayKey: "2026-02-11" }),
     });
 
-    expect(getSnapshotTopMock).toHaveBeenNthCalledWith(1, {
+    expect(getRankingTopMock).toHaveBeenNthCalledWith(1, {
       dayKey: "2026-02-11",
       count: 10,
     });
-    expect(getSnapshotTopMock).toHaveBeenNthCalledWith(2, {
+    expect(getRankingTopMock).toHaveBeenNthCalledWith(2, {
       dayKey: "2026-02-11",
       count: 10,
     });
@@ -67,11 +67,11 @@ describe("GET /api/snapshot/[dayKey]", () => {
   it("clamps too-large count to max=50", async () => {
     const { GET } = await import("./route");
 
-    await GET(new Request("http://localhost/api/snapshot/2026-02-11?count=999"), {
+    await GET(new Request("http://localhost/api/ranking/2026-02-11?count=999"), {
       params: Promise.resolve({ dayKey: "2026-02-11" }),
     });
 
-    expect(getSnapshotTopMock).toHaveBeenCalledWith({
+    expect(getRankingTopMock).toHaveBeenCalledWith({
       dayKey: "2026-02-11",
       count: 50,
     });

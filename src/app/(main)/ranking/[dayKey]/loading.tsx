@@ -1,7 +1,7 @@
 import { Skeleton } from "@/shared/ui/skeleton";
 import { Surface } from "@/shared/ui/surface";
 
-export default function SnapshotLoading() {
+export default function RankingLoading() {
   return (
     <div className="bg-background text-foreground">
       <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-8 px-4 pb-16 pt-24 md:px-8">
@@ -18,7 +18,7 @@ export default function SnapshotLoading() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 10 }, (_, index) => (
             <Surface
-              key={`snapshot-loading-card-${index + 1}`}
+              key={`ranking-loading-card-${index + 1}`}
               className="space-y-3 p-4"
               radius="2xl"
               tone="cardMuted"

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
-import { SnapshotTopList } from "./snapshot-top-list";
+import { RankingChampion } from "./ranking-champion";
 
 vi.mock("next/link", () => ({
   default: ({ href, onClick, children, ...props }: Record<string, unknown>) => (
@@ -26,42 +26,40 @@ vi.mock("@/shared/analytics/track-event", () => ({
   trackEvent: vi.fn(),
 }));
 
-describe("SnapshotTopList", () => {
+describe("RankingChampion", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("tracks item click with dayKey and rank", () => {
+  it("tracks champion click with rank payload", () => {
     render(
-      <SnapshotTopList
+      <RankingChampion
         dayKey="2026-02-12"
-        items={[
-          {
-            rank: 2,
-            dishId: "dish-2",
-            dishName: "Runner Up",
-            authorName: "Chef_02",
-            imageUrl: "https://example.com/dish-2.jpg",
-            score: 9.2,
-            leftImageUrl: "https://example.com/left.jpg",
-            rightImageUrl: "https://example.com/right.jpg",
-            leftScore: 9.2,
-            rightScore: 8.7,
-          },
-        ]}
+        entry={{
+          rank: 1,
+          dishId: "dish-1",
+          dishName: "Champion Dish",
+          authorName: "Chef_01",
+          imageUrl: "https://example.com/champion.jpg",
+          score: 9.9,
+          leftImageUrl: "https://example.com/left.jpg",
+          rightImageUrl: "https://example.com/right.jpg",
+          leftScore: 9.9,
+          rightScore: 9.6,
+        }}
       />,
     );
 
-    fireEvent.click(screen.getByRole("link", { name: "상세 보기" }));
+    fireEvent.click(screen.getByRole("link", { name: "View Analysis" }));
 
     expect(trackEvent).toHaveBeenCalledWith(
-      ANALYTICS_EVENTS.SNAPSHOT_ITEM_CLICKED,
+      ANALYTICS_EVENTS.RANKING_ITEM_CLICKED,
       expect.objectContaining({
-        screen: "snapshot",
-        section: "top_list",
+        screen: "ranking",
+        section: "champion",
         dayKey: "2026-02-12",
-        rank: 2,
-        dishId: "dish-2",
+        rank: 1,
+        dishId: "dish-1",
       }),
     );
   });

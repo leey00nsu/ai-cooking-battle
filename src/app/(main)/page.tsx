@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import type { MatchFeed } from "@/entities/match/model/types";
+import type { RankingTop } from "@/entities/ranking/model/types";
 import type { SlotSummary } from "@/entities/slot/model/types";
-import type { SnapshotTop } from "@/entities/snapshot/model/types";
 import type { Theme } from "@/entities/theme/model/types";
 import HomeScreen from "@/screens/home/ui/home-screen";
 
@@ -11,7 +11,7 @@ type PublicSlotResponse = Pick<
   SlotSummary,
   "freeLimit" | "freeUsedCount" | "adLimit" | "adUsedCount"
 >;
-type SnapshotResponse = SnapshotTop;
+type RankingResponse = RankingTop;
 type FeedResponse = MatchFeed;
 type MeResponse = {
   status: "GUEST" | "AUTH" | "ELIGIBLE" | "LIMITED";
@@ -19,7 +19,7 @@ type MeResponse = {
 
 const HOME_MATCH_FEED_LIMIT = 8;
 const HOME_MATCH_FEED_API_PATH = `/api/home/matches?limit=${HOME_MATCH_FEED_LIMIT}`;
-const HOME_SNAPSHOT_LIMIT = 4;
+const HOME_RANKING_LIMIT = 4;
 
 type FetchResult<T> = {
   data: T | null;
@@ -71,8 +71,8 @@ export default async function Home() {
   ]);
 
   const dayKey = themeResult.data?.dayKey;
-  const snapshotResult = dayKey
-    ? await getJson<SnapshotResponse>(`/api/snapshot/${dayKey}?count=${HOME_SNAPSHOT_LIMIT}`)
+  const rankingResult = dayKey
+    ? await getJson<RankingResponse>(`/api/ranking/${dayKey}?count=${HOME_RANKING_LIMIT}`)
     : { data: null, error: false, status: null };
 
   const userStatus = meResult.data?.status ?? "GUEST";
@@ -100,13 +100,13 @@ export default async function Home() {
     <HomeScreen
       theme={themeResult.data}
       slotSummary={slotSummary}
-      snapshotTop={snapshotResult.data}
+      rankingTop={rankingResult.data}
       matchFeed={feedResult.data}
       userStatus={userStatus}
       isRestricted={isRestricted}
       isThemeError={themeResult.error}
       isSlotError={isSlotError}
-      isSnapshotError={snapshotResult.error}
+      isRankingError={rankingResult.error}
       isMatchError={feedResult.error}
     />
   );

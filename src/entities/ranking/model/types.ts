@@ -1,4 +1,4 @@
-export type SnapshotEntry = {
+export type RankingEntry = {
   rank: number;
   dishId: string;
   dishName: string;
@@ -11,7 +11,7 @@ export type SnapshotEntry = {
   rightScore: number;
 };
 
-export type SnapshotTop = {
+export type RankingTop = {
   dayKey: string;
-  items: SnapshotEntry[];
+  items: RankingEntry[];
 };

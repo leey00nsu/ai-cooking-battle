@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import SnapshotScreen from "./snapshot-screen";
+import RankingScreen from "./ranking-screen";
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: Record<string, unknown>) => (
@@ -11,17 +11,17 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("./snapshot-analytics", () => ({
+vi.mock("./ranking-analytics", () => ({
   default: () => null,
 }));
 
-describe("SnapshotScreen", () => {
+describe("RankingScreen", () => {
   it("renders detail links with /dishes/:id in ready state", () => {
     render(
-      <SnapshotScreen
+      <RankingScreen
         dayKey="2026-02-11"
         status="ready"
-        snapshotTop={{
+        rankingTop={{
           dayKey: "2026-02-11",
           items: [
             {
@@ -64,14 +64,14 @@ describe("SnapshotScreen", () => {
   });
 
   it("renders empty state message", () => {
-    render(<SnapshotScreen dayKey="2026-02-11" status="empty" snapshotTop={null} />);
+    render(<RankingScreen dayKey="2026-02-11" status="empty" rankingTop={null} />);
 
-    expect(screen.getByText("해당 날짜의 스냅샷이 없습니다")).toBeInTheDocument();
+    expect(screen.getByText("해당 날짜의 랭킹이 없습니다")).toBeInTheDocument();
   });
 
   it("renders error state message", () => {
-    render(<SnapshotScreen dayKey="2026-02-11" status="error" snapshotTop={null} />);
+    render(<RankingScreen dayKey="2026-02-11" status="error" rankingTop={null} />);
 
-    expect(screen.getByText("스냅샷을 불러오지 못했습니다")).toBeInTheDocument();
+    expect(screen.getByText("오늘의 랭킹을 불러오지 못했습니다")).toBeInTheDocument();
   });
 });

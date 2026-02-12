@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
-import type { SnapshotTop } from "@/entities/snapshot/model/types";
-import SnapshotScreen from "@/screens/snapshot/ui/snapshot-screen";
+import type { RankingTop } from "@/entities/ranking/model/types";
+import RankingScreen from "@/screens/ranking/ui/ranking-screen";
 
 type MeResponse = {
   status: "GUEST" | "AUTH" | "ELIGIBLE" | "LIMITED";
@@ -12,7 +12,7 @@ type FetchResult<T> = {
   status: number | null;
 };
 
-const SNAPSHOT_PAGE_COUNT = 10;
+const RANKING_PAGE_COUNT = 10;
 const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 async function getBaseUrl() {
@@ -47,34 +47,34 @@ async function getJson<T>(path: string): Promise<FetchResult<T>> {
   }
 }
 
-type SnapshotPageProps = {
+type RankingPageProps = {
   params: Promise<{ dayKey: string }> | { dayKey: string };
 };
 
-export default async function SnapshotPage({ params }: SnapshotPageProps) {
+export default async function RankingPage({ params }: RankingPageProps) {
   const resolvedParams = params instanceof Promise ? await params : params;
   const dayKey = resolvedParams.dayKey?.toString().trim() ?? "";
   if (!DAY_KEY_PATTERN.test(dayKey)) {
-    return <SnapshotScreen dayKey={dayKey} status="error" snapshotTop={null} />;
+    return <RankingScreen dayKey={dayKey} status="error" rankingTop={null} />;
   }
 
   const meResult = await getJson<MeResponse>("/api/me");
   const userStatus = meResult.data?.status ?? "GUEST";
   const isRestricted = userStatus === "LIMITED";
   if (isRestricted) {
-    return <SnapshotScreen dayKey={dayKey} status="restricted" snapshotTop={null} />;
+    return <RankingScreen dayKey={dayKey} status="restricted" rankingTop={null} />;
   }
 
-  const snapshotResult = await getJson<SnapshotTop>(
-    `/api/snapshot/${encodeURIComponent(dayKey)}?count=${SNAPSHOT_PAGE_COUNT}`,
+  const rankingResult = await getJson<RankingTop>(
+    `/api/ranking/${encodeURIComponent(dayKey)}?count=${RANKING_PAGE_COUNT}`,
   );
-  if (snapshotResult.error) {
-    return <SnapshotScreen dayKey={dayKey} status="error" snapshotTop={null} />;
+  if (rankingResult.error) {
+    return <RankingScreen dayKey={dayKey} status="error" rankingTop={null} />;
   }
 
-  if (!snapshotResult.data || snapshotResult.data.items.length === 0) {
-    return <SnapshotScreen dayKey={dayKey} status="empty" snapshotTop={snapshotResult.data} />;
+  if (!rankingResult.data || rankingResult.data.items.length === 0) {
+    return <RankingScreen dayKey={dayKey} status="empty" rankingTop={rankingResult.data} />;
   }
 
-  return <SnapshotScreen dayKey={dayKey} status="ready" snapshotTop={snapshotResult.data} />;
+  return <RankingScreen dayKey={dayKey} status="ready" rankingTop={rankingResult.data} />;
 }

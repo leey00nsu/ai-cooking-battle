@@ -1,18 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import type { SnapshotEntry } from "@/entities/snapshot/model/types";
+import type { RankingEntry } from "@/entities/ranking/model/types";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
 import { Button } from "@/shared/ui/button";
 import { Surface } from "@/shared/ui/surface";
 
-type SnapshotChampionProps = {
+type RankingChampionProps = {
   dayKey: string;
-  entry: SnapshotEntry;
+  entry: RankingEntry;
 };
 
-export function SnapshotChampion({ dayKey, entry }: SnapshotChampionProps) {
+export function RankingChampion({ dayKey, entry }: RankingChampionProps) {
   return (
     <Surface
       className="relative overflow-hidden p-0"
@@ -22,7 +22,7 @@ export function SnapshotChampion({ dayKey, entry }: SnapshotChampionProps) {
     >
       <div className="relative h-[300px] w-full md:h-[420px]">
         <img
-          alt={`snapshot-champion-${entry.dishName}`}
+          alt={`ranking-champion-${entry.dishName}`}
           className="h-full w-full object-cover"
           src={entry.imageUrl}
         />
@@ -39,8 +39,8 @@ export function SnapshotChampion({ dayKey, entry }: SnapshotChampionProps) {
               <Link
                 href={`/dishes/${entry.dishId}`}
                 onClick={() =>
-                  trackEvent(ANALYTICS_EVENTS.SNAPSHOT_ITEM_CLICKED, {
-                    screen: "snapshot",
+                  trackEvent(ANALYTICS_EVENTS.RANKING_ITEM_CLICKED, {
+                    screen: "ranking",
                     section: "champion",
                     dayKey,
                     rank: entry.rank,

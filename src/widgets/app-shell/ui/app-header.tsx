@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 
-type NavKey = "home" | "create" | "feed" | "ladder" | "my";
+type NavKey = "home" | "create" | "feed" | "ranking" | "my";
 
 type AppHeaderProps = {
   userType: "guest" | "auth";
@@ -22,7 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "home", label: "Home", href: "/" },
   { key: "create", label: "Create", href: "/create" },
   { key: "feed", label: "Feed", href: "/feed" },
-  { key: "ladder", label: "Ladder", href: "/ladder" },
+  { key: "ranking", label: "Ranking", href: "/ranking" },
   { key: "my", label: "My Kitchen", href: "/my" },
 ];
 
@@ -97,8 +97,8 @@ function resolveActiveFromPath(pathname: string | null): NavKey {
   if (pathname.startsWith("/feed")) {
     return "feed";
   }
-  if (pathname.startsWith("/ladder")) {
-    return "ladder";
+  if (pathname.startsWith("/ranking")) {
+    return "ranking";
   }
   if (pathname.startsWith("/my")) {
     return "my";
