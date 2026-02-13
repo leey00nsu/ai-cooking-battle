@@ -1,4 +1,4 @@
-import type { RankingArchiveResponse, RankingEntry } from "@/entities/ranking/model/types";
+import type { RankingArchiveEntry, RankingArchiveResponse } from "@/entities/ranking/model/types";
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_LIMIT = 12;
@@ -42,7 +42,7 @@ function toSafeSearch(search: string | null | undefined) {
   return trimmed ? trimmed : null;
 }
 
-function toRankingEntry(row: {
+function toRankingArchiveEntry(row: {
   dishId: string;
   totalScore: number;
   dish: {
@@ -51,7 +51,7 @@ function toRankingEntry(row: {
     user: { name: string };
     botMeta: { persona: { displayName: string } } | null;
   };
-}): Omit<RankingEntry, "rank"> {
+}): Omit<RankingArchiveEntry, "rank"> {
   const score = row.totalScore;
   const imageUrl = row.dish.imageUrl;
 
@@ -61,10 +61,6 @@ function toRankingEntry(row: {
     authorName: row.dish.botMeta?.persona.displayName || row.dish.user.name || AUTHOR_FALLBACK,
     imageUrl,
     score,
-    leftImageUrl: imageUrl,
-    rightImageUrl: imageUrl,
-    leftScore: score,
-    rightScore: score,
   };
 }
 
@@ -256,7 +252,7 @@ export async function listRankingArchive(args: {
   const visibleRows = hasMore ? rows.slice(0, limit) : rows;
   const items = visibleRows.map((row, index) => ({
     rank: globalRankByDishId?.get(row.dishId) ?? offset + index + 1,
-    ...toRankingEntry(row),
+    ...toRankingArchiveEntry(row),
   }));
 
   return {

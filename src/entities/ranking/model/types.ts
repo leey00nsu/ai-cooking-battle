@@ -11,6 +11,11 @@ export type RankingEntry = {
   rightScore: number;
 };
 
+export type RankingArchiveEntry = Omit<
+  RankingEntry,
+  "leftImageUrl" | "rightImageUrl" | "leftScore" | "rightScore"
+>;
+
 export type RankingTop = {
   dayKey: string;
   items: RankingEntry[];
@@ -27,6 +32,6 @@ export type RankingArchiveResponse = {
   participantCount: number;
   averageScore: number;
   keywordGroups: RankingKeywordGroup[];
-  items: RankingEntry[];
+  items: RankingArchiveEntry[];
   nextOffset: number | null;
 };

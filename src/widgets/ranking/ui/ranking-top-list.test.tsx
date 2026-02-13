@@ -46,10 +46,6 @@ describe("RankingTopList", () => {
             authorName: "Chef_02",
             imageUrl: "https://example.com/dish-2.jpg",
             score: 9.2,
-            leftImageUrl: "https://example.com/left.jpg",
-            rightImageUrl: "https://example.com/right.jpg",
-            leftScore: 9.2,
-            rightScore: 8.7,
           },
         ]}
       />,

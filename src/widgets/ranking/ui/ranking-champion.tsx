@@ -2,7 +2,7 @@
 
 import { Trophy } from "lucide-react";
 import Link from "next/link";
-import type { RankingEntry } from "@/entities/ranking/model/types";
+import type { RankingArchiveEntry } from "@/entities/ranking/model/types";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
@@ -11,7 +11,7 @@ import { Surface } from "@/shared/ui/surface";
 
 type RankingChampionProps = {
   dayKey: string;
-  entry: RankingEntry;
+  entry: RankingArchiveEntry;
 };
 
 export function RankingChampion({ dayKey, entry }: RankingChampionProps) {

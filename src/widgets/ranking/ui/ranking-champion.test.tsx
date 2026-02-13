@@ -42,10 +42,6 @@ describe("RankingChampion", () => {
           authorName: "Chef_01",
           imageUrl: "https://example.com/champion.jpg",
           score: 9.9,
-          leftImageUrl: "https://example.com/left.jpg",
-          rightImageUrl: "https://example.com/right.jpg",
-          leftScore: 9.9,
-          rightScore: 9.6,
         }}
       />,
     );
