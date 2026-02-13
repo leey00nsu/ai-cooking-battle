@@ -35,6 +35,9 @@ describe("RankingTopList", () => {
     render(
       <RankingTopList
         dayKey="2026-02-12"
+        hasMore={false}
+        isLoadingMore={false}
+        loadMoreRef={() => {}}
         items={[
           {
             rank: 2,
@@ -52,7 +55,7 @@ describe("RankingTopList", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("link", { name: "상세 보기" }));
+    fireEvent.click(screen.getByRole("link", { name: "View Dish" }));
 
     expect(trackEvent).toHaveBeenCalledWith(
       ANALYTICS_EVENTS.RANKING_ITEM_CLICKED,

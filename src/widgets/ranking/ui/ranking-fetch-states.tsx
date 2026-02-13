@@ -20,8 +20,8 @@ export function RankingRestrictedState() {
 export function RankingErrorState() {
   return (
     <ErrorState
-      title="오늘의 랭킹을 불러오지 못했습니다"
-      description="잠시 후 다시 시도해주세요."
+      title="랭킹 데이터를 불러오지 못했습니다"
+      description="잠시 후 다시 시도하거나 다른 날짜를 선택해주세요."
       action={
         <Link className="text-sm font-semibold text-white underline underline-offset-4" href="/">
           홈으로 이동
@@ -35,7 +35,7 @@ export function RankingEmptyState() {
   return (
     <EmptyState
       title="해당 날짜의 랭킹이 없습니다"
-      description="다른 날짜를 선택하거나 잠시 후 다시 확인해주세요."
+      description="캘린더에서 다른 날짜를 선택해 확인해주세요."
       action={
         <Link className="text-sm font-semibold text-white underline underline-offset-4" href="/">
           홈으로 이동

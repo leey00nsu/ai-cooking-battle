@@ -20,15 +20,19 @@ describe("Ranking page SSR fetch logic", () => {
     delete process.env.NEXT_PUBLIC_APP_URL;
   });
 
-  it("renders ready status and requests ranking with count=10", async () => {
+  it("renders ready status and requests ranking archive payload", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith("/api/me")) {
         return new Response(JSON.stringify({ status: "GUEST" }), { status: 200 });
       }
-      if (url.includes("/api/ranking/2026-02-11?count=10")) {
+      if (url.includes("/api/ranking/2026-02-11?view=archive&limit=12")) {
         return new Response(
           JSON.stringify({
             dayKey: "2026-02-11",
+            themeText: "비 오는 날에 어울리는 버터 마늘 풍미의 음식",
+            participantCount: 42,
+            averageScore: 84.5,
+            keywordGroups: [],
             items: [
               {
                 rank: 1,
@@ -43,6 +47,7 @@ describe("Ranking page SSR fetch logic", () => {
                 rightScore: 9.5,
               },
             ],
+            nextOffset: null,
           }),
           { status: 200 },
         );
@@ -57,7 +62,7 @@ describe("Ranking page SSR fetch logic", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringMatching(/\/api\/ranking\/2026-02-11\?count=10$/),
+      expect.stringMatching(/\/api\/ranking\/2026-02-11\?view=archive&limit=12$/),
       expect.any(Object),
     );
     expect(element).toMatchObject({
@@ -73,11 +78,16 @@ describe("Ranking page SSR fetch logic", () => {
       if (url.endsWith("/api/me")) {
         return new Response(JSON.stringify({ status: "AUTH" }), { status: 200 });
       }
-      if (url.includes("/api/ranking/2026-02-11?count=10")) {
+      if (url.includes("/api/ranking/2026-02-11?view=archive&limit=12")) {
         return new Response(
           JSON.stringify({
             dayKey: "2026-02-11",
+            themeText: "",
+            participantCount: 0,
+            averageScore: 0,
+            keywordGroups: [],
             items: [],
+            nextOffset: null,
           }),
           { status: 200 },
         );
@@ -104,7 +114,7 @@ describe("Ranking page SSR fetch logic", () => {
       if (url.endsWith("/api/me")) {
         return new Response(JSON.stringify({ status: "GUEST" }), { status: 200 });
       }
-      if (url.includes("/api/ranking/2026-02-11?count=10")) {
+      if (url.includes("/api/ranking/2026-02-11?view=archive&limit=12")) {
         return new Response(JSON.stringify({ ok: false }), { status: 500 });
       }
       return new Response(null, { status: 404 });

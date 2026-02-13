@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import RankingScreen from "./ranking-screen";
 
 vi.mock("next/link", () => ({
@@ -15,14 +15,41 @@ vi.mock("./ranking-analytics", () => ({
   default: () => null,
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
+
+beforeAll(() => {
+  vi.stubGlobal(
+    "IntersectionObserver",
+    class {
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    },
+  );
+});
+
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
+
 describe("RankingScreen", () => {
   it("renders detail links with /dishes/:id in ready state", () => {
     render(
       <RankingScreen
         dayKey="2026-02-11"
         status="ready"
-        rankingTop={{
+        initialData={{
           dayKey: "2026-02-11",
+          themeText: "비 오는 날에 어울리는 매콤한 국물 음식",
+          participantCount: 4,
+          averageScore: 87.3,
+          keywordGroups: [],
           items: [
             {
               rank: 1,
@@ -49,6 +76,7 @@ describe("RankingScreen", () => {
               rightScore: 9.1,
             },
           ],
+          nextOffset: null,
         }}
       />,
     );
@@ -57,21 +85,82 @@ describe("RankingScreen", () => {
       "href",
       "/dishes/dish-1",
     );
-    expect(screen.getByRole("link", { name: "상세 보기" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "View Dish" })).toHaveAttribute(
       "href",
       "/dishes/dish-2",
     );
+    expect(screen.getByRole("button", { name: "View Full Calendar" })).toBeInTheDocument();
+    expect(screen.getByText("주제:")).toBeInTheDocument();
+    expect(screen.getByText("Calendar")).toBeInTheDocument();
+    expect(screen.getByText("Winning Keywords")).toBeInTheDocument();
   });
 
   it("renders empty state message", () => {
-    render(<RankingScreen dayKey="2026-02-11" status="empty" rankingTop={null} />);
+    render(<RankingScreen dayKey="2026-02-11" status="empty" initialData={null} />);
 
     expect(screen.getByText("해당 날짜의 랭킹이 없습니다")).toBeInTheDocument();
   });
 
   it("renders error state message", () => {
-    render(<RankingScreen dayKey="2026-02-11" status="error" rankingTop={null} />);
+    render(<RankingScreen dayKey="2026-02-11" status="error" initialData={null} />);
 
-    expect(screen.getByText("오늘의 랭킹을 불러오지 못했습니다")).toBeInTheDocument();
+    expect(screen.getByText("랭킹 데이터를 불러오지 못했습니다")).toBeInTheDocument();
+  });
+
+  it("renders empty state when search result is empty", async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          dayKey: "2026-02-11",
+          themeText: "비 오는 날에 어울리는 매콤한 국물 음식",
+          participantCount: 0,
+          averageScore: 0,
+          keywordGroups: [],
+          items: [],
+          nextOffset: null,
+        }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+
+    render(
+      <RankingScreen
+        dayKey="2026-02-11"
+        status="ready"
+        initialData={{
+          dayKey: "2026-02-11",
+          themeText: "비 오는 날에 어울리는 매콤한 국물 음식",
+          participantCount: 2,
+          averageScore: 88,
+          keywordGroups: [],
+          items: [
+            {
+              rank: 1,
+              dishId: "dish-1",
+              dishName: "Champion Dish",
+              authorName: "Chef_01",
+              imageUrl: "https://example.com/dish-1.jpg",
+              score: 9.9,
+              leftImageUrl: "https://example.com/left-1.jpg",
+              rightImageUrl: "https://example.com/right-1.jpg",
+              leftScore: 9.9,
+              rightScore: 9.5,
+            },
+          ],
+          nextOffset: null,
+        }}
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("요리명 검색"), { target: { value: "없는요리" } });
+
+    await waitFor(
+      () => {
+        expect(screen.getByText("검색 결과가 없습니다")).toBeInTheDocument();
+      },
+      { timeout: 2000 },
+    );
+    expect(screen.getByRole("button", { name: "검색 초기화" })).toBeInTheDocument();
   });
 });
