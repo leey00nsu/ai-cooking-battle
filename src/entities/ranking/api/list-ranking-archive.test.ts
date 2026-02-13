@@ -96,4 +96,46 @@ describe("listRankingArchive", () => {
     });
     expect(prisma.dayTheme.findUnique).not.toHaveBeenCalled();
   });
+
+  it("preserves global rank when search filter is applied", async () => {
+    prisma.dayTheme.findUnique.mockResolvedValueOnce({
+      themeText: "주말 아침에 어울리는 상큼한 샐러드 음식",
+      axisA: "주말 아침",
+      axisB: "샐러드",
+      axisFlavor: "상큼한",
+    });
+    prisma.dishDayScore.aggregate.mockResolvedValueOnce({
+      _count: { _all: 3 },
+      _avg: { totalScore: 90.1 },
+    });
+    prisma.dishDayScore.findMany
+      .mockResolvedValueOnce([
+        {
+          dishId: "dish-2",
+          totalScore: 91.2,
+          dish: {
+            dishName: "유자 해산물 샐러드",
+            imageUrl: "https://cdn.example/dish-2.webp",
+            user: { name: "Chef B" },
+            botMeta: null,
+          },
+        },
+      ])
+      .mockResolvedValueOnce([{ dish: { dishName: "유자 해산물 샐러드" } }])
+      .mockResolvedValueOnce([{ dishId: "dish-1" }, { dishId: "dish-2" }, { dishId: "dish-3" }]);
+
+    const { listRankingArchive } = await import("./list-ranking-archive");
+    const result = await listRankingArchive({
+      dayKey: "2026-02-12",
+      limit: 12,
+      offset: 0,
+      search: "유자",
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      dishId: "dish-2",
+      rank: 2,
+    });
+  });
 });

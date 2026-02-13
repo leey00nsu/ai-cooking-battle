@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, Eye, Trophy } from "lucide-react";
+import Link from "next/link";
 import type { RankingEntry, RankingTop } from "@/entities/ranking/model/types";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
@@ -33,13 +34,13 @@ function HighlightsHeader({ dayKey }: { dayKey?: string }) {
         </Badge>
         <h2 className="text-2xl font-bold leading-tight text-white">오늘의 랭킹 — Top Rated</h2>
       </div>
-      <a
+      <Link
         className="flex items-center gap-1 text-sm font-medium text-white/60 transition hover:text-primary"
         href={href}
       >
         View Ranking
         <ArrowRight aria-hidden className="h-4 w-4" />
-      </a>
+      </Link>
     </div>
   );
 }
@@ -59,7 +60,7 @@ function HighlightCard({
   const title = `랭킹 #${entry.rank} 대결`;
 
   return (
-    <a
+    <Link
       className="group rounded-[2rem] border border-white/5 bg-card/90 p-4 shadow-lg transition hover:border-primary/40 hover:shadow-xl"
       href={`/ranking/${dayKey}`}
       onClick={onClick}
@@ -114,7 +115,7 @@ function HighlightCard({
           <Eye aria-hidden className="h-4 w-4" />
         </span>
       </div>
-    </a>
+    </Link>
   );
 }
 
@@ -161,7 +162,7 @@ export default function Highlights({ rankingTop, isError, isRestricted }: Highli
       <div className="grid gap-6 md:grid-cols-2">
         {rankingTop.items.map((entry) => {
           const handleClick = () => {
-            trackEvent(ANALYTICS_EVENTS.MATCH_VIEW, {
+            trackEvent(ANALYTICS_EVENTS.RANKING_ITEM_CLICKED, {
               screen: "home",
               dayKey: rankingTop.dayKey,
               rank: entry.rank,

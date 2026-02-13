@@ -135,7 +135,7 @@ export async function listRankingArchive(args: {
   offset?: number;
   search?: string | null;
 }): Promise<RankingArchiveResponse> {
-  const dayKey = args.dayKey.toString().trim();
+  const dayKey = args.dayKey.trim();
   const limit = toSafeLimit(args.limit);
   const offset = toSafeOffset(args.offset);
   const search = toSafeSearch(args.search);
@@ -152,7 +152,7 @@ export async function listRankingArchive(args: {
     };
   }
 
-  const [theme, aggregate, rows, keywordRows] = await Promise.all([
+  const [theme, aggregate, rows, keywordRows, allRankRows] = await Promise.all([
     prisma.dayTheme.findUnique({
       where: { dayKey },
       select: {
@@ -232,12 +232,30 @@ export async function listRankingArchive(args: {
         },
       },
     }),
+    search
+      ? prisma.dishDayScore.findMany({
+          where: {
+            dayKey,
+            status: "READY",
+            dish: {
+              isHidden: false,
+            },
+          },
+          orderBy: [{ totalScore: "desc" }, { analyzedAt: "desc" }, { id: "desc" }],
+          select: {
+            dishId: true,
+          },
+        })
+      : Promise.resolve(null),
   ]);
 
+  const globalRankByDishId = allRankRows
+    ? new Map(allRankRows.map((row, index) => [row.dishId, index + 1]))
+    : null;
   const hasMore = rows.length > limit;
   const visibleRows = hasMore ? rows.slice(0, limit) : rows;
   const items = visibleRows.map((row, index) => ({
-    rank: offset + index + 1,
+    rank: globalRankByDishId?.get(row.dishId) ?? offset + index + 1,
     ...toRankingEntry(row),
   }));
 
@@ -248,7 +266,7 @@ export async function listRankingArchive(args: {
     averageScore: aggregate._avg.totalScore ?? 0,
     keywordGroups: buildKeywordGroups({
       theme:
-        theme && theme.axisA && theme.axisB && theme.axisFlavor
+        theme?.axisA && theme.axisB && theme.axisFlavor
           ? {
               axisA: theme.axisA,
               axisB: theme.axisB,
