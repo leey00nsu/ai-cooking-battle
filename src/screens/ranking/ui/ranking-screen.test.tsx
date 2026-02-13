@@ -1,6 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import RankingScreen from "./ranking-screen";
 
 vi.mock("next/link", () => ({
@@ -21,7 +22,18 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-beforeAll(() => {
+function renderWithQueryClient(ui: ReactNode) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
+
+beforeEach(() => {
   vi.stubGlobal(
     "IntersectionObserver",
     class {
@@ -40,7 +52,7 @@ afterEach(() => {
 
 describe("RankingScreen", () => {
   it("renders detail links with /dishes/:id in ready state", () => {
-    render(
+    renderWithQueryClient(
       <RankingScreen
         dayKey="2026-02-11"
         status="ready"
@@ -96,13 +108,13 @@ describe("RankingScreen", () => {
   });
 
   it("renders empty state message", () => {
-    render(<RankingScreen dayKey="2026-02-11" status="empty" initialData={null} />);
+    renderWithQueryClient(<RankingScreen dayKey="2026-02-11" status="empty" initialData={null} />);
 
     expect(screen.getByText("해당 날짜의 랭킹이 없습니다")).toBeInTheDocument();
   });
 
   it("renders error state message", () => {
-    render(<RankingScreen dayKey="2026-02-11" status="error" initialData={null} />);
+    renderWithQueryClient(<RankingScreen dayKey="2026-02-11" status="error" initialData={null} />);
 
     expect(screen.getByText("랭킹 데이터를 불러오지 못했습니다")).toBeInTheDocument();
   });
@@ -124,7 +136,7 @@ describe("RankingScreen", () => {
     });
     vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
 
-    render(
+    renderWithQueryClient(
       <RankingScreen
         dayKey="2026-02-11"
         status="ready"

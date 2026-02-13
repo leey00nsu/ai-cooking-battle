@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useState } from "react";
 import type { RankingArchiveResponse } from "@/entities/ranking/model/types";
+import { useRankingArchiveQuery } from "@/features/ranking/archive/model/use-ranking-archive-query";
+import { useIntersection } from "@/shared/lib/hooks/use-intersection";
 import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { RankingChampion } from "@/widgets/ranking/ui/ranking-champion";
@@ -26,153 +28,53 @@ type RankingScreenProps = {
 };
 
 const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const RANKING_ARCHIVE_LIMIT = 12;
-const SEARCH_DEBOUNCE_MS = 350;
-
-async function fetchRankingArchive(args: {
-  dayKey: string;
-  search: string;
-  offset: number;
-  signal?: AbortSignal;
-}) {
-  const query = new URLSearchParams({
-    view: "archive",
-    limit: String(RANKING_ARCHIVE_LIMIT),
-    offset: String(args.offset),
-  });
-  if (args.search) {
-    query.set("search", args.search);
-  }
-
-  const response = await fetch(`/api/ranking/${encodeURIComponent(args.dayKey)}?${query}`, {
-    cache: "no-store",
-    signal: args.signal,
-  });
-
-  if (!response.ok) {
-    throw new Error("RANKING_FETCH_FAILED");
-  }
-
-  return (await response.json()) as RankingArchiveResponse;
-}
 
 export default function RankingScreen({ dayKey, initialData, status }: RankingScreenProps) {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [data, setData] = useState<RankingArchiveResponse | null>(initialData);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [streamError, setStreamError] = useState(false);
-  const bootstrappedRef = useRef(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const search = useDeferredValue(searchInput.trim());
+  const canQuery =
+    status !== "restricted" && status !== "error" && (status === "ready" || search.length > 0);
 
-  const hasMore = (data?.nextOffset ?? null) !== null;
-  const items = data?.items ?? [];
+  const {
+    data: queryData,
+    hasNextPage: hasMore = false,
+    isFetching,
+    isFetchingNextPage: isLoadingMore,
+    isPending: isPendingQuery,
+    isError: streamError,
+    fetchNextPage,
+  } = useRankingArchiveQuery({
+    dayKey,
+    search,
+    initialData,
+    enabled: canQuery,
+  });
+
+  const mergedData = queryData
+    ? {
+        ...queryData.pages[queryData.pages.length - 1],
+        items: queryData.pages.flatMap((page) => page.items),
+      }
+    : null;
+
+  const isRefreshing = isFetching && !isLoadingMore;
+  const isQueryPending = canQuery && isPendingQuery;
+
+  const setLoadMoreTarget = useIntersection<HTMLDivElement>({
+    enabled: hasMore && !isLoadingMore,
+    rootMargin: "280px",
+    onIntersect: () => {
+      void fetchNextPage();
+    },
+  });
+
+  const items = mergedData?.items ?? [];
   const champion = items[0] ?? null;
   const runnersUp = items.slice(1);
-  const resolvedThemeText = data?.themeText?.trim() || "오늘의 주제";
-  const participantCount = data?.participantCount ?? 0;
-  const averageScore = data?.averageScore ?? 0;
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setSearch(searchInput.trim());
-    }, SEARCH_DEBOUNCE_MS);
-    return () => window.clearTimeout(timer);
-  }, [searchInput]);
-
-  useEffect(() => {
-    if (!bootstrappedRef.current) {
-      bootstrappedRef.current = true;
-      return;
-    }
-
-    const controller = new AbortController();
-    setIsRefreshing(true);
-    setStreamError(false);
-
-    fetchRankingArchive({ dayKey, search, offset: 0, signal: controller.signal })
-      .then((nextData) => {
-        setData(nextData);
-      })
-      .catch((error) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        console.error("[ranking] failed to refresh archive", error);
-        setStreamError(true);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setIsRefreshing(false);
-        }
-      });
-
-    return () => controller.abort();
-  }, [dayKey, search]);
-
-  const loadMore = useCallback(async () => {
-    if (!data || data.nextOffset === null || isLoadingMore || isRefreshing) {
-      return;
-    }
-
-    setIsLoadingMore(true);
-    setStreamError(false);
-    try {
-      const nextPage = await fetchRankingArchive({
-        dayKey,
-        search,
-        offset: data.nextOffset,
-      });
-
-      setData((previous) => {
-        if (!previous) {
-          return nextPage;
-        }
-        const knownDishIds = new Set(previous.items.map((item) => item.dishId));
-        const appendedItems = nextPage.items.filter((item) => !knownDishIds.has(item.dishId));
-        return {
-          ...nextPage,
-          items: [...previous.items, ...appendedItems],
-        };
-      });
-    } catch (error) {
-      console.error("[ranking] failed to fetch next page", error);
-      setStreamError(true);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [data, dayKey, isLoadingMore, isRefreshing, search]);
-
-  const handleLoadMoreRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-      if (!node || !hasMore) {
-        return;
-      }
-      observerRef.current = new IntersectionObserver(
-        (entries) => {
-          const first = entries[0];
-          if (first?.isIntersecting) {
-            void loadMore();
-          }
-        },
-        { rootMargin: "280px" },
-      );
-      observerRef.current.observe(node);
-    },
-    [hasMore, loadMore],
-  );
-
-  useEffect(
-    () => () => {
-      observerRef.current?.disconnect();
-    },
-    [],
-  );
+  const resolvedThemeText = mergedData?.themeText?.trim() || "오늘의 주제";
+  const participantCount = mergedData?.participantCount ?? 0;
+  const averageScore = mergedData?.averageScore ?? 0;
 
   const handleDayKeyChange = (nextDayKey: string) => {
     const normalized = nextDayKey.trim();
@@ -183,20 +85,18 @@ export default function RankingScreen({ dayKey, initialData, status }: RankingSc
   };
 
   const isSearchEmptyState =
-    status === "ready" && search.length > 0 && !isRefreshing && items.length === 0;
+    canQuery && search.length > 0 && !isRefreshing && !isQueryPending && items.length === 0;
 
   const isGenericEmptyState =
-    !isRefreshing && items.length === 0 && (status === "empty" || (status === "ready" && !search));
+    status !== "restricted" &&
+    status !== "error" &&
+    !isRefreshing &&
+    !isQueryPending &&
+    items.length === 0 &&
+    (status === "empty" || search.length === 0);
 
-  const shouldShowFetchStates = useMemo(() => {
-    if (status === "restricted" || status === "error") {
-      return true;
-    }
-    if (isGenericEmptyState || isSearchEmptyState) {
-      return true;
-    }
-    return false;
-  }, [isGenericEmptyState, isSearchEmptyState, status]);
+  const shouldShowFetchStates =
+    status === "restricted" || status === "error" || isGenericEmptyState || isSearchEmptyState;
 
   return (
     <div className="bg-background text-foreground">
@@ -234,7 +134,6 @@ export default function RankingScreen({ dayKey, initialData, status }: RankingSc
                     variant="outline"
                     onClick={() => {
                       setSearchInput("");
-                      setSearch("");
                     }}
                   >
                     검색 초기화
@@ -258,11 +157,11 @@ export default function RankingScreen({ dayKey, initialData, status }: RankingSc
                 items={runnersUp}
                 hasMore={hasMore}
                 isLoadingMore={isLoadingMore}
-                loadMoreRef={handleLoadMoreRef}
+                loadMoreRef={setLoadMoreTarget}
               />
             </div>
             <div className="lg:col-span-3">
-              <RankingKeywordsPanel groups={data?.keywordGroups ?? []} />
+              <RankingKeywordsPanel groups={mergedData?.keywordGroups ?? []} />
             </div>
           </div>
         )}
