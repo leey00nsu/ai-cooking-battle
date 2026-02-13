@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 const DEFAULT_LIMIT = 12;
 const MAX_LIMIT = 24;
 const AUTHOR_FALLBACK = "Unknown Chef";
+const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const KEYWORD_GROUP_TITLES = {
   style: "Dominant Styles",
@@ -167,7 +168,7 @@ export async function listRankingArchive(args: {
   const offset = toSafeOffset(args.offset);
   const search = toSafeSearch(args.search);
 
-  if (!dayKey) {
+  if (!dayKey || !DAY_KEY_PATTERN.test(dayKey)) {
     return {
       dayKey,
       themeText: "",
@@ -270,10 +271,18 @@ export async function listRankingArchive(args: {
           visibleRows.map((row) => row.dishId),
         )
       : null;
-  const items = visibleRows.map((row, index) => ({
-    rank: globalRankByDishId?.get(row.dishId) ?? offset + index + 1,
-    ...toRankingArchiveEntry(row),
-  }));
+  const items = globalRankByDishId
+    ? visibleRows.flatMap((row) => {
+        const rank = globalRankByDishId.get(row.dishId);
+        if (rank === undefined) {
+          return [];
+        }
+        return [{ rank, ...toRankingArchiveEntry(row) }];
+      })
+    : visibleRows.map((row, index) => ({
+        rank: offset + index + 1,
+        ...toRankingArchiveEntry(row),
+      }));
 
   return {
     dayKey,

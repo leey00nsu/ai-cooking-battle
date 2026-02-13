@@ -98,6 +98,25 @@ describe("listRankingArchive", () => {
     expect(prisma.dayTheme.findUnique).not.toHaveBeenCalled();
   });
 
+  it("returns empty payload when dayKey format is invalid", async () => {
+    const { listRankingArchive } = await import("./list-ranking-archive");
+    const result = await listRankingArchive({ dayKey: "20260212" });
+
+    expect(result).toEqual({
+      dayKey: "20260212",
+      themeText: "",
+      participantCount: 0,
+      averageScore: 0,
+      keywordGroups: [],
+      items: [],
+      nextOffset: null,
+    });
+    expect(prisma.dayTheme.findUnique).not.toHaveBeenCalled();
+    expect(prisma.dishDayScore.aggregate).not.toHaveBeenCalled();
+    expect(prisma.dishDayScore.findMany).not.toHaveBeenCalled();
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
+  });
+
   it("preserves global rank when search filter is applied", async () => {
     prisma.dayTheme.findUnique.mockResolvedValueOnce({
       themeText: "주말 아침에 어울리는 상큼한 샐러드 음식",

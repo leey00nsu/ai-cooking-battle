@@ -8,6 +8,7 @@ const MAX_RANKING_COUNT = 50;
 const DEFAULT_ARCHIVE_LIMIT = 12;
 const MAX_ARCHIVE_LIMIT = 24;
 const RANKING_VIEW_ARCHIVE = "archive";
+const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function getRankingCount(url: string) {
   const { searchParams } = new URL(url);
@@ -59,7 +60,11 @@ export async function GET(
     params: Promise<{ dayKey: string }>;
   },
 ) {
-  const { dayKey } = await context.params;
+  const { dayKey: rawDayKey } = await context.params;
+  const dayKey = rawDayKey.trim();
+  if (!DAY_KEY_PATTERN.test(dayKey)) {
+    return NextResponse.json({ error: "INVALID_DAY_KEY" }, { status: 400 });
+  }
   const view = getView(request.url);
   if (view === RANKING_VIEW_ARCHIVE) {
     const limit = getArchiveLimit(request.url);

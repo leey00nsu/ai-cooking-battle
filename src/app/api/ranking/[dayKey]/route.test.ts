@@ -127,4 +127,17 @@ describe("GET /api/ranking/[dayKey]", () => {
       search: null,
     });
   });
+
+  it("returns 400 when dayKey format is invalid", async () => {
+    const { GET } = await import("./route");
+
+    const response = await GET(new Request("http://localhost/api/ranking/invalid-day-key"), {
+      params: Promise.resolve({ dayKey: "20260211" }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_DAY_KEY" });
+    expect(getRankingTopMock).not.toHaveBeenCalled();
+    expect(listRankingArchiveMock).not.toHaveBeenCalled();
+  });
 });
