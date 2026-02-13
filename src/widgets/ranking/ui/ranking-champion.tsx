@@ -25,10 +25,10 @@ export function RankingChampion({ dayKey, entry }: RankingChampionProps) {
       shadow="glowSm"
       stroke="thickPrimary"
     >
-      <div className="relative h-[360px] w-full md:h-[500px]">
+      <div className="relative h-[360px] w-full bg-black md:h-[500px]">
         <img
           alt={`ranking-champion-${entry.dishName}`}
-          className="h-full w-full object-cover"
+          className="h-full w-full bg-black object-contain"
           src={entry.imageUrl}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/15" />

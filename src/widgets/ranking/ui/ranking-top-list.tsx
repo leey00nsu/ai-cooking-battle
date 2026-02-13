@@ -41,10 +41,10 @@ export function RankingTopList({
             tone="cardMuted"
             interactive="border"
           >
-            <div className="relative h-44 w-full bg-card">
+            <div className="relative h-44 w-full bg-black">
               <img
                 alt={`rank-${entry.rank}-${entry.dishName}`}
-                className="h-full w-full object-cover"
+                className="h-full w-full bg-black object-contain"
                 src={entry.imageUrl}
               />
               <div className="absolute left-3 top-3 rounded-full border border-white/20 bg-black/70 px-3 py-1 text-xs font-semibold text-white">

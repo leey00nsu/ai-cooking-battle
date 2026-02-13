@@ -1,7 +1,11 @@
 "use client";
 
 import { ArrowRight, CalendarDays, Search } from "lucide-react";
-import { useRef } from "react";
+import { useState } from "react";
+import { Button } from "@/shared/ui/button";
+import { Calendar } from "@/shared/ui/calendar";
+import { Input } from "@/shared/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Surface } from "@/shared/ui/surface";
 
 type RankingControlsProps = {
@@ -11,72 +15,113 @@ type RankingControlsProps = {
   onSearchChange: (nextSearch: string) => void;
 };
 
+const DAY_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function parseDayKey(dayKey: string) {
+  const matched = DAY_KEY_PATTERN.exec(dayKey.trim());
+  if (!matched) {
+    return undefined;
+  }
+
+  const year = Number(matched[1]);
+  const month = Number(matched[2]);
+  const day = Number(matched[3]);
+  const parsed = new Date(year, month - 1, day);
+
+  const isValid =
+    parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day;
+
+  return isValid ? parsed : undefined;
+}
+
+function toDayKey(date: Date) {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function RankingControls({
   dayKey,
   search,
   onDayKeyChange,
   onSearchChange,
 }: RankingControlsProps) {
-  const dateInputRef = useRef<HTMLInputElement | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const selectedDate = parseDayKey(dayKey);
+  const displayDayKey = selectedDate ? toDayKey(selectedDate) : dayKey;
 
   const openCalendar = () => {
-    const input = dateInputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
-    if (!input) {
-      return;
-    }
-    input.showPicker?.();
-    input.focus();
+    setIsCalendarOpen(true);
   };
 
   return (
     <Surface className="space-y-4 p-4 md:p-5" radius="2xl" tone="cardMuted">
       <div className="flex flex-col gap-4 border-b border-white/10 pb-4 md:flex-row md:items-end md:justify-between">
         <div className="grid gap-4 md:w-full md:grid-cols-2">
-          <label className="space-y-2">
+          <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/55">
               Calendar
             </p>
-            <div className="relative">
-              <button
-                type="button"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/55 transition hover:text-primary"
-                aria-label="달력 열기"
-                onClick={openCalendar}
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full justify-start rounded-xl border-white/10 bg-background px-3 text-left text-sm text-white hover:bg-background"
+                  aria-label="달력 열기"
+                >
+                  <CalendarDays className="mr-2 h-4 w-4 text-white/55" />
+                  {displayDayKey}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                className="w-auto rounded-2xl border-white/10 bg-card/95 p-2 text-white"
               >
-                <CalendarDays className="h-4 w-4" />
-              </button>
-              <input
-                ref={dateInputRef}
-                className="h-11 w-full rounded-xl border border-white/10 bg-background px-10 text-sm text-white outline-none transition focus:border-primary/60 [&::-webkit-calendar-picker-indicator]:pointer-events-none [&::-webkit-calendar-picker-indicator]:opacity-0"
-                type="date"
-                value={dayKey}
-                onChange={(event) => onDayKeyChange(event.target.value)}
-              />
-            </div>
-          </label>
-          <label className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/55">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(nextDate) => {
+                    if (!nextDate) {
+                      return;
+                    }
+                    onDayKeyChange(toDayKey(nextDate));
+                    setIsCalendarOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="space-y-2">
+            <label
+              htmlFor="ranking-search-input"
+              className="text-xs font-semibold uppercase tracking-[0.14em] text-white/55"
+            >
               Search
-            </p>
+            </label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
-              <input
-                className="h-11 w-full rounded-xl border border-white/10 bg-background px-10 text-sm text-white outline-none transition placeholder:text-white/40 focus:border-primary/60"
+              <Input
+                id="ranking-search-input"
+                variant="ranking"
+                className="pl-10"
                 placeholder="요리명 검색"
                 value={search}
                 onChange={(event) => onSearchChange(event.target.value)}
               />
             </div>
-          </label>
+          </div>
         </div>
-        <button
+        <Button
           type="button"
-          className="inline-flex items-center gap-1 self-start text-sm font-semibold text-primary transition hover:text-primary/85 md:self-auto"
+          variant="ghost"
+          className="inline-flex h-auto items-center gap-1 self-start p-0 text-sm font-semibold text-primary hover:bg-transparent hover:text-primary/85 md:self-auto"
           onClick={openCalendar}
         >
           View Full Calendar
           <ArrowRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </Surface>
   );
