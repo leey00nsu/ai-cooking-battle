@@ -151,7 +151,7 @@ async function fetchGlobalRankByDishId(dayKey: string, dishIds: string[]) {
     )
     SELECT ranked."dishId", ranked.rank
     FROM ranked
-    WHERE ranked."dishId" IN (${Prisma.join(dishIds.map((dishId) => Prisma.sql`${dishId}`))})
+    WHERE ranked."dishId" IN (${Prisma.join(dishIds)})
   `);
 
   return new Map(rankRows.map((row) => [row.dishId, Number(row.rank)]));
@@ -283,6 +283,7 @@ export async function listRankingArchive(args: {
         rank: offset + index + 1,
         ...toRankingArchiveEntry(row),
       }));
+  const hasDroppedRows = items.length < visibleRows.length;
 
   return {
     dayKey,
@@ -301,6 +302,6 @@ export async function listRankingArchive(args: {
       dishNames: keywordRows.map((row) => row.dish.dishName),
     }),
     items,
-    nextOffset: hasMore ? offset + visibleRows.length : null,
+    nextOffset: hasMore && !hasDroppedRows ? offset + visibleRows.length : null,
   };
 }

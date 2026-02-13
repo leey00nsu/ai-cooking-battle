@@ -140,6 +140,16 @@ describe("listRankingArchive", () => {
             botMeta: null,
           },
         },
+        {
+          dishId: "dish-5",
+          totalScore: 87.9,
+          dish: {
+            dishName: "레몬 새우 샐러드",
+            imageUrl: "https://cdn.example/dish-5.webp",
+            user: { name: "Chef D" },
+            botMeta: null,
+          },
+        },
       ])
       .mockResolvedValueOnce([{ dish: { dishName: "유자 해산물 샐러드" } }]);
     prisma.$queryRaw.mockResolvedValueOnce([{ dishId: "dish-2", rank: 2 }]);
@@ -157,5 +167,58 @@ describe("listRankingArchive", () => {
       dishId: "dish-2",
       rank: 2,
     });
+  });
+
+  it("returns nextOffset=null when search result rows are dropped by missing global rank", async () => {
+    prisma.dayTheme.findUnique.mockResolvedValueOnce({
+      themeText: "주말 아침에 어울리는 상큼한 샐러드 음식",
+      axisA: "주말 아침",
+      axisB: "샐러드",
+      axisFlavor: "상큼한",
+    });
+    prisma.dishDayScore.aggregate.mockResolvedValueOnce({
+      _count: { _all: 3 },
+      _avg: { totalScore: 90.1 },
+    });
+    prisma.dishDayScore.findMany
+      .mockResolvedValueOnce([
+        {
+          dishId: "dish-2",
+          totalScore: 91.2,
+          dish: {
+            dishName: "유자 해산물 샐러드",
+            imageUrl: "https://cdn.example/dish-2.webp",
+            user: { name: "Chef B" },
+            botMeta: null,
+          },
+        },
+        {
+          dishId: "dish-4",
+          totalScore: 88.1,
+          dish: {
+            dishName: "허브 치킨 샐러드",
+            imageUrl: "https://cdn.example/dish-4.webp",
+            user: { name: "Chef C" },
+            botMeta: null,
+          },
+        },
+      ])
+      .mockResolvedValueOnce([{ dish: { dishName: "유자 해산물 샐러드" } }]);
+    prisma.$queryRaw.mockResolvedValueOnce([{ dishId: "dish-2", rank: 2 }]);
+
+    const { listRankingArchive } = await import("./list-ranking-archive");
+    const result = await listRankingArchive({
+      dayKey: "2026-02-12",
+      limit: 2,
+      offset: 0,
+      search: "샐러드",
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      dishId: "dish-2",
+      rank: 2,
+    });
+    expect(result.nextOffset).toBeNull();
   });
 });
