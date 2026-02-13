@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prisma = {
+  $queryRaw: vi.fn(),
   dayTheme: {
     findUnique: vi.fn(),
   },
@@ -121,8 +122,8 @@ describe("listRankingArchive", () => {
           },
         },
       ])
-      .mockResolvedValueOnce([{ dish: { dishName: "유자 해산물 샐러드" } }])
-      .mockResolvedValueOnce([{ dishId: "dish-1" }, { dishId: "dish-2" }, { dishId: "dish-3" }]);
+      .mockResolvedValueOnce([{ dish: { dishName: "유자 해산물 샐러드" } }]);
+    prisma.$queryRaw.mockResolvedValueOnce([{ dishId: "dish-2", rank: 2 }]);
 
     const { listRankingArchive } = await import("./list-ranking-archive");
     const result = await listRankingArchive({

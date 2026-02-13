@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import type { RankingArchiveEntry, RankingArchiveResponse } from "@/entities/ranking/model/types";
 import { prisma } from "@/lib/prisma";
 
@@ -125,6 +126,36 @@ function buildKeywordGroups(args: {
   ];
 }
 
+async function fetchGlobalRankByDishId(dayKey: string, dishIds: string[]) {
+  if (dishIds.length === 0) {
+    return new Map<string, number>();
+  }
+
+  // 검색 결과에서도 "당일 전체 기준 순위"를 유지해야 하므로 DB 윈도우 함수(ROW_NUMBER)를 사용한다.
+  // Prisma findMany로 전체 행을 메모리에 올리는 방식은 참가자 수 증가 시 비용이 커져 회피한다.
+  // 필요한 dishId의 rank만 조회해 정확도와 성능을 함께 맞춘다.
+  const rankRows = await prisma.$queryRaw<
+    Array<{ dishId: string; rank: bigint | number }>
+  >(Prisma.sql`
+    WITH ranked AS (
+      SELECT
+        dds."dishId",
+        ROW_NUMBER() OVER (ORDER BY dds."totalScore" DESC, dds."analyzedAt" DESC, dds."id" DESC) AS rank
+      FROM "dish_day_score" dds
+      INNER JOIN "dish" d ON d."id" = dds."dishId"
+      WHERE
+        dds."dayKey" = ${dayKey}
+        AND dds."status" = 'READY'
+        AND d."isHidden" = false
+    )
+    SELECT ranked."dishId", ranked.rank
+    FROM ranked
+    WHERE ranked."dishId" IN (${Prisma.join(dishIds.map((dishId) => Prisma.sql`${dishId}`))})
+  `);
+
+  return new Map(rankRows.map((row) => [row.dishId, Number(row.rank)]));
+}
+
 export async function listRankingArchive(args: {
   dayKey: string;
   limit?: number;
@@ -148,7 +179,7 @@ export async function listRankingArchive(args: {
     };
   }
 
-  const [theme, aggregate, rows, keywordRows, allRankRows] = await Promise.all([
+  const [theme, aggregate, rows, keywordRows] = await Promise.all([
     prisma.dayTheme.findUnique({
       where: { dayKey },
       select: {
@@ -228,28 +259,17 @@ export async function listRankingArchive(args: {
         },
       },
     }),
-    search
-      ? prisma.dishDayScore.findMany({
-          where: {
-            dayKey,
-            status: "READY",
-            dish: {
-              isHidden: false,
-            },
-          },
-          orderBy: [{ totalScore: "desc" }, { analyzedAt: "desc" }, { id: "desc" }],
-          select: {
-            dishId: true,
-          },
-        })
-      : Promise.resolve(null),
   ]);
 
-  const globalRankByDishId = allRankRows
-    ? new Map(allRankRows.map((row, index) => [row.dishId, index + 1]))
-    : null;
   const hasMore = rows.length > limit;
   const visibleRows = hasMore ? rows.slice(0, limit) : rows;
+  const globalRankByDishId =
+    search && visibleRows.length > 0
+      ? await fetchGlobalRankByDishId(
+          dayKey,
+          visibleRows.map((row) => row.dishId),
+        )
+      : null;
   const items = visibleRows.map((row, index) => ({
     rank: globalRankByDishId?.get(row.dishId) ?? offset + index + 1,
     ...toRankingArchiveEntry(row),
