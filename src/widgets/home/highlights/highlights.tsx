@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowRight, Eye, Trophy } from "lucide-react";
-import type { SnapshotEntry, SnapshotTop } from "@/entities/snapshot/model/types";
+import Link from "next/link";
+import type { RankingEntry, RankingTop } from "@/entities/ranking/model/types";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import { trackEvent } from "@/shared/analytics/track-event";
 import { Badge } from "@/shared/ui/badge";
@@ -10,7 +11,7 @@ import { ErrorState } from "@/shared/ui/error-state";
 import { RestrictedState } from "@/shared/ui/restricted-state";
 
 type HighlightsProps = {
-  snapshotTop: SnapshotTop | null;
+  rankingTop: RankingTop | null;
   isError?: boolean;
   isRestricted?: boolean;
 };
@@ -22,24 +23,24 @@ function formatScore(value: number) {
   return value.toFixed(1);
 }
 
-function HighlightsHeader() {
+function HighlightsHeader({ dayKey }: { dayKey?: string }) {
+  const href = dayKey ? `/ranking/${dayKey}` : "/ranking";
+
   return (
     <div className="flex items-center justify-between px-2">
       <div className="flex items-center gap-3">
         <Badge variant="icon">
           <Trophy aria-hidden className="h-5 w-5" />
         </Badge>
-        <h2 className="text-2xl font-bold leading-tight text-white">
-          Battle Highlights — Top Rated
-        </h2>
+        <h2 className="text-2xl font-bold leading-tight text-white">오늘의 랭킹 — Top Rated</h2>
       </div>
-      <a
+      <Link
         className="flex items-center gap-1 text-sm font-medium text-white/60 transition hover:text-primary"
-        href="/ladder"
+        href={href}
       >
-        View Ladder
+        View Ranking
         <ArrowRight aria-hidden className="h-4 w-4" />
-      </a>
+      </Link>
     </div>
   );
 }
@@ -49,26 +50,26 @@ function HighlightCard({
   dayKey,
   onClick,
 }: {
-  entry: SnapshotEntry;
+  entry: RankingEntry;
   dayKey: string;
   onClick?: () => void;
 }) {
   const winnerIsLeft = entry.leftScore > entry.rightScore;
   const winnerLabel = winnerIsLeft ? "Left" : "Right";
   const chefHandle = `@chef-${String(entry.rank).padStart(2, "0")}`;
-  const title = `Rank #${entry.rank} Showdown`;
+  const title = `랭킹 #${entry.rank} 대결`;
 
   return (
-    <a
+    <Link
       className="group rounded-[2rem] border border-white/5 bg-card/90 p-4 shadow-lg transition hover:border-primary/40 hover:shadow-xl"
-      href={`/snapshot/${dayKey}`}
+      href={`/ranking/${dayKey}`}
       onClick={onClick}
     >
       <div className="relative grid h-48 grid-cols-2 gap-1 overflow-hidden rounded-[1.5rem]">
         <div className="h-full w-full bg-card">
           {entry.leftImageUrl ? (
             <img
-              alt={`Snapshot left ${entry.rank}`}
+              alt={`Ranking left ${entry.rank}`}
               className="h-full w-full object-cover"
               src={entry.leftImageUrl}
             />
@@ -81,7 +82,7 @@ function HighlightCard({
         <div className="h-full w-full bg-card">
           {entry.rightImageUrl ? (
             <img
-              alt={`Snapshot right ${entry.rank}`}
+              alt={`Ranking right ${entry.rank}`}
               className="h-full w-full object-cover"
               src={entry.rightImageUrl}
             />
@@ -114,11 +115,11 @@ function HighlightCard({
           <Eye aria-hidden className="h-4 w-4" />
         </span>
       </div>
-    </a>
+    </Link>
   );
 }
 
-export default function Highlights({ snapshotTop, isError, isRestricted }: HighlightsProps) {
+export default function Highlights({ rankingTop, isError, isRestricted }: HighlightsProps) {
   if (isRestricted) {
     return (
       <section className="flex flex-col gap-6">
@@ -144,7 +145,7 @@ export default function Highlights({ snapshotTop, isError, isRestricted }: Highl
     );
   }
 
-  if (!snapshotTop || snapshotTop.items.length === 0) {
+  if (!rankingTop || rankingTop.items.length === 0) {
     return (
       <section className="flex flex-col gap-6">
         <HighlightsHeader />
@@ -157,22 +158,22 @@ export default function Highlights({ snapshotTop, isError, isRestricted }: Highl
 
   return (
     <section className="flex flex-col gap-6">
-      <HighlightsHeader />
+      <HighlightsHeader dayKey={rankingTop.dayKey} />
       <div className="grid gap-6 md:grid-cols-2">
-        {snapshotTop.items.map((entry) => {
+        {rankingTop.items.map((entry) => {
           const handleClick = () => {
-            trackEvent(ANALYTICS_EVENTS.MATCH_VIEW, {
+            trackEvent(ANALYTICS_EVENTS.RANKING_ITEM_CLICKED, {
               screen: "home",
-              dayKey: snapshotTop.dayKey,
+              dayKey: rankingTop.dayKey,
               rank: entry.rank,
             });
           };
 
           return (
             <HighlightCard
-              key={`${snapshotTop.dayKey}-${entry.rank}`}
+              key={`${rankingTop.dayKey}-${entry.rank}`}
               entry={entry}
-              dayKey={snapshotTop.dayKey}
+              dayKey={rankingTop.dayKey}
               onClick={handleClick}
             />
           );

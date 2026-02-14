@@ -33,7 +33,7 @@ describe("Home page SSR fetch logic", () => {
       if (url.includes("/api/home/matches")) {
         return new Response(JSON.stringify({ items: [] }), { status: 200 });
       }
-      if (url.includes("/api/snapshot/")) {
+      if (url.includes("/api/ranking/")) {
         return new Response(JSON.stringify({ dayKey: "2026-02-05", items: [] }), { status: 200 });
       }
       return new Response(null, { status: 404 });
@@ -51,6 +51,12 @@ describe("Home page SSR fetch logic", () => {
     expect(
       fetchMock.mock.calls.some(
         (args) => typeof args[0] === "string" && args[0].includes("/api/home/matches"),
+      ),
+    ).toBe(true);
+    expect(
+      fetchMock.mock.calls.some(
+        (args) =>
+          typeof args[0] === "string" && args[0].includes("/api/ranking/2026-02-05?count=4"),
       ),
     ).toBe(true);
     expect(
@@ -80,7 +86,7 @@ describe("Home page SSR fetch logic", () => {
       if (url.includes("/api/home/matches")) {
         return new Response(JSON.stringify({ ok: false }), { status: 500 });
       }
-      if (url.includes("/api/snapshot/")) {
+      if (url.includes("/api/ranking/")) {
         return new Response(JSON.stringify({ dayKey: "2026-02-05", items: [] }), { status: 200 });
       }
       if (url.endsWith("/api/slots/public-summary")) {
@@ -104,6 +110,49 @@ describe("Home page SSR fetch logic", () => {
     expect(element).toMatchObject({
       props: {
         isMatchError: true,
+      },
+    });
+  });
+
+  it("marks isRankingError=true when /api/ranking request fails", async () => {
+    headersMock.mockResolvedValue({
+      get: () => null,
+    });
+
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith("/api/me")) {
+        return new Response(JSON.stringify({ status: "GUEST" }), { status: 200 });
+      }
+      if (url.endsWith("/api/theme/today")) {
+        return new Response(JSON.stringify({ dayKey: "2026-02-05" }), { status: 200 });
+      }
+      if (url.includes("/api/home/matches")) {
+        return new Response(JSON.stringify({ items: [] }), { status: 200 });
+      }
+      if (url.includes("/api/ranking/")) {
+        return new Response(JSON.stringify({ ok: false }), { status: 500 });
+      }
+      if (url.endsWith("/api/slots/public-summary")) {
+        return new Response(
+          JSON.stringify({
+            freeLimit: 60,
+            freeUsedCount: 0,
+            adLimit: 0,
+            adUsedCount: 0,
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(null, { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+
+    const Home = (await import("./page")).default;
+    const element = await Home();
+
+    expect(element).toMatchObject({
+      props: {
+        isRankingError: true,
       },
     });
   });

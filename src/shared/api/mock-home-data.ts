@@ -1,5 +1,5 @@
 import type { MatchFeed, MatchSummary } from "@/entities/match/model/types";
-import type { SnapshotEntry, SnapshotTop } from "@/entities/snapshot/model/types";
+import type { RankingEntry, RankingTop } from "@/entities/ranking/model/types";
 import type { Theme } from "@/entities/theme/model/types";
 import { formatDayKey, formatDayKeyForTimeZone } from "@/shared/lib/day-key";
 
@@ -51,13 +51,19 @@ export function getMockMatchFeed(dayKey = formatDayKey(), limit = 8): MatchFeed 
   return { items };
 }
 
-function makeSnapshotEntry(dayKey: string, rank: number): SnapshotEntry {
+function makeRankingEntry(dayKey: string, rank: number): RankingEntry {
   const baseSeed = `${dayKey}-rank-${pad(rank)}`;
   const leftScore = 8.8 - rank * 0.2;
   const rightScore = 8.3 - rank * 0.18;
+  const isLeftWinner = leftScore >= rightScore;
+  const score = isLeftWinner ? leftScore : rightScore;
   return {
     rank,
     dishId: baseSeed,
+    dishName: `Hall Dish #${pad(rank)}`,
+    authorName: `Chef_${pad(rank)}`,
+    imageUrl: dishImage(`${baseSeed}-${isLeftWinner ? "left" : "right"}`),
+    score,
     leftImageUrl: dishImage(`${baseSeed}-left`),
     rightImageUrl: dishImage(`${baseSeed}-right`),
     leftScore,
@@ -65,10 +71,10 @@ function makeSnapshotEntry(dayKey: string, rank: number): SnapshotEntry {
   };
 }
 
-export function getMockSnapshotTop(dayKey = formatDayKey(), count = 4): SnapshotTop {
+export function getMockRankingTop(dayKey = formatDayKey(), count = 10): RankingTop {
   const safeCount = Math.max(0, Math.floor(Number(count)));
   const items = Array.from({ length: safeCount }, (_, index) =>
-    makeSnapshotEntry(dayKey, index + 1),
+    makeRankingEntry(dayKey, index + 1),
   );
   return { dayKey, items };
 }

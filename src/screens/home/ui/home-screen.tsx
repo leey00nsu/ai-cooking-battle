@@ -1,6 +1,6 @@
 import type { MatchFeed } from "@/entities/match/model/types";
+import type { RankingTop } from "@/entities/ranking/model/types";
 import type { SlotSummary } from "@/entities/slot/model/types";
-import type { SnapshotTop } from "@/entities/snapshot/model/types";
 import type { Theme } from "@/entities/theme/model/types";
 import StartCreateButton from "@/features/start-create-cta/start-create-button";
 import HomeAnalytics from "@/screens/home/ui/home-analytics";
@@ -13,26 +13,26 @@ import ThemeHero from "@/widgets/home/theme-hero/theme-hero";
 type HomeScreenProps = {
   theme: Theme | null;
   slotSummary: SlotSummary | null;
-  snapshotTop: SnapshotTop | null;
+  rankingTop: RankingTop | null;
   matchFeed: MatchFeed | null;
   userStatus: "GUEST" | "AUTH" | "ELIGIBLE" | "LIMITED";
   isRestricted?: boolean;
   isThemeError?: boolean;
   isSlotError?: boolean;
-  isSnapshotError?: boolean;
+  isRankingError?: boolean;
   isMatchError?: boolean;
 };
 
 export default function HomeScreen({
   theme,
   slotSummary,
-  snapshotTop,
+  rankingTop,
   matchFeed,
   userStatus,
   isRestricted,
   isThemeError,
   isSlotError,
-  isSnapshotError,
+  isRankingError,
   isMatchError,
 }: HomeScreenProps) {
   const userType = userStatus === "GUEST" ? "guest" : "auth";
@@ -74,9 +74,9 @@ export default function HomeScreen({
           </section>
           <section className="flex flex-col gap-4">
             <Highlights
-              snapshotTop={snapshotTop}
+              rankingTop={rankingTop}
               isRestricted={isRestricted}
-              isError={isSnapshotError}
+              isError={isRankingError}
             />
           </section>
           <section className="flex flex-col gap-4">
