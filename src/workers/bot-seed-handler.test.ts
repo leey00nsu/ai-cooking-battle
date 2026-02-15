@@ -194,6 +194,33 @@ describe("processBotSeedJob", () => {
     expect(result.status).toBe("SUCCEEDED");
   });
 
+  it("does not generate more dishes when remaining slots become zero", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [
+        { personaKey: "p1", styleGroup: "g1" },
+        { personaKey: "p2", styleGroup: "g2" },
+      ],
+      fallback: [],
+    });
+
+    prisma.botSeedItem.count
+      .mockResolvedValueOnce(4)
+      .mockResolvedValueOnce(4)
+      .mockResolvedValueOnce(5)
+      .mockResolvedValueOnce(5);
+
+    runDishGeneration.mockResolvedValue({
+      status: "ALLOW",
+      imageUrl: "https://cdn.example/a.webp",
+      generationPrompt: "prompt",
+    });
+
+    await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" });
+
+    expect(runDishGeneration).toHaveBeenCalledTimes(1);
+    expect(prisma.dish.create).toHaveBeenCalledTimes(1);
+  });
+
   it("retries selected persona once and then uses fallback persona", async () => {
     selectDailyPersonas.mockReturnValue({
       selected: [{ personaKey: "p1", styleGroup: "g1" }],
