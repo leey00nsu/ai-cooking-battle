@@ -1,4 +1,5 @@
 import type { BotSeedRunStatus, BotSeedTriggerType } from "@prisma/client";
+import { BOT_PERSONA_PICK_COUNT } from "@/entities/bot-persona/model/constants";
 import { selectDailyPersonas } from "@/entities/bot-persona/model/select-daily-personas";
 import { getOrCreateDayTheme } from "@/lib/day-theme/get-or-create-day-theme";
 import { prisma } from "@/lib/prisma";
@@ -8,7 +9,6 @@ import { enqueueDishScoreJob } from "@/lib/queue/dish-score-job";
 import { formatDayKeyForKST } from "@/shared/lib/day-key";
 import { runDishGeneration } from "@/workers/services/run-dish-generation";
 
-const TARGET_BOT_PERSONA_COUNT = 5;
 const BOT_SYSTEM_USER_ID = "bot-system-user";
 const BOT_SYSTEM_USER_NAME = "AI Chef Bot";
 
@@ -157,7 +157,7 @@ export async function processBotSeedJob(
   const personaByKey = new Map(personas.map((persona) => [persona.personaKey, persona]));
   const { selected, fallback } = selectDailyPersonas({
     personas,
-    pickCount: TARGET_BOT_PERSONA_COUNT,
+    pickCount: BOT_PERSONA_PICK_COUNT,
   });
 
   const selectedProfiles = selected
@@ -245,7 +245,7 @@ export async function processBotSeedJob(
         dishId: { not: null },
       },
     });
-    return Math.max(0, TARGET_BOT_PERSONA_COUNT - succeededCountForRun);
+    return Math.max(0, BOT_PERSONA_PICK_COUNT - succeededCountForRun);
   };
 
   const runPersonaGeneration = async (args: {
@@ -347,7 +347,7 @@ export async function processBotSeedJob(
               dishId: { not: null },
             },
           });
-          if (succeededCountForRun >= TARGET_BOT_PERSONA_COUNT) {
+          if (succeededCountForRun >= BOT_PERSONA_PICK_COUNT) {
             return { state: "CAP_REACHED" as const, dishId: null };
           }
 
@@ -399,7 +399,7 @@ export async function processBotSeedJob(
             dayKey,
             selectedOrder: args.selectedOrder,
             personaKey: args.persona.personaKey,
-            cap: TARGET_BOT_PERSONA_COUNT,
+            cap: BOT_PERSONA_PICK_COUNT,
             remainingSlots: 0,
           });
           return { outcome: "CAP_REACHED", nextAttempt: attempt, remainingSlots: 0 };
@@ -539,7 +539,7 @@ export async function processBotSeedJob(
   if (capReached) {
     console.info("[bot-seed] loop finished early because cap was reached", {
       dayKey,
-      cap: TARGET_BOT_PERSONA_COUNT,
+      cap: BOT_PERSONA_PICK_COUNT,
     });
   }
 

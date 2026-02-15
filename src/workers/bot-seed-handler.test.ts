@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { BOT_PERSONA_PICK_COUNT } from "@/entities/bot-persona/model/constants";
 import { ProviderError } from "@/lib/providers/provider-error";
 
 const prisma = vi.hoisted(() => ({
@@ -204,10 +205,10 @@ describe("processBotSeedJob", () => {
     });
 
     prisma.botSeedItem.count
-      .mockResolvedValueOnce(4)
-      .mockResolvedValueOnce(4)
-      .mockResolvedValueOnce(5)
-      .mockResolvedValueOnce(5);
+      .mockResolvedValueOnce(BOT_PERSONA_PICK_COUNT - 1)
+      .mockResolvedValueOnce(BOT_PERSONA_PICK_COUNT - 1)
+      .mockResolvedValueOnce(BOT_PERSONA_PICK_COUNT)
+      .mockResolvedValueOnce(BOT_PERSONA_PICK_COUNT);
 
     runDishGeneration.mockResolvedValue({
       status: "ALLOW",
