@@ -1,4 +1,6 @@
-const DEFAULT_PICK_COUNT = 5;
+import { BOT_PERSONA_PICK_COUNT } from "@/entities/bot-persona/model/constants";
+
+const DEFAULT_PICK_COUNT = BOT_PERSONA_PICK_COUNT;
 const DEFAULT_MAX_PER_STYLE_GROUP = 2;
 
 export type BotPersonaCandidate = {

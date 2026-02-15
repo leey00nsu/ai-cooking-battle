@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { BOT_PERSONA_PICK_COUNT } from "@/entities/bot-persona/model/constants";
 import { ProviderError } from "@/lib/providers/provider-error";
 
 const prisma = vi.hoisted(() => ({
@@ -23,12 +24,15 @@ const prisma = vi.hoisted(() => ({
   },
   botSeedItem: {
     findMany: vi.fn(),
+    findFirst: vi.fn(),
+    count: vi.fn(),
     deleteMany: vi.fn(),
     create: vi.fn(),
   },
   user: {
     upsert: vi.fn(),
   },
+  $queryRaw: vi.fn(),
   $transaction: vi.fn(),
 }));
 
@@ -86,8 +90,16 @@ describe("processBotSeedJob", () => {
     prisma.botSeedRun.upsert.mockResolvedValue({ id: "run-1" });
     prisma.botSeedRun.update.mockResolvedValue({ id: "run-1" });
     prisma.botSeedItem.findMany.mockResolvedValue([]);
+    prisma.botSeedItem.findFirst.mockResolvedValue(null);
+    prisma.botSeedItem.count.mockImplementation(async () => {
+      return prisma.botSeedItem.create.mock.calls.reduce((count, [payload]) => {
+        const data = (payload as { data?: { status?: string } }).data;
+        return data?.status === "SUCCEEDED" ? count + 1 : count;
+      }, 0);
+    });
     prisma.botSeedItem.deleteMany.mockResolvedValue({ count: 0 });
     prisma.user.upsert.mockResolvedValue({ id: "bot-system-user" });
+    prisma.$queryRaw.mockResolvedValue([]);
 
     prisma.dish.create.mockResolvedValue({ id: "dish-1" });
     prisma.dish.updateMany.mockResolvedValue({ count: 0 });
@@ -156,6 +168,97 @@ describe("processBotSeedJob", () => {
       selectedCount: 1,
       status: "SUCCEEDED",
     });
+  });
+
+  it("skips duplicate selectedOrder when another worker already succeeded", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [],
+    });
+    prisma.botSeedItem.count
+      .mockResolvedValueOnce(0)
+      .mockResolvedValueOnce(0)
+      .mockResolvedValueOnce(1);
+
+    prisma.botSeedItem.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ dishId: "dish-existing" });
+
+    runDishGeneration.mockResolvedValueOnce({
+      status: "ALLOW",
+      imageUrl: "https://cdn.example/a.webp",
+      generationPrompt: "prompt",
+    });
+
+    const result = await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" });
+
+    expect(prisma.dish.create).not.toHaveBeenCalled();
+    expect(prisma.botSeedRun.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "SUCCEEDED",
+          successCount: 1,
+        }),
+      }),
+    );
+    expect(result.status).toBe("SUCCEEDED");
+  });
+
+  it("does not overcount success when result is ALREADY_SUCCEEDED but persisted count is lower", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [],
+    });
+    prisma.botSeedItem.count.mockResolvedValue(0);
+
+    prisma.botSeedItem.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ dishId: "dish-existing" });
+
+    runDishGeneration.mockResolvedValueOnce({
+      status: "ALLOW",
+      imageUrl: "https://cdn.example/a.webp",
+      generationPrompt: "prompt",
+    });
+
+    const result = await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" });
+
+    expect(prisma.botSeedRun.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "FAILED",
+          successCount: 0,
+        }),
+      }),
+    );
+    expect(result.status).toBe("FAILED");
+  });
+
+  it("does not generate more dishes when remaining slots become zero", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [
+        { personaKey: "p1", styleGroup: "g1" },
+        { personaKey: "p2", styleGroup: "g2" },
+      ],
+      fallback: [],
+    });
+
+    prisma.botSeedItem.count
+      .mockResolvedValueOnce(BOT_PERSONA_PICK_COUNT - 1)
+      .mockResolvedValueOnce(BOT_PERSONA_PICK_COUNT - 1)
+      .mockResolvedValueOnce(BOT_PERSONA_PICK_COUNT)
+      .mockResolvedValueOnce(BOT_PERSONA_PICK_COUNT);
+
+    runDishGeneration.mockResolvedValue({
+      status: "ALLOW",
+      imageUrl: "https://cdn.example/a.webp",
+      generationPrompt: "prompt",
+    });
+
+    await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" });
+
+    expect(runDishGeneration).toHaveBeenCalledTimes(1);
+    expect(prisma.dish.create).toHaveBeenCalledTimes(1);
   });
 
   it("retries selected persona once and then uses fallback persona", async () => {

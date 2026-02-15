@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { BOT_PERSONA_PICK_COUNT } from "@/entities/bot-persona/model/constants";
 
 const getSessionMock = vi.fn();
 const enqueueBotSeedJobMock = vi.fn();
@@ -99,8 +100,8 @@ describe("/api/admin/bots/seed", () => {
       dayKey: "2026-02-08",
       triggerType: "ADMIN",
       status: "SUCCEEDED",
-      selectedCount: 5,
-      successCount: 5,
+      selectedCount: BOT_PERSONA_PICK_COUNT,
+      successCount: BOT_PERSONA_PICK_COUNT,
       startedAt: new Date("2026-02-08T01:00:00.000Z"),
       finishedAt: new Date("2026-02-08T01:02:00.000Z"),
       updatedAt: new Date("2026-02-08T01:02:30.000Z"),
@@ -138,8 +139,8 @@ describe("/api/admin/bots/seed", () => {
         dayKey: "2026-02-08",
         triggerType: "ADMIN",
         status: "SUCCEEDED",
-        selectedCount: 5,
-        successCount: 5,
+        selectedCount: BOT_PERSONA_PICK_COUNT,
+        successCount: BOT_PERSONA_PICK_COUNT,
         startedAt: "2026-02-08T01:00:00.000Z",
         finishedAt: "2026-02-08T01:02:00.000Z",
         updatedAt: "2026-02-08T01:02:30.000Z",

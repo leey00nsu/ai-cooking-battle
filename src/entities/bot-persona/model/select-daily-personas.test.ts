@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BOT_PERSONA_PICK_COUNT } from "@/entities/bot-persona/model/constants";
 import { selectDailyPersonas } from "@/entities/bot-persona/model/select-daily-personas";
 
 const CANDIDATES = [
@@ -44,7 +45,7 @@ describe("selectDailyPersonas", () => {
   it("limits styleGroup concentration when enough candidates exist", () => {
     const result = selectDailyPersonas({
       personas: [...CANDIDATES],
-      pickCount: 5,
+      pickCount: BOT_PERSONA_PICK_COUNT,
       maxPerStyleGroup: 2,
       random: createRandom([0.1, 0.7, 0.3, 0.9, 0.2, 0.8, 0.4]),
     });
@@ -54,14 +55,14 @@ describe("selectDailyPersonas", () => {
       return acc;
     }, {});
 
-    expect(result.selected).toHaveLength(5);
+    expect(result.selected).toHaveLength(BOT_PERSONA_PICK_COUNT);
     expect(Math.max(...Object.values(groupCounts))).toBeLessThanOrEqual(2);
   });
 
   it("returns fallback as remaining active candidates excluding selected", () => {
     const result = selectDailyPersonas({
       personas: [...CANDIDATES],
-      pickCount: 5,
+      pickCount: BOT_PERSONA_PICK_COUNT,
       random: createRandom([0.5, 0.2, 0.8, 0.1, 0.7, 0.3, 0.9]),
     });
 

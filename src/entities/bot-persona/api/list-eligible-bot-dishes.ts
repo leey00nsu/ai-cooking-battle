@@ -63,12 +63,20 @@ export async function listEligibleBotDishes(dayKey: string): Promise<EligibleBot
     },
   });
 
+  const selectedOrders = new Set<number>();
   return items
     .filter(
       (item): item is typeof item & { dishId: string; dish: NonNullable<typeof item.dish> } => {
         return Boolean(item.dishId && item.dish);
       },
     )
+    .filter((item) => {
+      if (selectedOrders.has(item.selectedOrder)) {
+        return false;
+      }
+      selectedOrders.add(item.selectedOrder);
+      return true;
+    })
     .map((item) => ({
       dishId: item.dishId,
       imageUrl: item.dish.imageUrl,
