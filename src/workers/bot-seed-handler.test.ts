@@ -23,12 +23,15 @@ const prisma = vi.hoisted(() => ({
   },
   botSeedItem: {
     findMany: vi.fn(),
+    findFirst: vi.fn(),
+    count: vi.fn(),
     deleteMany: vi.fn(),
     create: vi.fn(),
   },
   user: {
     upsert: vi.fn(),
   },
+  $queryRaw: vi.fn(),
   $transaction: vi.fn(),
 }));
 
@@ -86,8 +89,11 @@ describe("processBotSeedJob", () => {
     prisma.botSeedRun.upsert.mockResolvedValue({ id: "run-1" });
     prisma.botSeedRun.update.mockResolvedValue({ id: "run-1" });
     prisma.botSeedItem.findMany.mockResolvedValue([]);
+    prisma.botSeedItem.findFirst.mockResolvedValue(null);
+    prisma.botSeedItem.count.mockResolvedValue(0);
     prisma.botSeedItem.deleteMany.mockResolvedValue({ count: 0 });
     prisma.user.upsert.mockResolvedValue({ id: "bot-system-user" });
+    prisma.$queryRaw.mockResolvedValue([]);
 
     prisma.dish.create.mockResolvedValue({ id: "dish-1" });
     prisma.dish.updateMany.mockResolvedValue({ count: 0 });
@@ -156,6 +162,36 @@ describe("processBotSeedJob", () => {
       selectedCount: 1,
       status: "SUCCEEDED",
     });
+  });
+
+  it("skips duplicate selectedOrder when another worker already succeeded", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [],
+    });
+
+    prisma.botSeedItem.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ dishId: "dish-existing" });
+
+    runDishGeneration.mockResolvedValueOnce({
+      status: "ALLOW",
+      imageUrl: "https://cdn.example/a.webp",
+      generationPrompt: "prompt",
+    });
+
+    const result = await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" });
+
+    expect(prisma.dish.create).not.toHaveBeenCalled();
+    expect(prisma.botSeedRun.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "SUCCEEDED",
+          successCount: 1,
+        }),
+      }),
+    );
+    expect(result.status).toBe("SUCCEEDED");
   });
 
   it("retries selected persona once and then uses fallback persona", async () => {

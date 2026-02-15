@@ -97,4 +97,73 @@ describe("listEligibleBotDishes", () => {
       }),
     );
   });
+
+  it("deduplicates by selectedOrder using latest attempt first", async () => {
+    prisma.botSeedItem.findMany.mockResolvedValueOnce([
+      {
+        dishId: "dish-1-attempt2",
+        selectedOrder: 1,
+        personaKey: "triple-silhouette",
+        seedRunId: "run-1",
+        persona: { displayName: "트리플 실루엣" },
+        dish: {
+          imageUrl: "https://cdn.example/dish-1-attempt2.webp",
+          prompt: "attempt2",
+          promptEn: "attempt2",
+          dayScores: [],
+        },
+      },
+      {
+        dishId: "dish-1-attempt1",
+        selectedOrder: 1,
+        personaKey: "triple-silhouette",
+        seedRunId: "run-1",
+        persona: { displayName: "트리플 실루엣" },
+        dish: {
+          imageUrl: "https://cdn.example/dish-1-attempt1.webp",
+          prompt: "attempt1",
+          promptEn: "attempt1",
+          dayScores: [],
+        },
+      },
+      {
+        dishId: "dish-2",
+        selectedOrder: 2,
+        personaKey: "kitchen-madness",
+        seedRunId: "run-1",
+        persona: { displayName: "키친 매드니스" },
+        dish: {
+          imageUrl: "https://cdn.example/dish-2.webp",
+          prompt: "dish2",
+          promptEn: "dish2",
+          dayScores: [],
+        },
+      },
+    ]);
+
+    await expect(listEligibleBotDishes("2026-02-08")).resolves.toEqual([
+      {
+        dishId: "dish-1-attempt2",
+        imageUrl: "https://cdn.example/dish-1-attempt2.webp",
+        prompt: "attempt2",
+        promptEn: "attempt2",
+        personaKey: "triple-silhouette",
+        personaDisplayName: "트리플 실루엣",
+        selectedOrder: 1,
+        dayScore: null,
+        seedRunId: "run-1",
+      },
+      {
+        dishId: "dish-2",
+        imageUrl: "https://cdn.example/dish-2.webp",
+        prompt: "dish2",
+        promptEn: "dish2",
+        personaKey: "kitchen-madness",
+        personaDisplayName: "키친 매드니스",
+        selectedOrder: 2,
+        dayScore: null,
+        seedRunId: "run-1",
+      },
+    ]);
+  });
 });

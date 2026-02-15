@@ -31,6 +31,12 @@ type PersonaProfile = {
   isActive: boolean;
 };
 
+type PersonaGenerationResult =
+  | { outcome: "SUCCESS"; nextAttempt: number }
+  | { outcome: "ALREADY_SUCCEEDED"; nextAttempt: number }
+  | { outcome: "CAP_REACHED"; nextAttempt: number; remainingSlots: number }
+  | { outcome: "FAILED"; nextAttempt: number };
+
 function normalizeDayKey(dayKey?: string) {
   const trimmed = dayKey?.trim();
   return trimmed || formatDayKeyForKST();
@@ -49,6 +55,15 @@ function normalizeErrorCode(error: unknown) {
 
 function normalizeErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isUniqueConstraintError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "P2002"
+  );
 }
 
 function computeSeedRunStatus(selectedCount: number, successCount: number): BotSeedRunStatus {
@@ -222,14 +237,56 @@ export async function processBotSeedJob(
   let fallbackCursor = 0;
   let processingError: unknown = null;
 
+  const countRemainingSlots = async () => {
+    const succeededCountForRun = await prisma.botSeedItem.count({
+      where: {
+        seedRunId: seedRun.id,
+        status: "SUCCEEDED",
+        dishId: { not: null },
+      },
+    });
+    return Math.max(0, TARGET_BOT_PERSONA_COUNT - succeededCountForRun);
+  };
+
   const runPersonaGeneration = async (args: {
     persona: PersonaProfile;
     selectedOrder: number;
     attemptStart: number;
-  }) => {
+  }): Promise<PersonaGenerationResult> => {
     let attempt = args.attemptStart;
 
     for (let retry = 0; retry < 2; retry += 1) {
+      const remainingSlots = await countRemainingSlots();
+      if (remainingSlots <= 0) {
+        console.info("[bot-seed] stop generation because no remaining slots", {
+          dayKey,
+          selectedOrder: args.selectedOrder,
+          personaKey: args.persona.personaKey,
+          remainingSlots,
+        });
+        return { outcome: "CAP_REACHED", nextAttempt: attempt, remainingSlots };
+      }
+
+      const existingSucceeded = await prisma.botSeedItem.findFirst({
+        where: {
+          seedRunId: seedRun.id,
+          selectedOrder: args.selectedOrder,
+          status: "SUCCEEDED",
+          dishId: { not: null },
+        },
+        select: { dishId: true },
+      });
+      if (existingSucceeded?.dishId) {
+        console.info("[bot-seed] skip generation because selectedOrder already succeeded", {
+          dayKey,
+          selectedOrder: args.selectedOrder,
+          personaKey: args.persona.personaKey,
+          dishId: existingSucceeded.dishId,
+          remainingSlots,
+        });
+        return { outcome: "ALREADY_SUCCEEDED", nextAttempt: attempt };
+      }
+
       const botPrompts = await resolveBotGenerationPrompts({
         themeText: theme.themeText,
         themeTextEn: theme.themeTextEn,
@@ -266,7 +323,34 @@ export async function processBotSeedJob(
           continue;
         }
 
-        const dishId = await prisma.$transaction(async (tx) => {
+        const txResult = await prisma.$transaction(async (tx) => {
+          // Lock one run row so concurrent workers for the same dayKey serialize success writes.
+          await tx.$queryRaw`SELECT id FROM bot_seed_run WHERE id = ${seedRun.id} FOR UPDATE`;
+
+          const alreadySucceeded = await tx.botSeedItem.findFirst({
+            where: {
+              seedRunId: seedRun.id,
+              selectedOrder: args.selectedOrder,
+              status: "SUCCEEDED",
+              dishId: { not: null },
+            },
+            select: { dishId: true },
+          });
+          if (alreadySucceeded?.dishId) {
+            return { state: "ALREADY_SUCCEEDED" as const, dishId: alreadySucceeded.dishId };
+          }
+
+          const succeededCountForRun = await tx.botSeedItem.count({
+            where: {
+              seedRunId: seedRun.id,
+              status: "SUCCEEDED",
+              dishId: { not: null },
+            },
+          });
+          if (succeededCountForRun >= TARGET_BOT_PERSONA_COUNT) {
+            return { state: "CAP_REACHED" as const, dishId: null };
+          }
+
           const dish = await tx.dish.create({
             data: {
               userId: BOT_SYSTEM_USER_ID,
@@ -307,8 +391,38 @@ export async function processBotSeedJob(
             },
           });
 
-          return dish.id;
+          return { state: "CREATED" as const, dishId: dish.id };
         });
+
+        if (txResult.state === "CAP_REACHED") {
+          console.info("[bot-seed] stop generation because cap reached", {
+            dayKey,
+            selectedOrder: args.selectedOrder,
+            personaKey: args.persona.personaKey,
+            cap: TARGET_BOT_PERSONA_COUNT,
+            remainingSlots: 0,
+          });
+          return { outcome: "CAP_REACHED", nextAttempt: attempt, remainingSlots: 0 };
+        }
+
+        if (txResult.state === "ALREADY_SUCCEEDED") {
+          const remainingSlots = await countRemainingSlots();
+          console.info(
+            "[bot-seed] skip generation in transaction because selectedOrder already succeeded",
+            {
+              dayKey,
+              selectedOrder: args.selectedOrder,
+              personaKey: args.persona.personaKey,
+              remainingSlots,
+            },
+          );
+          return { outcome: "ALREADY_SUCCEEDED", nextAttempt: attempt };
+        }
+
+        const dishId = txResult.dishId;
+        if (!dishId) {
+          return { outcome: "FAILED", nextAttempt: attempt };
+        }
 
         try {
           await enqueueDishScoreJob({ dishId, dayKey });
@@ -321,8 +435,35 @@ export async function processBotSeedJob(
           });
         }
 
-        return { success: true as const, nextAttempt: attempt + 1 };
+        return { outcome: "SUCCESS", nextAttempt: attempt + 1 };
       } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          const afterConflictSucceeded = await prisma.botSeedItem.findFirst({
+            where: {
+              seedRunId: seedRun.id,
+              selectedOrder: args.selectedOrder,
+              status: "SUCCEEDED",
+              dishId: { not: null },
+            },
+            select: { dishId: true },
+          });
+          if (afterConflictSucceeded?.dishId) {
+            const remainingSlots = await countRemainingSlots();
+            console.info(
+              "[bot-seed] skip generation after unique conflict because selectedOrder succeeded",
+              {
+                dayKey,
+                selectedOrder: args.selectedOrder,
+                personaKey: args.persona.personaKey,
+                remainingSlots,
+              },
+            );
+            return { outcome: "ALREADY_SUCCEEDED", nextAttempt: attempt + 1 };
+          }
+          attempt += 1;
+          continue;
+        }
+
         try {
           await prisma.botSeedItem.create({
             data: {
@@ -345,9 +486,10 @@ export async function processBotSeedJob(
       }
     }
 
-    return { success: false as const, nextAttempt: attempt };
+    return { outcome: "FAILED", nextAttempt: attempt };
   };
 
+  let capReached = false;
   try {
     for (let slotIndex = 0; slotIndex < selectedCount; slotIndex += 1) {
       const selectedOrder = slotIndex + 1;
@@ -360,9 +502,13 @@ export async function processBotSeedJob(
         attemptStart,
       });
 
-      if (primaryResult.success) {
+      if (primaryResult.outcome === "SUCCESS" || primaryResult.outcome === "ALREADY_SUCCEEDED") {
         successCount += 1;
         continue;
+      }
+      if (primaryResult.outcome === "CAP_REACHED") {
+        capReached = true;
+        break;
       }
 
       attemptStart = primaryResult.nextAttempt;
@@ -378,22 +524,42 @@ export async function processBotSeedJob(
         attemptStart,
       });
 
-      if (fallbackResult.success) {
+      if (fallbackResult.outcome === "SUCCESS" || fallbackResult.outcome === "ALREADY_SUCCEEDED") {
         successCount += 1;
+      }
+      if (fallbackResult.outcome === "CAP_REACHED") {
+        capReached = true;
+        break;
       }
     }
   } catch (error) {
     processingError = error;
   }
 
+  if (capReached) {
+    console.info("[bot-seed] loop finished early because cap was reached", {
+      dayKey,
+      cap: TARGET_BOT_PERSONA_COUNT,
+    });
+  }
+
+  const persistedSuccessCount = await prisma.botSeedItem.count({
+    where: {
+      seedRunId: seedRun.id,
+      status: "SUCCEEDED",
+      dishId: { not: null },
+    },
+  });
+  const finalSuccessCount = Math.max(successCount, persistedSuccessCount);
+
   // 활성 페르소나가 0개면 당일 시드 구성이 불가능하므로 실패로 기록한다.
-  const status = computeSeedRunStatus(selectedCount, successCount);
+  const status = computeSeedRunStatus(selectedCount, finalSuccessCount);
 
   await prisma.botSeedRun.update({
     where: { id: seedRun.id },
     data: {
       status,
-      successCount,
+      successCount: finalSuccessCount,
       finishedAt: new Date(),
     },
   });
