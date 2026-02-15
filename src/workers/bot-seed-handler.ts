@@ -1,4 +1,4 @@
-import type { BotSeedRunStatus, BotSeedTriggerType } from "@prisma/client";
+import { type BotSeedRunStatus, type BotSeedTriggerType, Prisma } from "@prisma/client";
 import { BOT_PERSONA_PICK_COUNT } from "@/entities/bot-persona/model/constants";
 import { selectDailyPersonas } from "@/entities/bot-persona/model/select-daily-personas";
 import { getOrCreateDayTheme } from "@/lib/day-theme/get-or-create-day-theme";
@@ -58,12 +58,7 @@ function normalizeErrorMessage(error: unknown) {
 }
 
 function isUniqueConstraintError(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "P2002"
-  );
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
 function computeSeedRunStatus(selectedCount: number, successCount: number): BotSeedRunStatus {
@@ -233,7 +228,6 @@ export async function processBotSeedJob(
     return run;
   });
 
-  let successCount = 0;
   let fallbackCursor = 0;
   let processingError: unknown = null;
 
@@ -503,7 +497,6 @@ export async function processBotSeedJob(
       });
 
       if (primaryResult.outcome === "SUCCESS" || primaryResult.outcome === "ALREADY_SUCCEEDED") {
-        successCount += 1;
         continue;
       }
       if (primaryResult.outcome === "CAP_REACHED") {
@@ -524,9 +517,6 @@ export async function processBotSeedJob(
         attemptStart,
       });
 
-      if (fallbackResult.outcome === "SUCCESS" || fallbackResult.outcome === "ALREADY_SUCCEEDED") {
-        successCount += 1;
-      }
       if (fallbackResult.outcome === "CAP_REACHED") {
         capReached = true;
         break;
@@ -550,7 +540,7 @@ export async function processBotSeedJob(
       dishId: { not: null },
     },
   });
-  const finalSuccessCount = Math.max(successCount, persistedSuccessCount);
+  const finalSuccessCount = persistedSuccessCount;
 
   // 활성 페르소나가 0개면 당일 시드 구성이 불가능하므로 실패로 기록한다.
   const status = computeSeedRunStatus(selectedCount, finalSuccessCount);

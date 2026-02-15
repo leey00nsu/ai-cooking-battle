@@ -91,7 +91,12 @@ describe("processBotSeedJob", () => {
     prisma.botSeedRun.update.mockResolvedValue({ id: "run-1" });
     prisma.botSeedItem.findMany.mockResolvedValue([]);
     prisma.botSeedItem.findFirst.mockResolvedValue(null);
-    prisma.botSeedItem.count.mockResolvedValue(0);
+    prisma.botSeedItem.count.mockImplementation(async () => {
+      return prisma.botSeedItem.create.mock.calls.reduce((count, [payload]) => {
+        const data = (payload as { data?: { status?: string } }).data;
+        return data?.status === "SUCCEEDED" ? count + 1 : count;
+      }, 0);
+    });
     prisma.botSeedItem.deleteMany.mockResolvedValue({ count: 0 });
     prisma.user.upsert.mockResolvedValue({ id: "bot-system-user" });
     prisma.$queryRaw.mockResolvedValue([]);
@@ -170,6 +175,10 @@ describe("processBotSeedJob", () => {
       selected: [{ personaKey: "p1", styleGroup: "g1" }],
       fallback: [],
     });
+    prisma.botSeedItem.count
+      .mockResolvedValueOnce(0)
+      .mockResolvedValueOnce(0)
+      .mockResolvedValueOnce(1);
 
     prisma.botSeedItem.findFirst
       .mockResolvedValueOnce(null)
@@ -193,6 +202,36 @@ describe("processBotSeedJob", () => {
       }),
     );
     expect(result.status).toBe("SUCCEEDED");
+  });
+
+  it("does not overcount success when result is ALREADY_SUCCEEDED but persisted count is lower", async () => {
+    selectDailyPersonas.mockReturnValue({
+      selected: [{ personaKey: "p1", styleGroup: "g1" }],
+      fallback: [],
+    });
+    prisma.botSeedItem.count.mockResolvedValue(0);
+
+    prisma.botSeedItem.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ dishId: "dish-existing" });
+
+    runDishGeneration.mockResolvedValueOnce({
+      status: "ALLOW",
+      imageUrl: "https://cdn.example/a.webp",
+      generationPrompt: "prompt",
+    });
+
+    const result = await processBotSeedJob({ dayKey: "2026-02-09", triggerType: "SCHEDULE" });
+
+    expect(prisma.botSeedRun.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "FAILED",
+          successCount: 0,
+        }),
+      }),
+    );
+    expect(result.status).toBe("FAILED");
   });
 
   it("does not generate more dishes when remaining slots become zero", async () => {
