@@ -22,8 +22,8 @@ function RecentMatchesPanel({ matches, isPending, isError }: RecentMatchesPanelP
     >
       <aside>
         <SectionHeading
-          title="Recent Matches"
-          description="최근 매치 결과와 점수 변동"
+          title="Recent Ranking Days"
+          description="최근 랭킹 기준일과 점수 변동"
           className="items-start"
         />
 
@@ -35,13 +35,16 @@ function RecentMatchesPanel({ matches, isPending, isError }: RecentMatchesPanelP
           </div>
         ) : isError ? (
           <div className="mt-4">
-            <ErrorState title="Recent Matches 오류" description="매치를 불러오지 못했습니다." />
+            <ErrorState
+              title="Recent Ranking 오류"
+              description="랭킹 요약을 불러오지 못했습니다."
+            />
           </div>
         ) : matches.length === 0 ? (
           <div className="mt-4">
             <EmptyState
-              title="최근 매치가 없습니다."
-              description="매치가 생성되면 여기에 표시됩니다."
+              title="최근 랭킹 기록이 없습니다."
+              description="랭킹 데이터가 생성되면 여기에 표시됩니다."
             />
           </div>
         ) : (
@@ -57,7 +60,7 @@ function RecentMatchesPanel({ matches, isPending, isError }: RecentMatchesPanelP
                 <li key={match.id}>
                   <Surface asChild tone="soft" radius="lg" interactive="borderAndBackground">
                     <Link
-                      href={`/matches/${match.id}`}
+                      href={`/ranking/${match.dayKey}`}
                       className="flex items-center justify-between gap-3 px-3 py-2"
                     >
                       <div className="flex items-center gap-3">
