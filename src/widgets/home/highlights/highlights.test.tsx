@@ -1,6 +1,15 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import Highlights from "./highlights";
+
+const { trackEventMock } = vi.hoisted(() => ({
+  trackEventMock: vi.fn(),
+}));
+
+vi.mock("@/shared/analytics/track-event", () => ({
+  trackEvent: trackEventMock,
+}));
 
 const rankingTop = {
   dayKey: "2026-01-26",
@@ -56,5 +65,18 @@ describe("Highlights", () => {
     render(<Highlights rankingTop={rankingTop} isRestricted />);
 
     expect(screen.getByText("하이라이트 제한")).toBeInTheDocument();
+  });
+
+  it("tracks ranking click event payload", () => {
+    render(<Highlights rankingTop={rankingTop} />);
+
+    const cardLink = screen.getByRole("link", { name: /Hall Dish #01/i });
+    fireEvent.click(cardLink);
+
+    expect(trackEventMock).toHaveBeenCalledWith(ANALYTICS_EVENTS.RANKING_ITEM_CLICKED, {
+      screen: "home",
+      dayKey: "2026-01-26",
+      rank: 1,
+    });
   });
 });
