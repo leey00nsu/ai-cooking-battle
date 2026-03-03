@@ -57,7 +57,16 @@ function getArchiveSearch(url: string) {
 function getIncludeBots(url: string) {
   const { searchParams } = new URL(url);
   const value = searchParams.get("includeBots")?.trim().toLowerCase();
-  return value === "1" || value === "true";
+  if (!value) {
+    return true;
+  }
+  if (value === "0" || value === "false") {
+    return false;
+  }
+  if (value === "1" || value === "true") {
+    return true;
+  }
+  return true;
 }
 
 export async function GET(

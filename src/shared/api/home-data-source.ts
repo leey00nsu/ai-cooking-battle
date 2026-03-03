@@ -16,7 +16,7 @@ const mockHomeDataSource: HomeDataSource = {
     const rankingTop = await listRankingTop({
       dayKey: args.dayKey,
       count: args.limit,
-      includeBots: false,
+      includeBots: true,
     });
 
     return {

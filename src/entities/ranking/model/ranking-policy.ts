@@ -21,11 +21,11 @@ export const RANKING_SQL_ORDER_BY = `
 `;
 
 export function getPublicRankingDishWhere(args?: { includeBots?: boolean }): Prisma.DishWhereInput {
-  if (args?.includeBots) {
-    return { isHidden: false };
+  if (args?.includeBots === false) {
+    return {
+      isHidden: false,
+      botMeta: null,
+    };
   }
-  return {
-    isHidden: false,
-    botMeta: null,
-  };
+  return { isHidden: false };
 }

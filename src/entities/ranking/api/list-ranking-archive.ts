@@ -280,7 +280,7 @@ export async function listRankingArchive(args: {
       ? await fetchGlobalRankByDishId({
           dayKey,
           dishIds: visibleRows.map((row) => row.dishId),
-          includeBots: args.includeBots ?? false,
+          includeBots: args.includeBots ?? true,
         })
       : null;
   const items = globalRankByDishId

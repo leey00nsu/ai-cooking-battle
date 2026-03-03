@@ -49,7 +49,6 @@ describe("listRankingTop", () => {
           status: "READY",
           dish: {
             isHidden: false,
-            botMeta: null,
           },
         },
         orderBy: [
@@ -104,11 +103,11 @@ describe("listRankingTop", () => {
     expect(prisma.dishDayScore.findMany).not.toHaveBeenCalled();
   });
 
-  it("allows bot dishes only when includeBots=true", async () => {
+  it("excludes bot dishes only when includeBots=false", async () => {
     prisma.dishDayScore.findMany.mockResolvedValueOnce([]);
 
     const { listRankingTop } = await import("./list-ranking-top");
-    await listRankingTop({ dayKey: "2026-02-12", includeBots: true });
+    await listRankingTop({ dayKey: "2026-02-12", includeBots: false });
 
     expect(prisma.dishDayScore.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -117,6 +116,7 @@ describe("listRankingTop", () => {
           status: "READY",
           dish: {
             isHidden: false,
+            botMeta: null,
           },
         },
       }),

@@ -85,7 +85,6 @@ describe("listRankingArchive", () => {
           status: "READY",
           dish: {
             isHidden: false,
-            botMeta: null,
           },
         },
       }),
@@ -98,7 +97,6 @@ describe("listRankingArchive", () => {
           status: "READY",
           dish: {
             isHidden: false,
-            botMeta: null,
           },
         },
         orderBy: [
@@ -118,7 +116,6 @@ describe("listRankingArchive", () => {
           status: "READY",
           dish: {
             isHidden: false,
-            botMeta: null,
           },
         },
         orderBy: [
@@ -274,7 +271,7 @@ describe("listRankingArchive", () => {
     expect(result.nextOffset).toBeNull();
   });
 
-  it("includes bot dishes only when includeBots=true", async () => {
+  it("excludes bot dishes when includeBots=false", async () => {
     prisma.dayTheme.findUnique.mockResolvedValueOnce({
       themeText: "비 오는 날",
       axisA: "비",
@@ -290,7 +287,7 @@ describe("listRankingArchive", () => {
     const { listRankingArchive } = await import("./list-ranking-archive");
     await listRankingArchive({
       dayKey: "2026-02-12",
-      includeBots: true,
+      includeBots: false,
     });
 
     expect(prisma.dishDayScore.aggregate).toHaveBeenCalledWith(
@@ -300,6 +297,7 @@ describe("listRankingArchive", () => {
           status: "READY",
           dish: {
             isHidden: false,
+            botMeta: null,
           },
         },
       }),
@@ -312,6 +310,7 @@ describe("listRankingArchive", () => {
           status: "READY",
           dish: {
             isHidden: false,
+            botMeta: null,
           },
         },
       }),

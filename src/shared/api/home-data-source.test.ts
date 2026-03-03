@@ -39,7 +39,7 @@ describe("home-data-source", () => {
     expect(listRankingTopMock).toHaveBeenCalledWith({
       dayKey: "2026-02-08",
       count: 3,
-      includeBots: false,
+      includeBots: true,
     });
     expect(feed.items).toHaveLength(1);
     expect(feed.items[0]?.dayKey).toBe("2026-02-08");
