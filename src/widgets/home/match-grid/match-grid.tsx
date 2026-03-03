@@ -58,11 +58,11 @@ function MatchCard({ match }: { match: MatchSummary }) {
       className="group relative aspect-square overflow-hidden rounded-2xl border border-white/5 bg-card"
       href={`/ranking/${match.dayKey}`}
       onClick={() =>
-        trackEvent(ANALYTICS_EVENTS.MATCH_VIEW, {
+        trackEvent(ANALYTICS_EVENTS.RANKING_ITEM_CLICKED, {
           screen: "home",
-          matchId: match.id,
           dayKey: match.dayKey,
-          isPractice: match.isPractice,
+          dishId: match.id,
+          source: "home_match_grid",
         })
       }
     >
