@@ -31,21 +31,14 @@ export function getMockMe(): MeResponse {
 
 function makeRankingEntry(dayKey: string, rank: number): RankingEntry {
   const baseSeed = `${dayKey}-rank-${pad(rank)}`;
-  const leftScore = 8.8 - rank * 0.2;
-  const rightScore = 8.3 - rank * 0.18;
-  const isLeftWinner = leftScore >= rightScore;
-  const score = isLeftWinner ? leftScore : rightScore;
+  const score = 9.6 - rank * 0.25;
   return {
     rank,
     dishId: baseSeed,
     dishName: `Hall Dish #${pad(rank)}`,
     authorName: `Chef_${pad(rank)}`,
-    imageUrl: dishImage(`${baseSeed}-${isLeftWinner ? "left" : "right"}`),
+    imageUrl: dishImage(baseSeed),
     score,
-    leftImageUrl: dishImage(`${baseSeed}-left`),
-    rightImageUrl: dishImage(`${baseSeed}-right`),
-    leftScore,
-    rightScore,
   };
 }
 

@@ -12,10 +12,6 @@ const rankingTop = {
       authorName: "Chef_01",
       imageUrl: "https://example.com/winner-1.jpg",
       score: 9.8,
-      leftImageUrl: "https://example.com/left.jpg",
-      rightImageUrl: "https://example.com/right.jpg",
-      leftScore: 9.8,
-      rightScore: 8.5,
     },
     {
       rank: 2,
@@ -24,10 +20,6 @@ const rankingTop = {
       authorName: "Chef_02",
       imageUrl: "https://example.com/winner-2.jpg",
       score: 9.2,
-      leftImageUrl: "",
-      rightImageUrl: "",
-      leftScore: 9.2,
-      rightScore: 9.1,
     },
   ],
 };
@@ -38,6 +30,11 @@ describe("Highlights", () => {
 
     expect(screen.getByText(/오늘의 랭킹 — Top Rated/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View Ranking" })).toBeInTheDocument();
+    expect(screen.getByText("Hall Dish #01")).toBeInTheDocument();
+    expect(screen.getByText("Chef_01")).toBeInTheDocument();
+    expect(screen.queryByText("vs")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Winner:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/대결/)).not.toBeInTheDocument();
 
     const links = screen.getAllByRole("link");
     expect(links.some((link) => link.getAttribute("href") === "/ranking/2026-01-26")).toBe(true);

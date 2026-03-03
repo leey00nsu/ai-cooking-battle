@@ -54,61 +54,40 @@ function HighlightCard({
   dayKey: string;
   onClick?: () => void;
 }) {
-  const winnerIsLeft = entry.leftScore > entry.rightScore;
-  const winnerLabel = winnerIsLeft ? "Left" : "Right";
-  const chefHandle = `@chef-${String(entry.rank).padStart(2, "0")}`;
-  const title = `랭킹 #${entry.rank} 대결`;
-
   return (
     <Link
       className="group rounded-[2rem] border border-white/5 bg-card/90 p-4 shadow-lg transition hover:border-primary/40 hover:shadow-xl"
       href={`/ranking/${dayKey}`}
       onClick={onClick}
     >
-      <div className="relative grid h-48 grid-cols-2 gap-1 overflow-hidden rounded-[1.5rem]">
-        <div className="h-full w-full bg-card">
-          {entry.leftImageUrl ? (
-            <img
-              alt={`Ranking left ${entry.rank}`}
-              className="h-full w-full object-cover"
-              src={entry.leftImageUrl}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-card via-background to-black text-xs text-white/40">
-              No Image
-            </div>
-          )}
-        </div>
-        <div className="h-full w-full bg-card">
-          {entry.rightImageUrl ? (
-            <img
-              alt={`Ranking right ${entry.rank}`}
-              className="h-full w-full object-cover"
-              src={entry.rightImageUrl}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-card via-background to-black text-xs text-white/40">
-              No Image
-            </div>
-          )}
-        </div>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="-skew-x-12 rounded-full border border-white/10 bg-black/80 px-4 py-1 text-xl font-black italic text-white shadow-lg">
-            <span className="not-italic text-primary">{formatScore(entry.leftScore)}</span>
-            <span className="px-2 text-sm font-normal not-italic text-white/50">vs</span>
-            <span className="not-italic">{formatScore(entry.rightScore)}</span>
+      <div className="relative h-52 overflow-hidden rounded-[1.5rem] bg-card">
+        {entry.imageUrl ? (
+          <img
+            alt={`Ranking #${entry.rank} ${entry.dishName}`}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            src={entry.imageUrl}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-card via-background to-black text-xs text-white/40">
+            No Image
           </div>
+        )}
+        <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/75 px-3 py-1 text-xs font-semibold text-white">
+          #{entry.rank}
+        </div>
+        <div className="absolute bottom-3 right-3 rounded-md bg-black/80 px-2 py-1 text-base font-black text-primary">
+          {formatScore(entry.score)}
         </div>
       </div>
       <div className="mt-4 flex items-start justify-between px-2">
         <div className="flex flex-col gap-1">
-          <h3 className="text-lg font-bold leading-tight text-white">{title}</h3>
+          <h3 className="line-clamp-1 text-lg font-bold leading-tight text-white">
+            {entry.dishName}
+          </h3>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-              Winner: {winnerLabel}
-            </span>
+            <span className="line-clamp-1 text-xs text-white/70">{entry.authorName}</span>
             <span className="text-xs text-white/30">•</span>
-            <span className="text-xs text-white/60">{chefHandle}</span>
+            <span className="text-xs text-white/60">Rank #{entry.rank}</span>
           </div>
         </div>
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-white transition group-hover:bg-primary group-hover:text-black">

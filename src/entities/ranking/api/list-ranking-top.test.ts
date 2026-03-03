@@ -71,10 +71,6 @@ describe("listRankingTop", () => {
           authorName: "Chef A",
           imageUrl: "https://cdn.example/dish-1.webp",
           score: 91.2,
-          leftImageUrl: "https://cdn.example/dish-1.webp",
-          rightImageUrl: "https://cdn.example/dish-1.webp",
-          leftScore: 91.2,
-          rightScore: 91.2,
         },
         {
           rank: 2,
@@ -83,10 +79,6 @@ describe("listRankingTop", () => {
           authorName: "트리플 실루엣",
           imageUrl: "https://cdn.example/dish-2.webp",
           score: 88.6,
-          leftImageUrl: "https://cdn.example/dish-2.webp",
-          rightImageUrl: "https://cdn.example/dish-2.webp",
-          leftScore: 88.6,
-          rightScore: 88.6,
         },
       ],
     });

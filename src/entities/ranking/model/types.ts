@@ -5,16 +5,9 @@ export type RankingEntry = {
   authorName: string;
   imageUrl: string;
   score: number;
-  leftImageUrl: string;
-  rightImageUrl: string;
-  leftScore: number;
-  rightScore: number;
 };
 
-export type RankingArchiveEntry = Omit<
-  RankingEntry,
-  "leftImageUrl" | "rightImageUrl" | "leftScore" | "rightScore"
->;
+export type RankingArchiveEntry = RankingEntry;
 
 export type RankingTop = {
   dayKey: string;

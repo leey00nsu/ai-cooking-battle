@@ -23,10 +23,10 @@ const mockHomeDataSource: HomeDataSource = {
       items: rankingTop.items.map((entry) => ({
         id: entry.dishId,
         dayKey: rankingTop.dayKey,
-        leftDishImageUrl: entry.leftImageUrl,
-        rightDishImageUrl: entry.rightImageUrl,
-        leftScore: entry.leftScore,
-        rightScore: entry.rightScore,
+        leftDishImageUrl: entry.imageUrl,
+        rightDishImageUrl: entry.imageUrl,
+        leftScore: entry.score,
+        rightScore: entry.score,
         isPractice: false,
       })),
     };

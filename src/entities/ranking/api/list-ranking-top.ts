@@ -74,10 +74,6 @@ export async function listRankingTop(args: {
         authorName: row.dish.botMeta?.persona.displayName || row.dish.user.name || AUTHOR_FALLBACK,
         imageUrl,
         score,
-        leftImageUrl: imageUrl,
-        rightImageUrl: imageUrl,
-        leftScore: score,
-        rightScore: score,
       };
     }),
   };

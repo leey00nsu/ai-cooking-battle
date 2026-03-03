@@ -25,10 +25,6 @@ describe("home-data-source", () => {
           authorName: "Chef A",
           imageUrl: "https://cdn.example/dish-1.webp",
           score: 91,
-          leftImageUrl: "https://cdn.example/dish-1-left.webp",
-          rightImageUrl: "https://cdn.example/dish-1-right.webp",
-          leftScore: 9.1,
-          rightScore: 8.7,
         },
       ],
     });
@@ -44,6 +40,10 @@ describe("home-data-source", () => {
     expect(feed.items).toHaveLength(1);
     expect(feed.items[0]?.dayKey).toBe("2026-02-08");
     expect(feed.items[0]?.id).toBe("dish-1");
+    expect(feed.items[0]?.leftDishImageUrl).toBe("https://cdn.example/dish-1.webp");
+    expect(feed.items[0]?.rightDishImageUrl).toBe("https://cdn.example/dish-1.webp");
+    expect(feed.items[0]?.leftScore).toBe(91);
+    expect(feed.items[0]?.rightScore).toBe(91);
   });
 
   it("returns DB ranking via adapter interface", async () => {
@@ -57,10 +57,6 @@ describe("home-data-source", () => {
           authorName: "Chef A",
           imageUrl: "https://cdn.example/dish-1.webp",
           score: 91,
-          leftImageUrl: "https://cdn.example/dish-1.webp",
-          rightImageUrl: "https://cdn.example/dish-1.webp",
-          leftScore: 91,
-          rightScore: 91,
         },
       ],
     });
