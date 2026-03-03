@@ -78,9 +78,29 @@ describe("listRankingArchive", () => {
       dishId: "dish-1",
       dishName: "매콤 버터 마늘 라멘",
     });
+    expect(prisma.dishDayScore.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          dayKey: "2026-02-12",
+          status: "READY",
+          dish: {
+            isHidden: false,
+            botMeta: null,
+          },
+        },
+      }),
+    );
     expect(prisma.dishDayScore.findMany).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
+        where: {
+          dayKey: "2026-02-12",
+          status: "READY",
+          dish: {
+            isHidden: false,
+            botMeta: null,
+          },
+        },
         orderBy: [
           { totalScore: "desc" },
           { themeFit: "desc" },
@@ -93,6 +113,14 @@ describe("listRankingArchive", () => {
     expect(prisma.dishDayScore.findMany).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
+        where: {
+          dayKey: "2026-02-12",
+          status: "READY",
+          dish: {
+            isHidden: false,
+            botMeta: null,
+          },
+        },
         orderBy: [
           { totalScore: "desc" },
           { themeFit: "desc" },
@@ -244,5 +272,49 @@ describe("listRankingArchive", () => {
       rank: 2,
     });
     expect(result.nextOffset).toBeNull();
+  });
+
+  it("includes bot dishes only when includeBots=true", async () => {
+    prisma.dayTheme.findUnique.mockResolvedValueOnce({
+      themeText: "비 오는 날",
+      axisA: "비",
+      axisB: "국물",
+      axisFlavor: "매콤",
+    });
+    prisma.dishDayScore.aggregate.mockResolvedValueOnce({
+      _count: { _all: 1 },
+      _avg: { totalScore: 90 },
+    });
+    prisma.dishDayScore.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const { listRankingArchive } = await import("./list-ranking-archive");
+    await listRankingArchive({
+      dayKey: "2026-02-12",
+      includeBots: true,
+    });
+
+    expect(prisma.dishDayScore.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          dayKey: "2026-02-12",
+          status: "READY",
+          dish: {
+            isHidden: false,
+          },
+        },
+      }),
+    );
+    expect(prisma.dishDayScore.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: {
+          dayKey: "2026-02-12",
+          status: "READY",
+          dish: {
+            isHidden: false,
+          },
+        },
+      }),
+    );
   });
 });

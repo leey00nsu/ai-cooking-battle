@@ -49,6 +49,7 @@ describe("listRankingTop", () => {
           status: "READY",
           dish: {
             isHidden: false,
+            botMeta: null,
           },
         },
         orderBy: [
@@ -101,5 +102,24 @@ describe("listRankingTop", () => {
       items: [],
     });
     expect(prisma.dishDayScore.findMany).not.toHaveBeenCalled();
+  });
+
+  it("allows bot dishes only when includeBots=true", async () => {
+    prisma.dishDayScore.findMany.mockResolvedValueOnce([]);
+
+    const { listRankingTop } = await import("./list-ranking-top");
+    await listRankingTop({ dayKey: "2026-02-12", includeBots: true });
+
+    expect(prisma.dishDayScore.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          dayKey: "2026-02-12",
+          status: "READY",
+          dish: {
+            isHidden: false,
+          },
+        },
+      }),
+    );
   });
 });

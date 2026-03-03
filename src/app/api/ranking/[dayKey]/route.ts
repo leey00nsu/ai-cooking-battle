@@ -54,6 +54,12 @@ function getArchiveSearch(url: string) {
   return search ? search : null;
 }
 
+function getIncludeBots(url: string) {
+  const { searchParams } = new URL(url);
+  const value = searchParams.get("includeBots")?.trim().toLowerCase();
+  return value === "1" || value === "true";
+}
+
 export async function GET(
   request: Request,
   context: {
@@ -70,17 +76,20 @@ export async function GET(
     const limit = getArchiveLimit(request.url);
     const offset = getArchiveOffset(request.url);
     const search = getArchiveSearch(request.url);
+    const includeBots = getIncludeBots(request.url);
     return NextResponse.json(
       await listRankingArchive({
         dayKey,
         limit,
         offset,
         search,
+        includeBots,
       }),
     );
   }
 
   const count = getRankingCount(request.url);
+  const includeBots = getIncludeBots(request.url);
   const source = getHomeDataSource();
-  return NextResponse.json(await source.getRankingTop({ dayKey, count }));
+  return NextResponse.json(await source.getRankingTop({ dayKey, count, includeBots }));
 }

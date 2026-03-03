@@ -19,3 +19,13 @@ export const RANKING_SQL_ORDER_BY = `
   dds."analyzedAt" DESC,
   dds."id" DESC
 `;
+
+export function getPublicRankingDishWhere(args?: { includeBots?: boolean }): Prisma.DishWhereInput {
+  if (args?.includeBots) {
+    return { isHidden: false };
+  }
+  return {
+    isHidden: false,
+    botMeta: null,
+  };
+}

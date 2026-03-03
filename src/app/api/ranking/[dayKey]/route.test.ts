@@ -42,6 +42,7 @@ describe("GET /api/ranking/[dayKey]", () => {
     expect(getRankingTopMock).toHaveBeenCalledWith({
       dayKey: "2026-02-11",
       count: 10,
+      includeBots: false,
     });
   });
 
@@ -55,6 +56,7 @@ describe("GET /api/ranking/[dayKey]", () => {
     expect(getRankingTopMock).toHaveBeenCalledWith({
       dayKey: "2026-02-11",
       count: 7,
+      includeBots: false,
     });
   });
 
@@ -71,10 +73,12 @@ describe("GET /api/ranking/[dayKey]", () => {
     expect(getRankingTopMock).toHaveBeenNthCalledWith(1, {
       dayKey: "2026-02-11",
       count: 10,
+      includeBots: false,
     });
     expect(getRankingTopMock).toHaveBeenNthCalledWith(2, {
       dayKey: "2026-02-11",
       count: 10,
+      includeBots: false,
     });
   });
 
@@ -88,6 +92,7 @@ describe("GET /api/ranking/[dayKey]", () => {
     expect(getRankingTopMock).toHaveBeenCalledWith({
       dayKey: "2026-02-11",
       count: 50,
+      includeBots: false,
     });
   });
 
@@ -109,6 +114,7 @@ describe("GET /api/ranking/[dayKey]", () => {
       limit: 15,
       offset: 30,
       search: "ramen",
+      includeBots: false,
     });
     expect(getRankingTopMock).not.toHaveBeenCalled();
   });
@@ -125,6 +131,37 @@ describe("GET /api/ranking/[dayKey]", () => {
       limit: 12,
       offset: 0,
       search: null,
+      includeBots: false,
+    });
+  });
+
+  it("passes includeBots=true to top and archive handlers", async () => {
+    const { GET } = await import("./route");
+
+    await GET(new Request("http://localhost/api/ranking/2026-02-11?count=5&includeBots=true"), {
+      params: Promise.resolve({ dayKey: "2026-02-11" }),
+    });
+
+    await GET(
+      new Request(
+        "http://localhost/api/ranking/2026-02-11?view=archive&includeBots=1&limit=10&offset=0",
+      ),
+      {
+        params: Promise.resolve({ dayKey: "2026-02-11" }),
+      },
+    );
+
+    expect(getRankingTopMock).toHaveBeenCalledWith({
+      dayKey: "2026-02-11",
+      count: 5,
+      includeBots: true,
+    });
+    expect(listRankingArchiveMock).toHaveBeenCalledWith({
+      dayKey: "2026-02-11",
+      limit: 10,
+      offset: 0,
+      search: null,
+      includeBots: true,
     });
   });
 

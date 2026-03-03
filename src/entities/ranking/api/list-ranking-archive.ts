@@ -1,5 +1,9 @@
 import { Prisma } from "@prisma/client";
-import { getRankingOrderBy, RANKING_SQL_ORDER_BY } from "@/entities/ranking/model/ranking-policy";
+import {
+  getPublicRankingDishWhere,
+  getRankingOrderBy,
+  RANKING_SQL_ORDER_BY,
+} from "@/entities/ranking/model/ranking-policy";
 import type { RankingArchiveEntry, RankingArchiveResponse } from "@/entities/ranking/model/types";
 import { prisma } from "@/lib/prisma";
 
@@ -128,10 +132,18 @@ function buildKeywordGroups(args: {
   ];
 }
 
-async function fetchGlobalRankByDishId(dayKey: string, dishIds: string[]) {
+async function fetchGlobalRankByDishId(args: {
+  dayKey: string;
+  dishIds: string[];
+  includeBots: boolean;
+}) {
+  const { dayKey, dishIds, includeBots } = args;
   if (dishIds.length === 0) {
     return new Map<string, number>();
   }
+  const botFilterSql = includeBots
+    ? Prisma.empty
+    : Prisma.sql`AND NOT EXISTS (SELECT 1 FROM "dish_bot_meta" dbm WHERE dbm."dishId" = d."id")`;
 
   // 검색 결과에서도 "당일 전체 기준 순위"를 유지해야 하므로 DB 윈도우 함수(ROW_NUMBER)를 사용한다.
   // Prisma findMany로 전체 행을 메모리에 올리는 방식은 참가자 수 증가 시 비용이 커져 회피한다.
@@ -149,6 +161,7 @@ async function fetchGlobalRankByDishId(dayKey: string, dishIds: string[]) {
         dds."dayKey" = ${dayKey}
         AND dds."status" = 'READY'
         AND d."isHidden" = false
+        ${botFilterSql}
     )
     SELECT ranked."dishId", ranked.rank
     FROM ranked
@@ -163,6 +176,7 @@ export async function listRankingArchive(args: {
   limit?: number;
   offset?: number;
   search?: string | null;
+  includeBots?: boolean;
 }): Promise<RankingArchiveResponse> {
   const dayKey = args.dayKey.trim();
   const limit = toSafeLimit(args.limit);
@@ -195,9 +209,7 @@ export async function listRankingArchive(args: {
       where: {
         dayKey,
         status: "READY",
-        dish: {
-          isHidden: false,
-        },
+        dish: getPublicRankingDishWhere({ includeBots: args.includeBots }),
       },
       _count: {
         _all: true,
@@ -211,7 +223,7 @@ export async function listRankingArchive(args: {
         dayKey,
         status: "READY",
         dish: {
-          isHidden: false,
+          ...getPublicRankingDishWhere({ includeBots: args.includeBots }),
           ...(search ? { dishName: { contains: search, mode: "insensitive" as const } } : {}),
         },
       },
@@ -247,9 +259,7 @@ export async function listRankingArchive(args: {
       where: {
         dayKey,
         status: "READY",
-        dish: {
-          isHidden: false,
-        },
+        dish: getPublicRankingDishWhere({ includeBots: args.includeBots }),
       },
       orderBy: getRankingOrderBy(),
       take: 30,
@@ -267,10 +277,11 @@ export async function listRankingArchive(args: {
   const visibleRows = hasMore ? rows.slice(0, limit) : rows;
   const globalRankByDishId =
     search && visibleRows.length > 0
-      ? await fetchGlobalRankByDishId(
+      ? await fetchGlobalRankByDishId({
           dayKey,
-          visibleRows.map((row) => row.dishId),
-        )
+          dishIds: visibleRows.map((row) => row.dishId),
+          includeBots: args.includeBots ?? false,
+        })
       : null;
   const items = globalRankByDishId
     ? visibleRows.flatMap((row) => {

@@ -5,7 +5,11 @@ import { getMockMatchFeed } from "@/shared/api/mock-home-data";
 
 export type HomeDataSource = {
   getMatchFeed(args: { dayKey: string; limit: number }): Promise<MatchFeed>;
-  getRankingTop(args: { dayKey: string; count: number }): Promise<RankingTop>;
+  getRankingTop(args: {
+    dayKey: string;
+    count: number;
+    includeBots?: boolean;
+  }): Promise<RankingTop>;
 };
 
 const mockHomeDataSource: HomeDataSource = {
