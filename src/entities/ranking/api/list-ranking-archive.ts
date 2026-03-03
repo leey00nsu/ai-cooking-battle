@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { getRankingOrderBy, RANKING_SQL_ORDER_BY } from "@/entities/ranking/model/ranking-policy";
 import type { RankingArchiveEntry, RankingArchiveResponse } from "@/entities/ranking/model/types";
 import { prisma } from "@/lib/prisma";
 
@@ -141,7 +142,7 @@ async function fetchGlobalRankByDishId(dayKey: string, dishIds: string[]) {
     WITH ranked AS (
       SELECT
         dds."dishId",
-        ROW_NUMBER() OVER (ORDER BY dds."totalScore" DESC, dds."analyzedAt" DESC, dds."id" DESC) AS rank
+        ROW_NUMBER() OVER (ORDER BY ${Prisma.raw(RANKING_SQL_ORDER_BY)}) AS rank
       FROM "dish_day_score" dds
       INNER JOIN "dish" d ON d."id" = dds."dishId"
       WHERE
@@ -214,7 +215,7 @@ export async function listRankingArchive(args: {
           ...(search ? { dishName: { contains: search, mode: "insensitive" as const } } : {}),
         },
       },
-      orderBy: [{ totalScore: "desc" }, { analyzedAt: "desc" }, { id: "desc" }],
+      orderBy: getRankingOrderBy(),
       skip: offset,
       take: limit + 1,
       select: {
@@ -250,7 +251,7 @@ export async function listRankingArchive(args: {
           isHidden: false,
         },
       },
-      orderBy: [{ totalScore: "desc" }, { analyzedAt: "desc" }, { id: "desc" }],
+      orderBy: getRankingOrderBy(),
       take: 30,
       select: {
         dish: {

@@ -1,3 +1,4 @@
+import { getRankingOrderBy } from "@/entities/ranking/model/ranking-policy";
 import type { RankingTop } from "@/entities/ranking/model/types";
 import { prisma } from "@/lib/prisma";
 
@@ -30,7 +31,7 @@ export async function listRankingTop(args: {
         isHidden: false,
       },
     },
-    orderBy: [{ totalScore: "desc" }, { analyzedAt: "desc" }, { id: "desc" }],
+    orderBy: getRankingOrderBy(),
     take: count,
     select: {
       dishId: true,

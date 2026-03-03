@@ -78,6 +78,30 @@ describe("listRankingArchive", () => {
       dishId: "dish-1",
       dishName: "매콤 버터 마늘 라멘",
     });
+    expect(prisma.dishDayScore.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        orderBy: [
+          { totalScore: "desc" },
+          { themeFit: "desc" },
+          { execution: "desc" },
+          { analyzedAt: "desc" },
+          { id: "desc" },
+        ],
+      }),
+    );
+    expect(prisma.dishDayScore.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        orderBy: [
+          { totalScore: "desc" },
+          { themeFit: "desc" },
+          { execution: "desc" },
+          { analyzedAt: "desc" },
+          { id: "desc" },
+        ],
+      }),
+    );
     expect(result.nextOffset).toBe(1);
     expect(result.keywordGroups.length).toBeGreaterThan(0);
   });

@@ -51,6 +51,13 @@ describe("listRankingTop", () => {
             isHidden: false,
           },
         },
+        orderBy: [
+          { totalScore: "desc" },
+          { themeFit: "desc" },
+          { execution: "desc" },
+          { analyzedAt: "desc" },
+          { id: "desc" },
+        ],
         take: 2,
       }),
     );
