@@ -179,6 +179,7 @@ export async function listRankingArchive(args: {
   includeBots?: boolean;
 }): Promise<RankingArchiveResponse> {
   const dayKey = args.dayKey.trim();
+  const includeBots = args.includeBots ?? true;
   const limit = toSafeLimit(args.limit);
   const offset = toSafeOffset(args.offset);
   const search = toSafeSearch(args.search);
@@ -209,7 +210,7 @@ export async function listRankingArchive(args: {
       where: {
         dayKey,
         status: "READY",
-        dish: getPublicRankingDishWhere({ includeBots: args.includeBots }),
+        dish: getPublicRankingDishWhere({ includeBots }),
       },
       _count: {
         _all: true,
@@ -223,7 +224,7 @@ export async function listRankingArchive(args: {
         dayKey,
         status: "READY",
         dish: {
-          ...getPublicRankingDishWhere({ includeBots: args.includeBots }),
+          ...getPublicRankingDishWhere({ includeBots }),
           ...(search ? { dishName: { contains: search, mode: "insensitive" as const } } : {}),
         },
       },
@@ -259,7 +260,7 @@ export async function listRankingArchive(args: {
       where: {
         dayKey,
         status: "READY",
-        dish: getPublicRankingDishWhere({ includeBots: args.includeBots }),
+        dish: getPublicRankingDishWhere({ includeBots }),
       },
       orderBy: getRankingOrderBy(),
       take: 30,
@@ -280,7 +281,7 @@ export async function listRankingArchive(args: {
       ? await fetchGlobalRankByDishId({
           dayKey,
           dishIds: visibleRows.map((row) => row.dishId),
-          includeBots: args.includeBots ?? true,
+          includeBots,
         })
       : null;
   const items = globalRankByDishId

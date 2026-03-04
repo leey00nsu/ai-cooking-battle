@@ -1,9 +1,14 @@
 import type { AnalyticsEvent } from "@/shared/analytics/events";
+import { validateAnalyticsPayload } from "@/shared/analytics/validate-payload";
 
 type TrackPayload = Record<string, string | number | boolean | undefined | null>;
 
 export function trackEvent(event: AnalyticsEvent, payload: TrackPayload = {}) {
   if (typeof window === "undefined") {
+    return;
+  }
+  if (!validateAnalyticsPayload(event, payload)) {
+    console.warn("[analytics.client] invalid payload", { event, payload });
     return;
   }
 

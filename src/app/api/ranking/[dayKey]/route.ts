@@ -66,7 +66,7 @@ function getIncludeBots(url: string) {
   if (value === "1" || value === "true") {
     return true;
   }
-  return true;
+  throw new Error("INVALID_INCLUDE_BOTS");
 }
 
 export async function GET(
@@ -80,12 +80,17 @@ export async function GET(
   if (!DAY_KEY_PATTERN.test(dayKey)) {
     return NextResponse.json({ error: "INVALID_DAY_KEY" }, { status: 400 });
   }
+  let includeBots: boolean;
+  try {
+    includeBots = getIncludeBots(request.url);
+  } catch {
+    return NextResponse.json({ error: "INVALID_INCLUDE_BOTS" }, { status: 400 });
+  }
   const view = getView(request.url);
   if (view === RANKING_VIEW_ARCHIVE) {
     const limit = getArchiveLimit(request.url);
     const offset = getArchiveOffset(request.url);
     const search = getArchiveSearch(request.url);
-    const includeBots = getIncludeBots(request.url);
     return NextResponse.json(
       await listRankingArchive({
         dayKey,
@@ -98,7 +103,6 @@ export async function GET(
   }
 
   const count = getRankingCount(request.url);
-  const includeBots = getIncludeBots(request.url);
   const source = getHomeDataSource();
   return NextResponse.json(await source.getRankingTop({ dayKey, count, includeBots }));
 }

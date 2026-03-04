@@ -31,7 +31,7 @@ export function getMockMe(): MeResponse {
 
 function makeRankingEntry(dayKey: string, rank: number): RankingEntry {
   const baseSeed = `${dayKey}-rank-${pad(rank)}`;
-  const score = 9.6 - rank * 0.25;
+  const score = Math.max(0, 9.6 - rank * 0.25);
   return {
     rank,
     dishId: baseSeed,

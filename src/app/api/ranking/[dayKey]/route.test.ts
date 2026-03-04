@@ -195,6 +195,30 @@ describe("GET /api/ranking/[dayKey]", () => {
     });
   });
 
+  it("returns 400 when includeBots query is invalid", async () => {
+    const { GET } = await import("./route");
+
+    const topResponse = await GET(
+      new Request("http://localhost/api/ranking/2026-02-11?includeBots=flase"),
+      {
+        params: Promise.resolve({ dayKey: "2026-02-11" }),
+      },
+    );
+    const archiveResponse = await GET(
+      new Request("http://localhost/api/ranking/2026-02-11?view=archive&includeBots=maybe"),
+      {
+        params: Promise.resolve({ dayKey: "2026-02-11" }),
+      },
+    );
+
+    expect(topResponse.status).toBe(400);
+    await expect(topResponse.json()).resolves.toEqual({ error: "INVALID_INCLUDE_BOTS" });
+    expect(archiveResponse.status).toBe(400);
+    await expect(archiveResponse.json()).resolves.toEqual({ error: "INVALID_INCLUDE_BOTS" });
+    expect(getRankingTopMock).not.toHaveBeenCalled();
+    expect(listRankingArchiveMock).not.toHaveBeenCalled();
+  });
+
   it("returns 400 when dayKey format is invalid", async () => {
     const { GET } = await import("./route");
 

@@ -37,6 +37,21 @@ describe("computeKitchenStats", () => {
     });
   });
 
+  it("ignores ties in win rate and does not break winning streak", () => {
+    const result = computeKitchenStats(4, [
+      match({ id: "m1", leftScore: 9.2, rightScore: 8.5 }),
+      match({ id: "m2", leftScore: 8.9, rightScore: 8.9 }),
+      match({ id: "m3", leftScore: 8.8, rightScore: 8.1 }),
+      match({ id: "m4", leftScore: 8.2, rightScore: 8.7 }),
+    ]);
+
+    expect(result).toEqual({
+      dishes: 4,
+      winRate: 67,
+      streak: 2,
+    });
+  });
+
   it("returns null win metrics when all rows are ties", () => {
     const result = computeKitchenStats(2, [
       match({ id: "m1", leftScore: 8.8, rightScore: 8.8 }),

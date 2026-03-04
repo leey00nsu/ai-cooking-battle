@@ -13,9 +13,16 @@ export const ANALYTICS_EVENTS = {
 
 export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];
 
-export const ANALYTICS_EVENT_PAYLOAD_SCHEMA = {
+type AnalyticsPayloadSchema = {
+  required: readonly string[];
+  optional: readonly string[];
+};
+
+export const ANALYTICS_EVENT_PAYLOAD_SCHEMA: Partial<
+  Record<AnalyticsEvent, AnalyticsPayloadSchema>
+> = {
   [ANALYTICS_EVENTS.RANKING_ITEM_CLICKED]: {
     required: ["screen", "dayKey", "dishId"],
     optional: ["rank", "source"],
   },
-} as const;
+};

@@ -315,5 +315,18 @@ describe("listRankingArchive", () => {
         },
       }),
     );
+    expect(prisma.dishDayScore.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: {
+          dayKey: "2026-02-12",
+          status: "READY",
+          dish: {
+            isHidden: false,
+            botMeta: null,
+          },
+        },
+      }),
+    );
   });
 });

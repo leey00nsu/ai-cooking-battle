@@ -1,24 +1,21 @@
 import type { Prisma } from "@prisma/client";
 
-export const RANKING_TIE_BREAK_ORDER = [
-  { totalScore: "desc" },
-  { themeFit: "desc" },
-  { execution: "desc" },
-  { analyzedAt: "desc" },
-  { id: "desc" },
+const RANKING_ORDER_SPEC = [
+  { field: "totalScore", sql: `dds."totalScore"` },
+  { field: "themeFit", sql: `dds."themeFit"` },
+  { field: "execution", sql: `dds."execution"` },
+  { field: "analyzedAt", sql: `dds."analyzedAt"` },
+  { field: "id", sql: `dds."id"` },
 ] as const;
+
+export const RANKING_TIE_BREAK_ORDER: ReadonlyArray<Prisma.DishDayScoreOrderByWithRelationInput> =
+  RANKING_ORDER_SPEC.map(({ field }) => ({ [field]: "desc" }));
 
 export function getRankingOrderBy(): Prisma.DishDayScoreOrderByWithRelationInput[] {
   return [...RANKING_TIE_BREAK_ORDER];
 }
 
-export const RANKING_SQL_ORDER_BY = `
-  dds."totalScore" DESC,
-  dds."themeFit" DESC,
-  dds."execution" DESC,
-  dds."analyzedAt" DESC,
-  dds."id" DESC
-`;
+export const RANKING_SQL_ORDER_BY = RANKING_ORDER_SPEC.map(({ sql }) => `${sql} DESC`).join(", ");
 
 export function getPublicRankingDishWhere(args?: { includeBots?: boolean }): Prisma.DishWhereInput {
   if (args?.includeBots === false) {

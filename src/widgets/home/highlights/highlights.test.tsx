@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ANALYTICS_EVENTS } from "@/shared/analytics/events";
 import Highlights from "./highlights";
 
@@ -34,11 +34,15 @@ const rankingTop = {
 };
 
 describe("Highlights", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("renders ranking cards", () => {
     render(<Highlights rankingTop={rankingTop} />);
 
     expect(screen.getByText(/오늘의 랭킹 — Top Rated/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View Ranking" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "랭킹 보기" })).toBeInTheDocument();
     expect(screen.getByText("Hall Dish #01")).toBeInTheDocument();
     expect(screen.getByText("Chef_01")).toBeInTheDocument();
     expect(screen.queryByText("vs")).not.toBeInTheDocument();

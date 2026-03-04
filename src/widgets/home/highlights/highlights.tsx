@@ -38,7 +38,7 @@ function HighlightsHeader({ dayKey }: { dayKey?: string }) {
         className="flex items-center gap-1 text-sm font-medium text-white/60 transition hover:text-primary"
         href={href}
       >
-        View Ranking
+        랭킹 보기
         <ArrowRight aria-hidden className="h-4 w-4" />
       </Link>
     </div>
@@ -54,6 +54,8 @@ function HighlightCard({
   dayKey: string;
   onClick?: () => void;
 }) {
+  const dishName = entry.dishName || "알 수 없는 메뉴";
+
   return (
     <Link
       className="group rounded-[2rem] border border-white/5 bg-card/90 p-4 shadow-lg transition hover:border-primary/40 hover:shadow-xl"
@@ -63,17 +65,17 @@ function HighlightCard({
       <div className="relative h-52 overflow-hidden rounded-[1.5rem] bg-card">
         {entry.imageUrl ? (
           <img
-            alt={`Ranking #${entry.rank} ${entry.dishName}`}
+            alt={`랭킹 #${entry.rank} ${dishName}`}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             src={entry.imageUrl}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-card via-background to-black text-xs text-white/40">
-            No Image
+            이미지 없음
           </div>
         )}
         <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/75 px-3 py-1 text-xs font-semibold text-white">
-          #{entry.rank}
+          랭킹 #{entry.rank}
         </div>
         <div className="absolute bottom-3 right-3 rounded-md bg-black/80 px-2 py-1 text-base font-black text-primary">
           {formatScore(entry.score)}
@@ -81,13 +83,11 @@ function HighlightCard({
       </div>
       <div className="mt-4 flex items-start justify-between px-2">
         <div className="flex flex-col gap-1">
-          <h3 className="line-clamp-1 text-lg font-bold leading-tight text-white">
-            {entry.dishName}
-          </h3>
+          <h3 className="line-clamp-1 text-lg font-bold leading-tight text-white">{dishName}</h3>
           <div className="flex items-center gap-2">
             <span className="line-clamp-1 text-xs text-white/70">{entry.authorName}</span>
             <span className="text-xs text-white/30">•</span>
-            <span className="text-xs text-white/60">Rank #{entry.rank}</span>
+            <span className="text-xs text-white/60">랭킹 #{entry.rank}</span>
           </div>
         </div>
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-white transition group-hover:bg-primary group-hover:text-black">
