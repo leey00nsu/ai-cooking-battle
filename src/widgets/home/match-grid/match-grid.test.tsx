@@ -31,6 +31,8 @@ describe("MatchGrid", () => {
 
     expect(screen.getByText(/랭킹 하이라이트 1개/)).toBeInTheDocument();
     expect(screen.getByText("연습전")).toBeInTheDocument();
+    expect(screen.getByText("Top Score 9.6")).toBeInTheDocument();
+    expect(screen.queryByText(/vs/i)).not.toBeInTheDocument();
 
     expect(screen.getByRole("link", { name: "View Feed" })).toBeInTheDocument();
 

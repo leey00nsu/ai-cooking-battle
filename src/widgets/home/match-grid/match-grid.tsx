@@ -51,7 +51,6 @@ function MatchGridHeader({ count }: { count?: number }) {
 function MatchCard({ match }: { match: MatchSummary }) {
   const backgroundUrl = match.leftDishImageUrl || match.rightDishImageUrl;
   const rating = Math.max(match.leftScore, match.rightScore);
-  const scoreLabel = `${formatScore(match.leftScore)} vs ${formatScore(match.rightScore)}`;
 
   return (
     <a
@@ -82,9 +81,8 @@ function MatchCard({ match }: { match: MatchSummary }) {
       <div className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 transition group-hover:opacity-100">
         <div className="flex items-center gap-1 text-xs font-semibold text-primary">
           <Star aria-hidden className="h-3.5 w-3.5" />
-          {formatScore(rating)}
+          Top Score {formatScore(rating)}
         </div>
-        <p className="mt-1 text-sm font-semibold text-white">{scoreLabel}</p>
         <p className="text-xs text-white/60">{match.dayKey}</p>
       </div>
     </a>
