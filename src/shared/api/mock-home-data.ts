@@ -1,4 +1,3 @@
-import type { MatchFeed, MatchSummary } from "@/entities/match/model/types";
 import type { RankingEntry, RankingTop } from "@/entities/ranking/model/types";
 import type { Theme } from "@/entities/theme/model/types";
 import { formatDayKey, formatDayKeyForTimeZone } from "@/shared/lib/day-key";
@@ -30,44 +29,16 @@ export function getMockMe(): MeResponse {
   return { status: "ELIGIBLE" };
 }
 
-function makeMatch(dayKey: string, index: number): MatchSummary {
-  const id = `${dayKey}-match-${pad(index + 1)}`;
-  const leftScore = 7.5 + (index % 3) * 0.6;
-  const rightScore = 7.2 + (index % 4) * 0.5;
-  return {
-    id,
-    dayKey,
-    leftDishImageUrl: dishImage(`${id}-left`),
-    rightDishImageUrl: dishImage(`${id}-right`),
-    leftScore,
-    rightScore,
-    isPractice: index % 5 === 0,
-  };
-}
-
-export function getMockMatchFeed(dayKey = formatDayKey(), limit = 8): MatchFeed {
-  const safeLimit = Math.max(0, Math.floor(Number(limit)));
-  const items = Array.from({ length: safeLimit }, (_, index) => makeMatch(dayKey, index));
-  return { items };
-}
-
 function makeRankingEntry(dayKey: string, rank: number): RankingEntry {
   const baseSeed = `${dayKey}-rank-${pad(rank)}`;
-  const leftScore = 8.8 - rank * 0.2;
-  const rightScore = 8.3 - rank * 0.18;
-  const isLeftWinner = leftScore >= rightScore;
-  const score = isLeftWinner ? leftScore : rightScore;
+  const score = Math.max(0, 9.6 - rank * 0.25);
   return {
     rank,
     dishId: baseSeed,
     dishName: `Hall Dish #${pad(rank)}`,
     authorName: `Chef_${pad(rank)}`,
-    imageUrl: dishImage(`${baseSeed}-${isLeftWinner ? "left" : "right"}`),
+    imageUrl: dishImage(baseSeed),
     score,
-    leftImageUrl: dishImage(`${baseSeed}-left`),
-    rightImageUrl: dishImage(`${baseSeed}-right`),
-    leftScore,
-    rightScore,
   };
 }
 

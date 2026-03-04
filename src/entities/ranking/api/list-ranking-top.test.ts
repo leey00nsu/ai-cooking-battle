@@ -51,6 +51,13 @@ describe("listRankingTop", () => {
             isHidden: false,
           },
         },
+        orderBy: [
+          { totalScore: "desc" },
+          { themeFit: "desc" },
+          { execution: "desc" },
+          { analyzedAt: "desc" },
+          { id: "desc" },
+        ],
         take: 2,
       }),
     );
@@ -64,10 +71,6 @@ describe("listRankingTop", () => {
           authorName: "Chef A",
           imageUrl: "https://cdn.example/dish-1.webp",
           score: 91.2,
-          leftImageUrl: "https://cdn.example/dish-1.webp",
-          rightImageUrl: "https://cdn.example/dish-1.webp",
-          leftScore: 91.2,
-          rightScore: 91.2,
         },
         {
           rank: 2,
@@ -76,10 +79,6 @@ describe("listRankingTop", () => {
           authorName: "트리플 실루엣",
           imageUrl: "https://cdn.example/dish-2.webp",
           score: 88.6,
-          leftImageUrl: "https://cdn.example/dish-2.webp",
-          rightImageUrl: "https://cdn.example/dish-2.webp",
-          leftScore: 88.6,
-          rightScore: 88.6,
         },
       ],
     });
@@ -94,5 +93,25 @@ describe("listRankingTop", () => {
       items: [],
     });
     expect(prisma.dishDayScore.findMany).not.toHaveBeenCalled();
+  });
+
+  it("excludes bot dishes only when includeBots=false", async () => {
+    prisma.dishDayScore.findMany.mockResolvedValueOnce([]);
+
+    const { listRankingTop } = await import("./list-ranking-top");
+    await listRankingTop({ dayKey: "2026-02-12", includeBots: false });
+
+    expect(prisma.dishDayScore.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          dayKey: "2026-02-12",
+          status: "READY",
+          dish: {
+            isHidden: false,
+            botMeta: null,
+          },
+        },
+      }),
+    );
   });
 });

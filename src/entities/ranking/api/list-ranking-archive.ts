@@ -1,4 +1,9 @@
 import { Prisma } from "@prisma/client";
+import {
+  getPublicRankingDishWhere,
+  getRankingOrderBy,
+  RANKING_SQL_ORDER_BY,
+} from "@/entities/ranking/model/ranking-policy";
 import type { RankingArchiveEntry, RankingArchiveResponse } from "@/entities/ranking/model/types";
 import { prisma } from "@/lib/prisma";
 
@@ -127,10 +132,18 @@ function buildKeywordGroups(args: {
   ];
 }
 
-async function fetchGlobalRankByDishId(dayKey: string, dishIds: string[]) {
+async function fetchGlobalRankByDishId(args: {
+  dayKey: string;
+  dishIds: string[];
+  includeBots: boolean;
+}) {
+  const { dayKey, dishIds, includeBots } = args;
   if (dishIds.length === 0) {
     return new Map<string, number>();
   }
+  const botFilterSql = includeBots
+    ? Prisma.empty
+    : Prisma.sql`AND NOT EXISTS (SELECT 1 FROM "dish_bot_meta" dbm WHERE dbm."dishId" = d."id")`;
 
   // 검색 결과에서도 "당일 전체 기준 순위"를 유지해야 하므로 DB 윈도우 함수(ROW_NUMBER)를 사용한다.
   // Prisma findMany로 전체 행을 메모리에 올리는 방식은 참가자 수 증가 시 비용이 커져 회피한다.
@@ -141,13 +154,14 @@ async function fetchGlobalRankByDishId(dayKey: string, dishIds: string[]) {
     WITH ranked AS (
       SELECT
         dds."dishId",
-        ROW_NUMBER() OVER (ORDER BY dds."totalScore" DESC, dds."analyzedAt" DESC, dds."id" DESC) AS rank
+        ROW_NUMBER() OVER (ORDER BY ${Prisma.raw(RANKING_SQL_ORDER_BY)}) AS rank
       FROM "dish_day_score" dds
       INNER JOIN "dish" d ON d."id" = dds."dishId"
       WHERE
         dds."dayKey" = ${dayKey}
         AND dds."status" = 'READY'
         AND d."isHidden" = false
+        ${botFilterSql}
     )
     SELECT ranked."dishId", ranked.rank
     FROM ranked
@@ -162,8 +176,10 @@ export async function listRankingArchive(args: {
   limit?: number;
   offset?: number;
   search?: string | null;
+  includeBots?: boolean;
 }): Promise<RankingArchiveResponse> {
   const dayKey = args.dayKey.trim();
+  const includeBots = args.includeBots ?? true;
   const limit = toSafeLimit(args.limit);
   const offset = toSafeOffset(args.offset);
   const search = toSafeSearch(args.search);
@@ -194,9 +210,7 @@ export async function listRankingArchive(args: {
       where: {
         dayKey,
         status: "READY",
-        dish: {
-          isHidden: false,
-        },
+        dish: getPublicRankingDishWhere({ includeBots }),
       },
       _count: {
         _all: true,
@@ -210,11 +224,11 @@ export async function listRankingArchive(args: {
         dayKey,
         status: "READY",
         dish: {
-          isHidden: false,
+          ...getPublicRankingDishWhere({ includeBots }),
           ...(search ? { dishName: { contains: search, mode: "insensitive" as const } } : {}),
         },
       },
-      orderBy: [{ totalScore: "desc" }, { analyzedAt: "desc" }, { id: "desc" }],
+      orderBy: getRankingOrderBy(),
       skip: offset,
       take: limit + 1,
       select: {
@@ -246,11 +260,9 @@ export async function listRankingArchive(args: {
       where: {
         dayKey,
         status: "READY",
-        dish: {
-          isHidden: false,
-        },
+        dish: getPublicRankingDishWhere({ includeBots }),
       },
-      orderBy: [{ totalScore: "desc" }, { analyzedAt: "desc" }, { id: "desc" }],
+      orderBy: getRankingOrderBy(),
       take: 30,
       select: {
         dish: {
@@ -266,10 +278,11 @@ export async function listRankingArchive(args: {
   const visibleRows = hasMore ? rows.slice(0, limit) : rows;
   const globalRankByDishId =
     search && visibleRows.length > 0
-      ? await fetchGlobalRankByDishId(
+      ? await fetchGlobalRankByDishId({
           dayKey,
-          visibleRows.map((row) => row.dishId),
-        )
+          dishIds: visibleRows.map((row) => row.dishId),
+          includeBots,
+        })
       : null;
   const items = globalRankByDishId
     ? visibleRows.flatMap((row) => {

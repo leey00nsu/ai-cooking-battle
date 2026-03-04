@@ -54,6 +54,21 @@ function getArchiveSearch(url: string) {
   return search ? search : null;
 }
 
+function getIncludeBots(url: string) {
+  const { searchParams } = new URL(url);
+  const value = searchParams.get("includeBots")?.trim().toLowerCase();
+  if (!value) {
+    return true;
+  }
+  if (value === "0" || value === "false") {
+    return false;
+  }
+  if (value === "1" || value === "true") {
+    return true;
+  }
+  throw new Error("INVALID_INCLUDE_BOTS");
+}
+
 export async function GET(
   request: Request,
   context: {
@@ -64,6 +79,12 @@ export async function GET(
   const dayKey = rawDayKey.trim();
   if (!DAY_KEY_PATTERN.test(dayKey)) {
     return NextResponse.json({ error: "INVALID_DAY_KEY" }, { status: 400 });
+  }
+  let includeBots: boolean;
+  try {
+    includeBots = getIncludeBots(request.url);
+  } catch {
+    return NextResponse.json({ error: "INVALID_INCLUDE_BOTS" }, { status: 400 });
   }
   const view = getView(request.url);
   if (view === RANKING_VIEW_ARCHIVE) {
@@ -76,11 +97,12 @@ export async function GET(
         limit,
         offset,
         search,
+        includeBots,
       }),
     );
   }
 
   const count = getRankingCount(request.url);
   const source = getHomeDataSource();
-  return NextResponse.json(await source.getRankingTop({ dayKey, count }));
+  return NextResponse.json(await source.getRankingTop({ dayKey, count, includeBots }));
 }

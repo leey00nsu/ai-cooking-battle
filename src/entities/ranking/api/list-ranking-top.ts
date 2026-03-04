@@ -1,3 +1,7 @@
+import {
+  getPublicRankingDishWhere,
+  getRankingOrderBy,
+} from "@/entities/ranking/model/ranking-policy";
 import type { RankingTop } from "@/entities/ranking/model/types";
 import { prisma } from "@/lib/prisma";
 
@@ -15,6 +19,7 @@ function toSafeCount(count: number | undefined) {
 export async function listRankingTop(args: {
   dayKey: string;
   count?: number;
+  includeBots?: boolean;
 }): Promise<RankingTop> {
   const dayKey = args.dayKey.toString().trim();
   const count = toSafeCount(args.count);
@@ -26,11 +31,9 @@ export async function listRankingTop(args: {
     where: {
       dayKey,
       status: "READY",
-      dish: {
-        isHidden: false,
-      },
+      dish: getPublicRankingDishWhere({ includeBots: args.includeBots }),
     },
-    orderBy: [{ totalScore: "desc" }, { analyzedAt: "desc" }, { id: "desc" }],
+    orderBy: getRankingOrderBy(),
     take: count,
     select: {
       dishId: true,
@@ -71,10 +74,6 @@ export async function listRankingTop(args: {
         authorName: row.dish.botMeta?.persona.displayName || row.dish.user.name || AUTHOR_FALLBACK,
         imageUrl,
         score,
-        leftImageUrl: imageUrl,
-        rightImageUrl: imageUrl,
-        leftScore: score,
-        rightScore: score,
       };
     }),
   };

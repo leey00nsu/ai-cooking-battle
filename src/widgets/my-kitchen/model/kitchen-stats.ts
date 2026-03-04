@@ -7,7 +7,7 @@ type KitchenStats = {
 };
 
 function isWinMatch(match: MatchSummary) {
-  // 배틀 규칙상 동점은 발생하지 않는다.
+  // 동점(랭킹 스냅샷) 데이터는 별도 처리하고, 승패 판정은 결정적 결과만 계산한다.
   return match.leftScore > match.rightScore;
 }
 
@@ -16,11 +16,19 @@ function computeKitchenStats(dishes: number, recentMatches: MatchSummary[]): Kit
     return { dishes, winRate: null, streak: null };
   }
 
-  const wins = recentMatches.filter(isWinMatch).length;
-  const winRate = Math.round((wins / recentMatches.length) * 100);
+  const decisiveMatches = recentMatches.filter((match) => match.leftScore !== match.rightScore);
+  if (decisiveMatches.length === 0) {
+    return { dishes, winRate: null, streak: null };
+  }
+
+  const wins = decisiveMatches.filter(isWinMatch).length;
+  const winRate = Math.round((wins / decisiveMatches.length) * 100);
 
   let streak = 0;
   for (const match of recentMatches) {
+    if (match.leftScore === match.rightScore) {
+      continue;
+    }
     if (isWinMatch(match)) {
       streak += 1;
       continue;
