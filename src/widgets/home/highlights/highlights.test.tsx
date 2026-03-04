@@ -77,6 +77,7 @@ describe("Highlights", () => {
       screen: "home",
       dayKey: "2026-01-26",
       rank: 1,
+      dishId: "dish-1",
     });
   });
 });

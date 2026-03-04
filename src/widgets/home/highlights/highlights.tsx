@@ -145,6 +145,7 @@ export default function Highlights({ rankingTop, isError, isRestricted }: Highli
               screen: "home",
               dayKey: rankingTop.dayKey,
               rank: entry.rank,
+              dishId: entry.dishId,
             });
           };
 

@@ -23,10 +23,12 @@ describe("RecentMatchesPanel", () => {
     );
 
     expect(screen.getByText("Recent Ranking Days")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /vs\./i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Ranking Snapshot/i })).toHaveAttribute(
       "href",
       "/ranking/2026-02-22",
     );
+    expect(screen.getByText("Top Score")).toBeInTheDocument();
+    expect(screen.getByText("9.1")).toBeInTheDocument();
   });
 
   it("renders ranking-oriented empty copy", () => {

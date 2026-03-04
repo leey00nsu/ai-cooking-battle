@@ -50,12 +50,8 @@ function RecentMatchesPanel({ matches, isPending, isError }: RecentMatchesPanelP
         ) : (
           <ul className="mt-4 space-y-3">
             {matches.map((match) => {
-              const isWin = match.leftScore > match.rightScore;
-              const pointDiff = Math.round(Math.abs(match.leftScore - match.rightScore) * 10);
-              const pointLabel = `${isWin ? "+" : "-"}${pointDiff}`;
-              const matchResult = isWin ? "WIN" : "LOSS";
-              const resultToneClass = isWin ? "text-emerald-300" : "text-rose-300";
-              const opponentLabel = "Mock Opponent";
+              const topScore = Math.max(match.leftScore, match.rightScore);
+              const topScoreLabel = Number.isFinite(topScore) ? topScore.toFixed(1) : "-";
               return (
                 <li key={match.id}>
                   <Surface asChild tone="soft" radius="lg" interactive="borderAndBackground">
@@ -69,16 +65,18 @@ function RecentMatchesPanel({ matches, isPending, isError }: RecentMatchesPanelP
                           radius="full"
                           className="flex h-9 w-9 items-center justify-center text-xs font-bold text-white/80"
                         >
-                          MO
+                          RK
                         </Surface>
                         <div>
-                          <p className="text-sm font-semibold text-white">vs. {opponentLabel}</p>
+                          <p className="text-sm font-semibold text-white">Ranking Snapshot</p>
                           <p className="text-xs text-white/60">{match.dayKey}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`text-xs font-bold ${resultToneClass}`}>{matchResult}</p>
-                        <p className={`text-sm font-semibold ${resultToneClass}`}>{pointLabel}</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary/80">
+                          Top Score
+                        </p>
+                        <p className="text-sm font-semibold text-primary">{topScoreLabel}</p>
                       </div>
                     </Link>
                   </Surface>
