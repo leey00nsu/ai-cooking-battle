@@ -5,7 +5,12 @@ type ServerEventPayload = Record<string, string | number | boolean | null | unde
 
 export function trackServerEvent(event: AnalyticsEvent, payload: ServerEventPayload = {}) {
   if (!validateAnalyticsPayload(event, payload)) {
-    console.warn("[analytics.server] invalid payload", { event, payload });
+    const payloadKeys = Object.keys(payload);
+    console.warn("[analytics.server] invalid payload", {
+      event,
+      payloadKeys,
+      payloadSize: payloadKeys.length,
+    });
     return;
   }
 

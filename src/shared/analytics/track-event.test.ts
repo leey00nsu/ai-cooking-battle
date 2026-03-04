@@ -49,10 +49,25 @@ describe("trackEvent", () => {
     expect(gtag).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith("[analytics.client] invalid payload", {
       event: ANALYTICS_EVENTS.RANKING_ITEM_CLICKED,
-      payload: {
-        screen: "home",
-        dayKey: "2026-03-04",
-      },
+      payloadKeys: ["screen", "dayKey"],
+      payloadSize: 2,
+    });
+  });
+
+  it("skips untyped event when payload contains non-primitive value", () => {
+    const gtag = vi.fn();
+    (window as Window & { gtag?: unknown }).gtag = gtag;
+
+    trackEvent(ANALYTICS_EVENTS.VIEW_HOME, {
+      screen: "home",
+      meta: { nested: true },
+    } as unknown as Record<string, string | number | boolean | null | undefined>);
+
+    expect(gtag).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith("[analytics.client] invalid payload", {
+      event: ANALYTICS_EVENTS.VIEW_HOME,
+      payloadKeys: ["screen", "meta"],
+      payloadSize: 2,
     });
   });
 });

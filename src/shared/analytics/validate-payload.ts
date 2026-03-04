@@ -10,13 +10,17 @@ function isPayloadValue(value: unknown): value is AnalyticsPayloadValue {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
 }
 
+function isLightweightPayloadValue(value: unknown) {
+  return isPayloadValue(value) || value === null || value === undefined;
+}
+
 export function validateAnalyticsPayload(
   event: AnalyticsEvent,
   payload: Record<string, unknown>,
 ): payload is Record<string, AnalyticsPayloadValue> {
   const schema = ANALYTICS_EVENT_PAYLOAD_SCHEMA[event];
   if (!schema) {
-    return true;
+    return Object.values(payload).every((value) => isLightweightPayloadValue(value));
   }
 
   for (const key of schema.required) {

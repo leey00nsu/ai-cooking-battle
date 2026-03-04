@@ -48,10 +48,22 @@ describe("trackServerEvent", () => {
     expect(infoSpy).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith("[analytics.server] invalid payload", {
       event: ANALYTICS_EVENTS.RANKING_ITEM_CLICKED,
-      payload: {
-        screen: "ranking",
-        dayKey: "2026-03-04",
-      },
+      payloadKeys: ["screen", "dayKey"],
+      payloadSize: 2,
+    });
+  });
+
+  it("skips untyped event when payload contains non-primitive value", () => {
+    trackServerEvent(ANALYTICS_EVENTS.VIEW_HOME, {
+      screen: "ranking",
+      meta: { nested: true },
+    } as unknown as Record<string, string | number | boolean | null | undefined>);
+
+    expect(infoSpy).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith("[analytics.server] invalid payload", {
+      event: ANALYTICS_EVENTS.VIEW_HOME,
+      payloadKeys: ["screen", "meta"],
+      payloadSize: 2,
     });
   });
 });

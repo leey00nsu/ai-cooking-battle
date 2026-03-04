@@ -8,7 +8,12 @@ export function trackEvent(event: AnalyticsEvent, payload: TrackPayload = {}) {
     return;
   }
   if (!validateAnalyticsPayload(event, payload)) {
-    console.warn("[analytics.client] invalid payload", { event, payload });
+    const payloadKeys = Object.keys(payload);
+    console.warn("[analytics.client] invalid payload", {
+      event,
+      payloadKeys,
+      payloadSize: payloadKeys.length,
+    });
     return;
   }
 
